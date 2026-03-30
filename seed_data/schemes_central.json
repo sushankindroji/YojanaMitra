@@ -1,0 +1,124 @@
+[
+  {
+    "scheme_code": "PM-KISAN",
+    "name_en": "PM-KISAN Samman Nidhi",
+    "name_hi": "प्रधानमंत्री किसान सम्मान निधि",
+    "description_en": "Direct income support to farmers of ₹6000 per year in three installments",
+    "ministry": "Ministry of Agriculture & Farmers Welfare",
+    "sector": "Agriculture & Farmers",
+    "state": "Central",
+    "benefit_type": "Cash",
+    "benefit_amount": 6000,
+    "benefit_frequency": "Annual",
+    "eligibility_rules": {
+      "conditions": [
+        {
+          "field": "is_farmer",
+          "operator": "is_true",
+          "value": true,
+          "label_en": "Must be a farmer",
+          "is_mandatory": true
+        },
+        {
+          "field": "annual_income",
+          "operator": "less_than_or_equal",
+          "value": 200000,
+          "label_en": "Annual income <= ₹2 lakh",
+          "is_mandatory": true
+        }
+      ]
+    },
+    "required_documents": [
+      {"name": "Aadhaar Card", "type": "aadhaar", "mandatory": true},
+      {"name": "Land ownership proof", "type": "other", "mandatory": true}
+    ],
+    "application_steps": [
+      "Visit https://pmkisan.gov.in",
+      "Click 'New Farmer Registration'",
+      "Enter Aadhaar and details",
+      "Submit and get registration number",
+      "Verify through OTP"
+    ],
+    "application_mode": "Online",
+    "official_portal_url": "https://pmkisan.gov.in",
+    "application_deadline": "2025-12-31"
+  },
+  {
+    "scheme_code": "PM-YASASVI",
+    "name_en": "PM YASASVI Scholarship",
+    "name_hi": "प्रधानमंत्री यंग अचीवर्स स्कॉलरशिप",
+    "description_en": "Scholarship of ₹75000-125000 for meritorious students from OBC/EBC/DNT categories",
+    "ministry": "Ministry of Social Justice",
+    "sector": "Education & Scholarships",
+    "state": "Central",
+    "benefit_type": "Cash",
+    "benefit_amount": 100000,
+    "benefit_frequency": "One-time",
+    "eligibility_rules": {
+      "conditions": [
+        {
+          "field": "is_student",
+          "operator": "is_true",
+          "value": true,
+          "label_en": "Must be a student",
+          "is_mandatory": true
+        },
+        {
+          "field": "social_category",
+          "operator": "in",
+          "value": ["obc", "sc", "st", "ews"],
+          "label_en": "Must belong to OBC/SC/ST/EWS category",
+          "is_mandatory": true
+        }
+      ]
+    },
+    "required_documents": [
+      {"name": "Class 12 mark sheet", "type": "other", "mandatory": true},
+      {"name": "Category certificate", "type": "caste", "mandatory": true}
+    ],
+    "application_steps": [
+      "Visit National Scholarship Portal",
+      "Register with email",
+      "Fill application form",
+      "Upload documents",
+      "Submit and wait for approval"
+    ],
+    "application_mode": "Online",
+    "official_portal_url": "https://scholarships.gov.in"
+  },
+  {
+    "scheme_code": "AYUSHMAN-BHARAT",
+    "name_en": "Ayushman Bharat PM-JAY",
+    "name_hi": "आयुष्मान भारत",
+    "description_en": "Healthcare coverage of ₹5 lakh per family for BPL and EWS households",
+    "ministry": "Ministry of Labour & Employment",
+    "sector": "Health & Insurance",
+    "state": "Central",
+    "benefit_type": "Service",
+    "benefit_amount": 500000,
+    "benefit_frequency": "Annual",
+    "eligibility_rules": {
+      "conditions": [
+        {
+          "field": "is_bpl",
+          "operator": "is_true",
+          "value": true,
+          "label_en": "Must be BPL",
+          "is_mandatory": true
+        }
+      ]
+    },
+    "required_documents": [
+      {"name": "Ration Card", "type": "ration", "mandatory": true}
+    ],
+    "application_steps": [
+      "Visit empanelled hospital",
+      "Provide Aadhaar/Ration Card",
+      "Complete e-KYC",
+      "Receive Ayushman card",
+      "Avail healthcare services"
+    ],
+    "application_mode": "Offline",
+    "official_portal_url": "https://pmjay.gov.in"
+  }
+]
