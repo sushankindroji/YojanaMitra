@@ -18,6 +18,36 @@ export default function Eligibility() {
   const [sectorFilter, setSectorFilter] = useState('all')
   const [sectors, setSectors] = useState([])
 
+  const normalizeScore = (value) => {
+    const score = Number(value || 0)
+    return score > 0 && score <= 1 ? Math.round(score * 100) : Math.round(score)
+  }
+
+  const normalizeScheme = (scheme) => {
+    const eligibilityPercentage = normalizeScore(
+      scheme.eligibility_percentage ?? scheme.eligibility_score
+    )
+
+    const isEligible = Boolean(scheme.is_eligible) || eligibilityPercentage >= 80
+    const isPartiallyEligible =
+      Boolean(scheme.is_partially_eligible) || (!isEligible && eligibilityPercentage >= 10)
+
+    return {
+      ...scheme,
+      id: scheme.id || scheme.scheme_id,
+      scheme_id: scheme.scheme_id || scheme.id,
+      name_en: scheme.name_en || scheme.scheme_name || scheme.name,
+      description_en: scheme.description_en || scheme.description || '',
+      benefit_amount: Number(scheme.benefit_amount || 0),
+      benefit_type: scheme.benefit_type || scheme.benefitType || '',
+      official_portal_url: scheme.official_portal_url || scheme.official_website || '',
+      eligibility_percentage: eligibilityPercentage,
+      is_eligible: isEligible,
+      is_partially_eligible: isPartiallyEligible,
+      condition_results: scheme.condition_results || [],
+    }
+  }
+
   // Fetch eligible schemes on mount
   useEffect(() => {
     fetchEligibleSchemes()
@@ -33,14 +63,35 @@ export default function Eligibility() {
   const fetchEligibleSchemes = async () => {
     try {
       setLoading(true)
-      
-      // Fetch fully eligible schemes
-      const eligibleResponse = await schemeService.getEligibleSchemes({ limit: 100 })
-      setEligibleSchemes(eligibleResponse.data.schemes || [])
 
-      // Fetch partially eligible schemes
-      const partialResponse = await schemeService.getPartiallyEligibleSchemes({ limit: 100 })
-      setPartiallyEligibleSchemes(partialResponse.data.schemes || [])
+      let eligible = []
+      let partial = []
+
+      try {
+        const recommendationResponse = await schemeService.getEligibilityRecommendations({
+          limit: 100,
+          min_score: 0.3,
+        })
+
+        const recommendations = (recommendationResponse.data.schemes || []).map(normalizeScheme)
+        eligible = recommendations.filter((scheme) => scheme.is_eligible)
+        partial = recommendations.filter((scheme) => scheme.is_partially_eligible && !scheme.is_eligible)
+      } catch (recommendationError) {
+        console.warn(
+          'Recommendation endpoint failed, falling back to stored results:',
+          recommendationError
+        )
+      }
+
+      if (eligible.length === 0 && partial.length === 0) {
+        const eligibleResponse = await schemeService.getEligibleSchemes({ limit: 100 })
+        const partialResponse = await schemeService.getPartiallyEligibleSchemes({ limit: 100 })
+        eligible = (eligibleResponse.data.schemes || []).map(normalizeScheme)
+        partial = (partialResponse.data.schemes || []).map(normalizeScheme)
+      }
+
+      setEligibleSchemes(eligible)
+      setPartiallyEligibleSchemes(partial)
 
     } catch (error) {
       console.error('Failed to fetch schemes:', error)
@@ -53,13 +104,13 @@ export default function Eligibility() {
   const handleRunCheck = async () => {
     try {
       setChecking(true)
-      await schemeService.checkEligibility()
+      await schemeService.checkEligibility(true)
       toast.success('Eligibility check completed!')
-      await fetchEligibleSchemes()
     } catch (error) {
       console.error('Failed to run check:', error)
-      toast.error('Failed to run eligibility check')
+      toast.warning(error.response?.data?.detail || 'Using the latest recommendations instead')
     } finally {
+      await fetchEligibleSchemes()
       setChecking(false)
     }
   }
@@ -235,7 +286,7 @@ export default function Eligibility() {
               </p>
               {activeTab === 'eligible' && (
                 <button
-                  onClick={() => navigate('/profile')}
+                  onClick={() => navigate('/profile', { state: { returnTo: '/eligibility' } })}
                   className="btn-primary"
                 >
                   Complete Your Profile

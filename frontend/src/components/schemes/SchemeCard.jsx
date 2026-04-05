@@ -11,6 +11,23 @@ export default function SchemeCard({ scheme, isEligible = true }) {
   const [saving, setSaving] = useState(false)
   const { addApplication } = useApplicationStore()
   const schemeId = scheme.id || scheme.scheme_id
+  const schemeName = scheme.name_en || scheme.scheme_name || scheme.name || 'Scheme'
+  const schemeDescription = scheme.description_en || scheme.description || ''
+  const benefitAmount = Number(scheme.benefit_amount || 0)
+  const rawScore = Number(scheme.eligibility_percentage ?? scheme.eligibility_score ?? 0)
+  const eligibilityPercentage = rawScore > 0 && rawScore <= 1 ? Math.round(rawScore * 100) : Math.round(rawScore)
+  const officialPortalUrl = scheme.official_portal_url || scheme.official_website
+  const conditionResults = Array.isArray(scheme.condition_results)
+    ? scheme.condition_results
+    : typeof scheme.condition_results === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(scheme.condition_results)
+          } catch {
+            return []
+          }
+        })()
+      : []
   
   const eligibilityColor = isEligible ? 'text-green-600' : 'text-orange-600'
   const eligibilityBg = isEligible ? 'bg-green-50' : 'bg-orange-50'
@@ -47,7 +64,7 @@ export default function SchemeCard({ scheme, isEligible = true }) {
         <div className="flex-1">
           {/* Scheme Name */}
           <h3 className="text-xl font-bold text-[#1A3A6B] mb-2">
-            {scheme.name_en}
+            {schemeName}
           </h3>
           
           {/* Ministry/Sector */}
@@ -57,7 +74,7 @@ export default function SchemeCard({ scheme, isEligible = true }) {
 
           {/* Description */}
           <p className="text-gray-700 mb-4">
-            {scheme.description_en}
+            {schemeDescription}
           </p>
         </div>
 
@@ -81,7 +98,7 @@ export default function SchemeCard({ scheme, isEligible = true }) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-3 bg-white rounded-lg">
         <div>
           <p className="text-xs text-gray-600 font-semibold uppercase">Benefit Amount</p>
-          <p className="text-lg font-bold text-[#1A3A6B]">{formatAmount(scheme.benefit_amount)}</p>
+          <p className="text-lg font-bold text-[#1A3A6B]">{formatAmount(benefitAmount)}</p>
         </div>
         
         <div>
@@ -96,7 +113,7 @@ export default function SchemeCard({ scheme, isEligible = true }) {
 
         <div>
           <p className="text-xs text-gray-600 font-semibold uppercase">Match %</p>
-          <p className="text-lg font-bold text-green-600">{scheme.eligibility_percentage || 100}%</p>
+          <p className="text-lg font-bold text-green-600">{eligibilityPercentage || 100}%</p>
         </div>
       </div>
 
@@ -112,8 +129,8 @@ export default function SchemeCard({ scheme, isEligible = true }) {
 
         {expanded && (
           <div className="mt-3 space-y-2 pl-6 border-l-2 border-gray-300">
-            {scheme.condition_results && scheme.condition_results.length > 0 ? (
-              scheme.condition_results.map((condition, idx) => (
+            {conditionResults.length > 0 ? (
+              conditionResults.map((condition, idx) => (
                 <div
                   key={idx}
                   className={`text-sm py-2 ${
@@ -161,9 +178,9 @@ export default function SchemeCard({ scheme, isEligible = true }) {
           </button>
         </div>
 
-        {scheme.official_portal_url && (
+        {officialPortalUrl && (
           <a
-            href={scheme.official_portal_url}
+            href={officialPortalUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full bg-white border border-[#1A3A6B] text-[#1A3A6B] px-4 py-3 rounded-lg font-semibold hover:bg-[#F5F7FA] transition flex items-center justify-center gap-2"

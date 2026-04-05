@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import LanguageSelector from '../components/common/LanguageSelector'
@@ -8,6 +8,7 @@ import profileService from '../services/profileService'
 export default function Profile() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [completeness, setCompleteness] = useState(0)
@@ -98,7 +99,7 @@ export default function Profile() {
       
       // Redirect after 1.5 seconds to let user see the success message
       setTimeout(() => {
-        navigate('/dashboard')
+        navigate(location.state?.returnTo || '/dashboard', { replace: true })
       }, 1500)
     } catch (error) {
       console.error('Failed to update profile:', error)
