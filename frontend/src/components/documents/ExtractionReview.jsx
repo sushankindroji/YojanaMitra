@@ -19,10 +19,39 @@
  * />
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import { AlertCircle, CheckCircle, Edit2, Save, X } from 'lucide-react'
+
+const normalizeExtractionData = (rawData = {}) => {
+  if (!rawData || typeof rawData !== 'object') {
+    return {}
+  }
+
+  return Object.entries(rawData).reduce((acc, [field, value]) => {
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      ('value' in value || 'confidence' in value)
+    ) {
+      acc[field] = {
+        value: value.value ?? '',
+        confidence: Number(value.confidence ?? 0) || 0,
+        edited: Boolean(value.edited),
+      }
+      return acc
+    }
+
+    acc[field] = {
+      value: value ?? '',
+      confidence: 0,
+      edited: false,
+    }
+    return acc
+  }, {})
+}
 
 export default function ExtractionReview({
   docId,
@@ -32,9 +61,19 @@ export default function ExtractionReview({
   isLoading = false,
 }) {
   const { t } = useTranslation()
-  const [editedData, setEditedData] = useState(extractedData)
+  const tr = (key, fallback) => {
+    const value = t(key)
+    return value && value !== key ? value : fallback
+  }
+  const [editedData, setEditedData] = useState(normalizeExtractionData(extractedData))
   const [editingField, setEditingField] = useState(null)
   const [errors, setErrors] = useState({})
+
+  useEffect(() => {
+    setEditedData(normalizeExtractionData(extractedData))
+    setEditingField(null)
+    setErrors({})
+  }, [extractedData])
 
   /**
    * Get confidence badge color and label
@@ -56,7 +95,7 @@ export default function ExtractionReview({
     setEditedData((prev) => ({
       ...prev,
       [field]: {
-        ...prev[field],
+        ...(prev[field] || { confidence: 0 }),
         value,
         edited: true,
       },
@@ -73,16 +112,19 @@ export default function ExtractionReview({
    * Validate all fields
    */
   const validateFields = () => {
-    const newErrors = {}
+    const hasAnyValue = Object.values(editedData).some((data) =>
+      String(data?.value ?? '').trim().length > 0
+    )
 
-    Object.entries(editedData).forEach(([field, data]) => {
-      if (!data.value || data.value.trim() === '') {
-        newErrors[field] = t('validation.required') || 'This field is required'
-      }
-    })
+    if (!hasAnyValue) {
+      setErrors({
+        _global: tr('validation.atLeastOneField', 'Please provide at least one field'),
+      })
+      return false
+    }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    setErrors({})
+    return true
   }
 
   /**
@@ -90,14 +132,14 @@ export default function ExtractionReview({
    */
   const handleConfirm = () => {
     if (!validateFields()) {
-      toast.error(t('validation.pleaseFillRequired') || 'Please correct errors')
+      toast.error(tr('validation.pleaseFillRequired', 'Please correct errors'))
       return
     }
 
     // Extract only the values (not confidence/edited metadata)
     const cleanData = {}
     Object.entries(editedData).forEach(([field, data]) => {
-      cleanData[field] = data.value
+      cleanData[field] = data?.value ?? ''
     })
 
     onConfirm?.(cleanData)
@@ -107,7 +149,7 @@ export default function ExtractionReview({
     return (
       <div className="w-full max-w-2xl mx-auto p-8 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-gray-600">{t('common.processing') || 'Processing...'}</p>
+        <p className="mt-4 text-gray-600">{tr('common.processing', 'Processing...')}</p>
       </div>
     )
   }
@@ -117,13 +159,13 @@ export default function ExtractionReview({
       <div className="w-full max-w-2xl mx-auto p-8 text-center border-2 border-dashed rounded-lg">
         <AlertCircle size={48} className="mx-auto text-gray-400 mb-3" />
         <p className="text-gray-600">
-          {t('documents.noExtractionData') || 'No data extracted. Please try uploading again.'}
+          {tr('documents.noExtractionData', 'No data extracted. Please try uploading again.')}
         </p>
         <button
           onClick={onCancel}
           className="mt-4 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
         >
-          {t('common.cancel') || 'Cancel'}
+          {tr('common.cancel', 'Cancel')}
         </button>
       </div>
     )
@@ -134,18 +176,20 @@ export default function ExtractionReview({
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800">
-          {t('documents.reviewExtracted') || 'Review Extracted Data'}
+          {tr('documents.reviewExtracted', 'Review Extracted Data')}
         </h2>
         <p className="text-gray-600 text-sm mt-1">
-          {t('documents.reviewMessage') ||
-            'Review the information extracted from your document. You can edit any field if needed.'}
+          {tr(
+            'documents.reviewMessage',
+            'Review the information extracted from your document. You can edit any field if needed.'
+          )}
         </p>
       </div>
 
       {/* Fields List */}
       <div className="space-y-4 mb-6">
         {Object.entries(editedData).map(([field, data]) => {
-          const confidence = data.confidence || 0
+          const confidence = Number(data?.confidence || 0)
           const badge = getConfidenceBadge(confidence)
           const hasError = errors[field]
           const isEditing = editingField === field
@@ -182,12 +226,12 @@ export default function ExtractionReview({
 
               {/* Field Value Display/Edit */}
               {!isEditing ? (
-                <p className="text-gray-800">{data.value}</p>
+                <p className="text-gray-800">{data?.value || '--'}</p>
               ) : (
                 <div className="space-y-2">
                   <input
                     type="text"
-                    value={data.value}
+                    value={data?.value ?? ''}
                     onChange={(e) => handleFieldChange(field, e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
                   />
@@ -197,14 +241,14 @@ export default function ExtractionReview({
                       className="flex items-center gap-1 px-3 py-1 bg-primary text-white rounded text-sm hover:bg-opacity-90 transition"
                     >
                       <Save size={14} />
-                      {t('common.save') || 'Save'}
+                      {tr('common.save', 'Save')}
                     </button>
                     <button
                       onClick={() => setEditingField(null)}
                       className="flex items-center gap-1 px-3 py-1 bg-gray-300 text-gray-800 rounded text-sm hover:bg-gray-400 transition"
                     >
                       <X size={14} />
-                      {t('common.cancel') || 'Cancel'}
+                      {tr('common.cancel', 'Cancel')}
                     </button>
                   </div>
                 </div>
@@ -222,10 +266,17 @@ export default function ExtractionReview({
         })}
       </div>
 
+      {errors._global && (
+        <p className="text-red-600 text-sm mb-4">
+          <AlertCircle size={14} className="inline mr-1" />
+          {errors._global}
+        </p>
+      )}
+
       {/* Quality Summary */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <h3 className="font-semibold text-blue-900 mb-2">
-          {t('documents.extractionQuality') || 'Extraction Quality'}
+          {tr('documents.extractionQuality', 'Extraction Quality')}
         </h3>
         <div className="space-y-1 text-sm text-blue-800">
           <p>
@@ -233,7 +284,7 @@ export default function ExtractionReview({
             <strong>
               {Math.round(
                 Object.values(editedData).reduce((sum, d) => sum + (d.confidence || 0), 0) /
-                  Object.values(editedData).length
+                  Math.max(Object.values(editedData).length, 1)
               )}
               %
             </strong>
@@ -254,11 +305,13 @@ export default function ExtractionReview({
       <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
         <details className="cursor-pointer">
           <summary className="font-semibold text-gray-700 hover:text-gray-900">
-            {t('documents.addMoreFields') || '+ Add Missing Fields'}
+            {tr('documents.addMoreFields', '+ Add Missing Fields')}
           </summary>
           <p className="text-sm text-gray-600 mt-2">
-            {t('documents.addFieldsNote') ||
-              'If the OCR missed any fields, you can manually add them here.'}
+            {tr(
+              'documents.addFieldsNote',
+              'If the OCR missed any fields, you can manually add them here.'
+            )}
           </p>
           {/* Note: Here you could add more form fields if needed */}
         </details>
@@ -270,7 +323,7 @@ export default function ExtractionReview({
           onClick={onCancel}
           className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
         >
-          {t('common.cancel') || 'Cancel'}
+          {tr('common.cancel', 'Cancel')}
         </button>
         <button
           onClick={handleConfirm}
@@ -278,7 +331,7 @@ export default function ExtractionReview({
           className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:bg-gray-400"
         >
           <CheckCircle size={18} />
-          {t('common.confirm') || 'Confirm & Continue'}
+          {tr('common.confirm', 'Confirm & Continue')}
         </button>
       </div>
     </div>

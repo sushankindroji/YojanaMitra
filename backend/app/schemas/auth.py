@@ -41,6 +41,7 @@ class TokenResponse(BaseModel):
     user_id: str
     email: Optional[str]
     phone: Optional[str]
+    role: str = "user"  # Add role to avoid extra API calls
 
 
 class RefreshTokenRequest(BaseModel):

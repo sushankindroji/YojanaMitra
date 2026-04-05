@@ -26,9 +26,13 @@ async def list_schemes(
     query = db.query(Scheme).filter(Scheme.is_active == 1)
 
     if sector:
-        query = query.filter(Scheme.sector == sector)
+        sectors = [value.strip() for value in sector.split(",") if value.strip()]
+        if sectors:
+            query = query.filter(Scheme.sector.in_(sectors))
     if state:
-        query = query.filter(Scheme.state == state)
+        states = [value.strip() for value in state.split(",") if value.strip()]
+        if states:
+            query = query.filter(Scheme.state.in_(states))
     if search:
         query = query.filter(
             or_(
@@ -240,26 +244,6 @@ async def get_apply_guide(
     }
 
 
-@router.post("/check-all")
-async def check_all_schemes(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Run eligibility check against all schemes."""
-    # This is a stub - in production, call eligibility_agent.check_all_schemes()
-    from app.agents.eligibility_agent import EligibilityAgent
-
-    agent = EligibilityAgent(db)
-    results = await agent.check_all_schemes(current_user.id)
-
-    return {
-        "user_id": current_user.id,
-        "total_checked": len(results),
-        "eligible_count": sum(1 for r in results if r.is_eligible),
-        "partial_count": sum(1 for r in results if r.is_partially_eligible),
-    }
-
-
 @router.get("/search")
 async def search_schemes(
     q: str = Query(..., min_length=2),
@@ -291,3 +275,23 @@ async def get_states(db: Session = Depends(get_db)):
     """Get list of unique states."""
     states = db.query(Scheme.state).distinct().filter(Scheme.is_active == 1).all()
     return [s[0] for s in states if s[0]]
+
+
+@router.post("/check-all")
+async def check_all_schemes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Run eligibility check against all schemes."""
+    # This is a stub - in production, call eligibility_agent.check_all_schemes()
+    from app.agents.eligibility_agent import EligibilityAgent
+
+    agent = EligibilityAgent(db)
+    results = await agent.check_all_schemes(current_user.id)
+
+    return {
+        "user_id": current_user.id,
+        "total_checked": len(results),
+        "eligible_count": sum(1 for r in results if r.is_eligible),
+        "partial_count": sum(1 for r in results if r.is_partially_eligible),
+    }

@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuthStore } from '../store/authStore'
-import { authService } from '../services/authService'
 import { toast } from 'react-toastify'
-import LanguageSelector from '../components/common/LanguageSelector'
+import authService from '../services/authService'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const logout = useAuthStore((state) => state.logout)
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -29,36 +26,11 @@ export default function Dashboard() {
     fetchUser()
   }, [])
 
-  const handleLogout = () => {
-    logout()
-    toast.success('Logged out successfully')
-    navigate('/login')
-  }
-
   if (loading) return <div className="flex items-center justify-center h-screen">{t('common.loading')}</div>
 
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
       <div className="tricolor-bar"></div>
-
-      {/* Header with User Info and Logout */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-[#1A3A6B]">YojanaMitra</h2>
-            {user && <p className="text-sm text-gray-600">{t('common.welcome')}, <span className="font-semibold">{user.name || user.email}</span></p>}
-          </div>
-          <div className="flex items-center gap-4">
-            <LanguageSelector />
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white px-6 py-2 rounded-full hover:bg-red-600 transition"
-            >
-              {t('common.logout')}
-            </button>
-          </div>
-        </div>
-      </nav>
       
       <div className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8 text-[#1A1A2E]">{t('dashboard.welcomeBack')}, {user?.name || user?.email}!</h1>

@@ -10,9 +10,11 @@ export default function ProtectedRoute({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('access_token')
     const refreshToken = localStorage.getItem('refresh_token')
+    const userRole = localStorage.getItem('user_role')
+    const userId = localStorage.getItem('user_id')
     
     if (token && refreshToken) {
-      setTokens(token, refreshToken)
+      setTokens(token, refreshToken, userRole, userId)
       setHasToken(true)
     }
     setIsLoading(false)

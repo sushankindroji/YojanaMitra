@@ -26,6 +26,10 @@ import { toast } from 'react-toastify'
 
 export default function CameraCapture({ onCapture, onCancel }) {
   const { t } = useTranslation()
+  const tr = (key, fallback) => {
+    const value = t(key)
+    return value && value !== key ? value : fallback
+  }
   const webcamRef = useRef(null)
   const [capturedImage, setCapturedImage] = useState(null)
   const [isFacingMode, setIsFacingMode] = useState('environment') // 'user' or 'environment'
@@ -36,7 +40,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: isFacingMode } })
       .catch(() => {
-        toast.error(t('camera.permissionDenied') || 'Camera permission denied')
+        toast.error(tr('camera.permissionDenied', 'Camera permission denied'))
         setHasCamera(false)
       })
   }, [t, isFacingMode])
@@ -49,7 +53,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
       }
     } catch (error) {
       console.error('Capture failed:', error)
-      toast.error(t('camera.captureFailed') || 'Failed to capture photo')
+      toast.error(tr('camera.captureFailed', 'Failed to capture photo'))
     }
   }
 
@@ -63,7 +67,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
       onCapture(blob)
     } catch (error) {
       console.error('Error converting image:', error)
-      toast.error(t('camera.conversionFailed') || 'Failed to process image')
+      toast.error(tr('camera.conversionFailed', 'Failed to process image'))
     }
   }
 
@@ -79,16 +83,16 @@ export default function CameraCapture({ onCapture, onCancel }) {
     return (
       <div className="w-full max-w-2xl mx-auto p-6 text-center">
         <p className="text-red-600 font-semibold">
-          {t('camera.notAvailable') || 'Camera is not available'}
+          {tr('camera.notAvailable', 'Camera is not available')}
         </p>
         <p className="text-gray-600 text-sm mt-2">
-          {t('camera.permissionRequired') || 'Please enable camera permissions and try again'}
+          {tr('camera.permissionRequired', 'Please enable camera permissions and try again')}
         </p>
         <button
           onClick={onCancel}
           className="mt-4 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
         >
-          {t('common.cancel') || 'Cancel'}
+          {tr('common.cancel', 'Cancel')}
         </button>
       </div>
     )
@@ -152,11 +156,15 @@ export default function CameraCapture({ onCapture, onCancel }) {
       {/* Instructions */}
       <p className="text-center text-sm text-gray-600 mb-4">
         {!capturedImage &&
-          (t('camera.instructions') ||
-            'Position your document within the frame. Ensure good lighting and clarity.')}
+          tr(
+            'camera.instructions',
+            'Position your document within the frame. Ensure good lighting and clarity.'
+          )}
         {capturedImage &&
-          (t('camera.reviewInstructions') ||
-            'Review the captured image. Click confirm to proceed or retake.')}
+          tr(
+            'camera.reviewInstructions',
+            'Review the captured image. Click confirm to proceed or retake.'
+          )}
       </p>
 
       {/* Controls */}
@@ -169,7 +177,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
               className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition font-semibold"
             >
               <Camera size={20} />
-              {t('camera.capture') || 'Capture'}
+              {tr('camera.capture', 'Capture')}
             </button>
 
             {/* Flip Camera Button */}
@@ -183,7 +191,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
               }
             >
               <FlipHorizontal size={20} />
-              {t('camera.flip') || 'Flip'}
+              {tr('camera.flip', 'Flip')}
             </button>
 
             {/* Cancel Button */}
@@ -192,7 +200,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
               className="flex items-center gap-2 px-4 py-3 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
             >
               <X size={20} />
-              {t('common.cancel') || 'Cancel'}
+              {tr('common.cancel', 'Cancel')}
             </button>
           </>
         )}
@@ -205,7 +213,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
               className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
             >
               <Check size={20} />
-              {t('common.confirm') || 'Confirm'}
+              {tr('common.confirm', 'Confirm')}
             </button>
 
             {/* Retake Button */}
@@ -214,7 +222,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
               className="flex items-center gap-2 px-6 py-3 bg-secondary text-white rounded-lg hover:bg-opacity-90 transition"
             >
               <RotateCcw size={20} />
-              {t('camera.retake') || 'Retake'}
+              {tr('camera.retake', 'Retake')}
             </button>
 
             {/* Cancel Button */}
@@ -223,7 +231,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
               className="flex items-center gap-2 px-4 py-3 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
             >
               <X size={20} />
-              {t('common.cancel') || 'Cancel'}
+              {tr('common.cancel', 'Cancel')}
             </button>
           </>
         )}
@@ -231,8 +239,10 @@ export default function CameraCapture({ onCapture, onCancel }) {
 
       {/* Permissions Reminder */}
       <p className="text-xs text-gray-500 text-center mt-4">
-        {t('camera.permissionsNote') ||
-          'Make sure your browser has permission to access the camera'}
+        {tr(
+          'camera.permissionsNote',
+          'Make sure your browser has permission to access the camera'
+        )}
       </p>
     </div>
   )

@@ -10,21 +10,19 @@ export default function SchemeCard({ scheme, isEligible = true }) {
   const [expanded, setExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
   const { addApplication } = useApplicationStore()
+  const schemeId = scheme.id || scheme.scheme_id
   
   const eligibilityColor = isEligible ? 'text-green-600' : 'text-orange-600'
   const eligibilityBg = isEligible ? 'bg-green-50' : 'bg-orange-50'
   const eligibilityBorder = isEligible ? 'border-green-200' : 'border-orange-200'
 
   const handleApplyClick = () => {
-    // Navigate to application guide with scheme ID
-    navigate(`/schemes/${scheme.scheme_id}/apply-guide`)
+    navigate(`/apply/${schemeId}`)
   }
 
   const handleSaveApplication = async () => {
     try {
       setSaving(true)
-      // Use scheme.id (UUID primary key from database)
-      const schemeId = scheme.id || scheme.scheme_id
       const response = await applicationService.saveApplication(schemeId)
       addApplication(response.data)
       toast.success('✅ Scheme saved! View in My Applications')

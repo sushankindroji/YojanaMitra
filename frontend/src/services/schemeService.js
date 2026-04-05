@@ -1,6 +1,6 @@
 import api from './api'
 
-export const schemeService = {
+const schemeService = {
   getSchemes: (params) => api.get('/schemes', { params }),
   getEligibleSchemes: (params) => api.get('/schemes/eligible', { params }),
   getPartiallyEligibleSchemes: (params) => api.get('/schemes/partially-eligible', { params }),
@@ -13,3 +13,5 @@ export const schemeService = {
   getSectors: () => api.get('/schemes/sectors'),
   getStates: () => api.get('/schemes/states'),
 }
+
+export default schemeService

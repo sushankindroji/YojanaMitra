@@ -12,7 +12,7 @@ YojanaMitra is a production-ready web application that helps millions of Indian 
 - 🌍 7-language support (English, Hindi, Telugu, Tamil, Marathi, Bengali, Kannada)
 - 📱 Fully responsive — works on any browser, mobile or desktop
 - 🔒 End-to-end encryption for sensitive documents
-- ⚡ Zero external infrastructure — SQLite + local storage
+- ⚡ Production PostgreSQL + local storage
 
 ---
 
@@ -59,7 +59,7 @@ cp .env.example .env
 # - ENCRYPTION_KEY (generated above)
 # - Other optional values
 
-# Initialize database (creates SQLite file)
+# Initialize database
 alembic upgrade head
 
 # Seed 200+ schemes
@@ -144,7 +144,7 @@ Frontend will be running at `http://localhost:5173`
 **Backend:**
 - Create [seed_data/schemes_central.json](./seed_data/schemes_central.json) — 200+ central schemes
 - Create [seed_data/schemes_states.json](./seed_data/schemes_states.json) — state schemes
-- Create [seed_data/seed_db.py](./seed_data/seed_db.py) — populate SQLite from JSON
+- Create [seed_data/seed_db.py](./seed_data/seed_db.py) — populate the active database from JSON
 - Create [app/services/scraper_service.py](./backend/app/services/scraper_service.py) — nightly myscheme.gov.in scraper
 - Create [app/tasks/scheduler.py](./backend/app/tasks/scheduler.py) — APScheduler nightly job (2AM IST)
 - Create [app/routers/sync.py](./backend/app/routers/sync.py) — manual sync trigger
@@ -260,7 +260,7 @@ yojanamitra/
 ├── seed_data/
 │   ├── schemes_central.json           📝 200+ central schemes
 │   ├── schemes_states.json            📝 State-specific schemes
-│   └── seed_db.py                     📝 Populate SQLite
+│   └── seed_db.py                     📝 Populate database
 │
 ├── .gitignore                         📝 To create
 └── README.md                          ✅ This file
@@ -304,7 +304,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 
 ### Backend (.env)
 ```
-DATABASE_URL=sqlite:///./yojanamitra.db
+DATABASE_URL=postgresql://user:password@localhost:5432/yojanamitra
 SECRET_KEY=<generated-64-char-hex>
 ENCRYPTION_KEY=<generated-base64-32-bytes>
 GEMINI_API_KEY=<your-gemini-api-key>
@@ -425,10 +425,10 @@ Used for:
 
 ## 📊 DATABASE
 
-### SQLite
-- **Location:** `backend/yojanamitra.db`
+### PostgreSQL
+- **Location:** local or managed PostgreSQL instance
 - **Tables:** 8 (User, Profile, Document, Scheme, EligibilityResult, SavedApplication, AuditLog, SchemeSyncLog)
-- **No external DB needed**
+- **Production ready**
 
 ### Create Database
 ```bash

@@ -72,6 +72,7 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             user_id=user.id,
             email=user.email,
             phone=user.phone,
+            role=user.role,  # Include role to avoid extra API calls
         )
     except HTTPException:
         raise
@@ -105,6 +106,7 @@ async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_
         user_id=user.id,
         email=user.email,
         phone=user.phone,
+        role=user.role,  # Include role in refresh response too
     )
 
 

@@ -5,7 +5,7 @@ import { toast } from 'react-toastify'
 import { FiArrowLeft, FiRefreshCw } from 'react-icons/fi'
 import LanguageSelector from '../components/common/LanguageSelector'
 import SchemeCard from '../components/schemes/SchemeCard'
-import { schemeService } from '../services/schemeService'
+import schemeService from '../services/schemeService'
 
 export default function Eligibility() {
   const navigate = useNavigate()

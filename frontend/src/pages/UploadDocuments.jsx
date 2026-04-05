@@ -9,7 +9,8 @@
  * Step 5: Success confirmation
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import { FileText, Camera, Image as ImageIcon, CheckCircle, Loader } from 'lucide-react'
@@ -18,6 +19,7 @@ import DocumentUploader from '../components/documents/DocumentUploader'
 import CameraCapture from '../components/documents/CameraCapture'
 import ExtractionReview from '../components/documents/ExtractionReview'
 import documentService from '../services/documentService'
+import profileService from '../services/profileService'
 
 const DOCUMENT_TYPES = [
   {
@@ -46,8 +48,287 @@ const DOCUMENT_TYPES = [
   },
 ]
 
+const DOC_REVIEW_FIELD_ORDER = {
+  aadhaar: ['full_name', 'dob', 'gender', 'aadhaar_number', 'state', 'district', 'pincode'],
+  income: ['full_name', 'annual_income', 'occupation', 'state', 'district', 'pincode'],
+  caste: ['full_name', 'social_category', 'state', 'district', 'pincode'],
+  ration: ['full_name', 'ration_card_number', 'ration_card_type', 'is_bpl', 'state', 'district', 'pincode'],
+}
+
+const getApiErrorMessage = (error, fallback) => {
+  const detail = error?.response?.data?.detail
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail
+  }
+  if (Array.isArray(detail) && detail.length) {
+    return detail.map((item) => item?.msg || 'Validation error').join(', ')
+  }
+  return error?.message || fallback
+}
+
+const normalizeExtractedData = (rawData, fallbackConfidence = 0) => {
+  if (!rawData || typeof rawData !== 'object') {
+    return {}
+  }
+
+  return Object.entries(rawData).reduce((acc, [field, value]) => {
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      ('value' in value || 'confidence' in value)
+    ) {
+      acc[field] = {
+        value: value.value ?? '',
+        confidence: Number(value.confidence ?? fallbackConfidence) || 0,
+        edited: Boolean(value.edited),
+      }
+      return acc
+    }
+
+    acc[field] = {
+      value: value ?? '',
+      confidence: Number(fallbackConfidence) || 0,
+      edited: false,
+    }
+    return acc
+  }, {})
+}
+
+const withExpectedReviewFields = (normalizedData, docType) => {
+  const output = { ...(normalizedData || {}) }
+  const orderedFields = DOC_REVIEW_FIELD_ORDER[docType] || []
+
+  orderedFields.forEach((field) => {
+    if (!(field in output)) {
+      output[field] = {
+        value: '',
+        confidence: 0,
+        edited: false,
+      }
+    }
+  })
+
+  const orderedOutput = {}
+  orderedFields.forEach((field) => {
+    if (field in output) {
+      orderedOutput[field] = output[field]
+    }
+  })
+  Object.keys(output).forEach((field) => {
+    if (!(field in orderedOutput)) {
+      orderedOutput[field] = output[field]
+    }
+  })
+
+  return orderedOutput
+}
+
+const hasMeaningfulExtractedData = (normalizedData) => {
+  if (!normalizedData || typeof normalizedData !== 'object') {
+    return false
+  }
+
+  const invalidValues = new Set(['', 'error', 'none', 'null', 'n/a', 'na', 'unknown'])
+
+  return Object.values(normalizedData).some((entry) => {
+    const rawValue = entry?.value
+    if (rawValue === null || rawValue === undefined) {
+      return false
+    }
+    const value = String(rawValue).trim().toLowerCase()
+    if (!value || invalidValues.has(value) || value.startsWith('error:')) {
+      return false
+    }
+    return true
+  })
+}
+
+const toText = (value) => (value === null || value === undefined ? '' : String(value).trim())
+
+const normalizeGender = (value) => {
+  const lowered = toText(value).toLowerCase()
+  if (!lowered) return ''
+  if (lowered.startsWith('m')) return 'male'
+  if (lowered.startsWith('f')) return 'female'
+  if (lowered.startsWith('o')) return 'other'
+  return ''
+}
+
+const normalizeDobToIso = (value) => {
+  const raw = toText(value)
+  if (!raw) return ''
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw
+  }
+
+  const dmy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/)
+  if (dmy) {
+    const dd = dmy[1].padStart(2, '0')
+    const mm = dmy[2].padStart(2, '0')
+    const yyyy = dmy[3]
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  const ymd = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/)
+  if (ymd) {
+    const yyyy = ymd[1]
+    const mm = ymd[2].padStart(2, '0')
+    const dd = ymd[3].padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  return ''
+}
+
+const calculateAgeFromDob = (isoDob) => {
+  if (!isoDob) return null
+  const dobDate = new Date(`${isoDob}T00:00:00`)
+  if (Number.isNaN(dobDate.getTime())) return null
+
+  const today = new Date()
+  let age = today.getFullYear() - dobDate.getFullYear()
+  const monthDiff = today.getMonth() - dobDate.getMonth()
+  const dayDiff = today.getDate() - dobDate.getDate()
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1
+  }
+  return age >= 0 && age <= 120 ? age : null
+}
+
+const normalizeIncome = (value) => {
+  const raw = toText(value)
+  if (!raw) return null
+  const numeric = raw.replace(/[^\d.]/g, '')
+  if (!numeric) return null
+  const parsed = Number.parseFloat(numeric)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+
+const normalizePincode = (value) => {
+  const digits = toText(value).replace(/\D/g, '')
+  return digits.length === 6 ? digits : ''
+}
+
+const normalizeSocialCategory = (value) => {
+  const lowered = toText(value).toLowerCase()
+  if (!lowered) return ''
+  if (lowered.includes('sc')) return 'sc'
+  if (lowered.includes('st')) return 'st'
+  if (lowered.includes('obc')) return 'obc'
+  if (lowered.includes('ews')) return 'ews'
+  if (lowered.includes('general')) return 'general'
+  return ''
+}
+
+const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
+  if (!confirmedData || typeof confirmedData !== 'object') {
+    return {}
+  }
+
+  const valueFor = (...keys) => {
+    for (const key of keys) {
+      if (key in confirmedData) {
+        const text = toText(confirmedData[key])
+        if (text) return text
+      }
+    }
+    return ''
+  }
+
+  const patch = {}
+
+  const fullName = valueFor('full_name', 'name')
+  if (fullName) {
+    patch.full_name = fullName
+  }
+
+  const dobIso = normalizeDobToIso(valueFor('dob', 'date_of_birth'))
+  if (dobIso) {
+    patch.dob = dobIso
+    const age = calculateAgeFromDob(dobIso)
+    if (age !== null) {
+      patch.age = age
+      if (age >= 60) {
+        patch.is_senior_citizen = 1
+      }
+    }
+  }
+
+  const gender = normalizeGender(valueFor('gender', 'sex'))
+  if (gender) {
+    patch.gender = gender
+  }
+
+  const state = valueFor('state')
+  if (state) {
+    patch.state = state
+  }
+
+  const district = valueFor('district')
+  if (district) {
+    patch.district = district
+  }
+
+  const pincode = normalizePincode(valueFor('pincode', 'postal_code', 'zip_code'))
+  if (pincode) {
+    patch.pincode = pincode
+  }
+
+  const annualIncome = normalizeIncome(valueFor('annual_income', 'income'))
+  if (annualIncome !== null) {
+    patch.annual_income = annualIncome
+  }
+
+  const occupation = valueFor('occupation', 'employment', 'profession')
+  if (occupation) {
+    patch.occupation = occupation
+    const loweredOccupation = occupation.toLowerCase()
+    if (loweredOccupation.includes('farmer') || loweredOccupation.includes('agri')) {
+      patch.is_farmer = 1
+    }
+    if (loweredOccupation.includes('student')) {
+      patch.is_student = 1
+    }
+  }
+
+  const socialCategory = normalizeSocialCategory(valueFor('social_category', 'category', 'caste_category'))
+  if (socialCategory) {
+    patch.social_category = socialCategory
+  }
+
+  if (docType === 'ration') {
+    patch.has_ration_card = 1
+  }
+
+  const rationCardType = valueFor('ration_card_type').toLowerCase()
+  if (['apl', 'bpl', 'phh', 'antyodaya'].includes(rationCardType)) {
+    patch.ration_card_type = rationCardType
+    if (['bpl', 'phh', 'antyodaya'].includes(rationCardType)) {
+      patch.is_bpl = 1
+    }
+  }
+
+  const explicitBpl = toText(confirmedData.is_bpl).toLowerCase()
+  if (explicitBpl === '1' || explicitBpl === 'true' || explicitBpl === 'yes') {
+    patch.is_bpl = 1
+  }
+
+  if (docType === 'caste' && socialCategory) {
+    patch.social_category = socialCategory
+  }
+
+  return patch
+}
+
 export default function UploadDocuments() {
+  const navigate = useNavigate()
   const { t } = useTranslation()
+  const tr = (key, fallback) => {
+    const value = t(key)
+    return value && value !== key ? value : fallback
+  }
   const [step, setStep] = useState(1) // 1: select, 2: upload, 3: processing, 4: review, 5: success
   const [selectedDocType, setSelectedDocType] = useState(null)
   const [useCamera, setUseCamera] = useState(false)
@@ -76,7 +357,11 @@ export default function UploadDocuments() {
 
   const handleUploadError = (error) => {
     console.error('Upload error:', error)
-    toast.error(error || t('documents.uploadFailed') || 'Upload failed')
+    const message =
+      typeof error === 'string'
+        ? error
+        : getApiErrorMessage(error, tr('documents.uploadFailed', 'Upload failed'))
+    toast.error(message)
   }
 
   /**
@@ -96,13 +381,55 @@ export default function UploadDocuments() {
 
         // Check if processing complete
         if (doc.extraction_status === 'completed') {
-          setExtractedData(JSON.parse(doc.extracted_data || '{}'))
+          const confidenceScore = Number(doc.confidence_score || 0)
+          const normalizedConfidence =
+            confidenceScore > 0 && confidenceScore <= 1
+              ? Math.round(confidenceScore * 100)
+              : Math.round(confidenceScore)
+
+          let parsedExtractionData = {}
+          if (typeof doc.extracted_data === 'string') {
+            try {
+              parsedExtractionData = JSON.parse(doc.extracted_data || '{}')
+            } catch {
+              parsedExtractionData = {}
+            }
+          } else if (doc.extracted_data && typeof doc.extracted_data === 'object') {
+            parsedExtractionData = doc.extracted_data
+          }
+
+          const normalizedData = normalizeExtractedData(
+            parsedExtractionData,
+            normalizedConfidence
+          )
+          const reviewReadyData = withExpectedReviewFields(
+            normalizedData,
+            selectedDocType
+          )
+
+          if (!hasMeaningfulExtractedData(reviewReadyData)) {
+            setIsProcessing(false)
+            toast.error(
+              doc.error_message ||
+                tr(
+                  'documents.extractionFailed',
+                  'Extraction failed. Please try again with a clearer document.'
+                )
+            )
+            setStep(2)
+            return
+          }
+
+          setExtractedData(reviewReadyData)
           setIsProcessing(false)
           setStep(4) // Go to review
-          toast.success(t('documents.extractionComplete') || 'Extraction complete!')
+          toast.success(tr('documents.extractionComplete', 'Extraction complete!'))
         } else if (doc.extraction_status === 'failed') {
           setIsProcessing(false)
-          toast.error(t('documents.extractionFailed') || 'Extraction failed. Please try again.')
+          toast.error(
+            doc.error_message ||
+              tr('documents.extractionFailed', 'Extraction failed. Please try again.')
+          )
           setStep(2) // Back to upload
         } else if (attempts < maxAttempts) {
           // Still processing, poll again in 5 seconds
@@ -110,7 +437,9 @@ export default function UploadDocuments() {
         } else {
           // Timeout
           setIsProcessing(false)
-          toast.error(t('documents.extractionTimeout') || 'Extraction took too long. Please try again.')
+          toast.error(
+            tr('documents.extractionTimeout', 'Extraction took too long. Please try again.')
+          )
           setStep(2)
         }
       } catch (error) {
@@ -119,7 +448,7 @@ export default function UploadDocuments() {
           setTimeout(poll, 5000)
         } else {
           setIsProcessing(false)
-          toast.error(error.message || 'Error checking extraction status')
+          toast.error(getApiErrorMessage(error, 'Error checking extraction status'))
           setStep(2)
         }
       }
@@ -133,15 +462,37 @@ export default function UploadDocuments() {
    */
   const handleConfirmExtraction = async (confirmedData) => {
     try {
-      // TODO: Save confirmed data to profile
-      // await profileService.updateProfileFromDocument(selectedDocType, confirmedData)
+      if (docId) {
+        await documentService.updateExtraction(docId, confirmedData)
+      }
+
+      const profilePatch = deriveProfilePatchFromExtraction(
+        confirmedData,
+        selectedDocType
+      )
+
+      if (Object.keys(profilePatch).length > 0) {
+        await profileService.updateProfile(profilePatch)
+        toast.success(
+          tr(
+            'documents.dataSavedWithAutofill',
+            `Document data saved and ${Object.keys(profilePatch).length} profile fields were auto-filled!`
+          )
+        )
+      } else {
+        toast.info(
+          tr(
+            'documents.dataSavedNoAutofill',
+            'Document data saved. No matching profile fields found to auto-fill.'
+          )
+        )
+      }
 
       setUploadedCount((prev) => prev + 1)
-      toast.success(t('documents.dataSaved') || 'Document data saved successfully!')
       setStep(5) // Go to success
     } catch (error) {
       console.error('Save error:', error)
-      toast.error(error.message || t('documents.saveFailed') || 'Failed to save data')
+      toast.error(getApiErrorMessage(error, tr('documents.saveFailed', 'Failed to save data')))
     }
   }
 
@@ -155,6 +506,30 @@ export default function UploadDocuments() {
     setDocId(null)
     setExtractedData(null)
     setUseCamera(false)
+  }
+
+  const handleDeleteUploadedDocument = async () => {
+    if (!docId) {
+      toast.info(tr('documents.noDocumentToDelete', 'No uploaded document to delete'))
+      return
+    }
+
+    const shouldDelete = window.confirm(
+      tr('documents.confirmDelete', 'Delete this uploaded document?')
+    )
+    if (!shouldDelete) {
+      return
+    }
+
+    try {
+      await documentService.deleteDocument(docId)
+      toast.success(tr('documents.deleteSuccess', 'Document deleted successfully'))
+      setDocId(null)
+      setExtractedData(null)
+      setStep(2)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, tr('documents.deleteFailed', 'Failed to delete document')))
+    }
   }
 
   /**
@@ -189,11 +564,13 @@ export default function UploadDocuments() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
-            {t('uploadDocuments.title') || 'Upload Your Documents'}
+            {tr('uploadDocuments.title', 'Upload Your Documents')}
           </h1>
           <p className="text-gray-600 mt-2">
-            {t('uploadDocuments.subtitle') ||
-              'Upload government ID and income documents to find eligible schemes'}
+            {tr(
+              'uploadDocuments.subtitle',
+              'Upload government ID and income documents to find eligible schemes'
+            )}
           </p>
         </div>
 
@@ -224,19 +601,19 @@ export default function UploadDocuments() {
         {/* Step Labels */}
         <div className="mb-8 grid grid-cols-5 gap-2 text-xs font-semibold text-center">
           <div className={step === 1 ? 'text-primary' : 'text-gray-600'}>
-            {t('uploadDocuments.selectType') || 'Select'}
+            {tr('uploadDocuments.selectType', 'Select')}
           </div>
           <div className={step === 2 ? 'text-primary' : 'text-gray-600'}>
-            {t('uploadDocuments.upload') || 'Upload'}
+            {tr('uploadDocuments.upload', 'Upload')}
           </div>
           <div className={step === 3 ? 'text-primary' : 'text-gray-600'}>
-            {t('uploadDocuments.processing') || 'Processing'}
+            {tr('uploadDocuments.processing', 'Processing')}
           </div>
           <div className={step === 4 ? 'text-primary' : 'text-gray-600'}>
-            {t('uploadDocuments.review') || 'Review'}
+            {tr('uploadDocuments.review', 'Review')}
           </div>
           <div className={step === 5 ? 'text-primary' : 'text-gray-600'}>
-            {t('uploadDocuments.complete') || 'Complete'}
+            {tr('uploadDocuments.complete', 'Complete')}
           </div>
         </div>
 
@@ -246,7 +623,7 @@ export default function UploadDocuments() {
           {step === 1 && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-800">
-                {t('uploadDocuments.selectDocType') || 'What would you like to upload?'}
+                {tr('uploadDocuments.selectDocType', 'What would you like to upload?')}
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -267,8 +644,10 @@ export default function UploadDocuments() {
               </div>
 
               <p className="text-sm text-gray-600 text-center">
-                {t('uploadDocuments.optionalNote') ||
-                  'You can upload these documents later if needed'}
+                {tr(
+                  'uploadDocuments.optionalNote',
+                  'You can upload these documents later if needed'
+                )}
               </p>
             </div>
           )}
@@ -278,7 +657,7 @@ export default function UploadDocuments() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                  {t('uploadDocuments.uploadDoc') || 'Upload Your Document'}
+                  {tr('uploadDocuments.uploadDoc', 'Upload Your Document')}
                 </h2>
                 <p className="text-gray-600">
                   {DOCUMENT_TYPES.find((d) => d.id === selectedDocType)?.name}
@@ -296,7 +675,7 @@ export default function UploadDocuments() {
                   }`}
                 >
                   <ImageIcon size={18} className="inline mr-2" />
-                  {t('uploadDocuments.uploadFile') || 'Upload File'}
+                  {tr('uploadDocuments.uploadFile', 'Upload File')}
                 </button>
                 <button
                   onClick={() => setUseCamera(true)}
@@ -307,7 +686,7 @@ export default function UploadDocuments() {
                   }`}
                 >
                   <Camera size={18} className="inline mr-2" />
-                  {t('uploadDocuments.takePhoto') || 'Take Photo'}
+                  {tr('uploadDocuments.takePhoto', 'Take Photo')}
                 </button>
               </div>
 
@@ -321,15 +700,11 @@ export default function UploadDocuments() {
               ) : (
                 <CameraCapture
                   onCapture={async (blob) => {
-                    // Create FormData and upload
-                    const formData = new FormData()
-                    formData.append('file', blob, 'camera_capture.jpg')
-                    formData.append('doc_type', selectedDocType)
                     try {
-                      const response = await documentService.uploadDocument(formData)
+                      const response = await documentService.uploadDocument(blob, selectedDocType)
                       handleUploadSuccess(response.data.doc_id)
                     } catch (error) {
-                      handleUploadError(error.message)
+                      handleUploadError(error)
                     }
                   }}
                   onCancel={() => setUseCamera(false)}
@@ -345,14 +720,16 @@ export default function UploadDocuments() {
                 <Loader size={48} className="text-primary animate-spin mb-4" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {t('uploadDocuments.extractingData') || 'Extracting Data'}
+                {tr('uploadDocuments.extractingData', 'Extracting Data')}
               </h2>
               <p className="text-gray-600">
-                {t('uploadDocuments.processingMessage') ||
-                  'Please wait while we analyze your document...'}
+                {tr(
+                  'uploadDocuments.processingMessage',
+                  'Please wait while we analyze your document...'
+                )}
               </p>
               <p className="text-sm text-gray-500 mt-4">
-                {t('uploadDocuments.timeEstimate') || 'This usually takes 30-60 seconds'}
+                {tr('uploadDocuments.timeEstimate', 'This usually takes 30-60 seconds')}
               </p>
             </div>
           )}
@@ -373,16 +750,18 @@ export default function UploadDocuments() {
             <div className="text-center py-12">
               <CheckCircle size={64} className="text-green-600 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {t('uploadDocuments.success') || 'Document Uploaded Successfully!'}
+                {tr('uploadDocuments.success', 'Document Uploaded Successfully!')}
               </h2>
               <p className="text-gray-600 mb-4">
-                {t('uploadDocuments.successMessage') ||
-                  'Your document data has been saved and will help us find better schemes for you.'}
+                {tr(
+                  'uploadDocuments.successMessage',
+                  'Your document data has been saved and will help us find better schemes for you.'
+                )}
               </p>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
                 <p className="text-sm text-blue-800">
-                  <strong>{t('uploadDocuments.documentsUploaded') || 'Documents uploaded:'}</strong>{' '}
+                  <strong>{tr('uploadDocuments.documentsUploaded', 'Documents uploaded:')}</strong>{' '}
                   {uploadedCount} / {DOCUMENT_TYPES.length}
                 </p>
               </div>
@@ -393,17 +772,23 @@ export default function UploadDocuments() {
                   className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition font-semibold"
                 >
                   {uploadedCount < DOCUMENT_TYPES.length
-                    ? t('uploadDocuments.uploadMore') || 'Upload Another Document'
-                    : t('uploadDocuments.viewSchemes') || 'View Available Schemes'}
+                    ? tr('uploadDocuments.uploadMore', 'Upload Another Document')
+                    : tr('uploadDocuments.viewSchemes', 'View Available Schemes')}
                 </button>
                 <button
-                  onClick={() => {
-                    /* Navigate to schemes page */
-                  }}
+                  onClick={() => navigate('/schemes')}
                   className="w-full px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
                 >
-                  {t('uploadDocuments.skipForNow') || 'Skip for Now'}
+                  {tr('uploadDocuments.skipForNow', 'Skip for Now')}
                 </button>
+                {docId && (
+                  <button
+                    onClick={handleDeleteUploadedDocument}
+                    className="w-full px-6 py-3 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition font-medium"
+                  >
+                    {tr('documents.deleteUploaded', 'Delete Uploaded Document')}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -416,7 +801,7 @@ export default function UploadDocuments() {
               onClick={handleBack}
               className="px-4 py-2 text-primary font-semibold hover:bg-blue-50 rounded transition"
             >
-              ← {t('common.back') || 'Back'}
+              ← {tr('common.back', 'Back')}
             </button>
           </div>
         )}

@@ -22,13 +22,28 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import documentService from '../../services/documentService'
 
+const getApiErrorMessage = (error, fallback) => {
+  const detail = error?.response?.data?.detail
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail
+  }
+  if (Array.isArray(detail) && detail.length) {
+    return detail.map((item) => item?.msg || 'Validation error').join(', ')
+  }
+  return error?.message || fallback
+}
+
 export default function DocumentUploader({ 
   docType, 
   onUploadSuccess, 
   onUploadError,
-  acceptedFormats = ['.jpg', '.jpeg', '.png', '.pdf']
+  acceptedFormats = ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
 }) {
   const { t } = useTranslation()
+  const tr = (key, fallback) => {
+    const value = t(key)
+    return value && value !== key ? value : fallback
+  }
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -53,16 +68,16 @@ export default function DocumentUploader({
     const file = files[0]
 
     // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'application/pdf']
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
     if (!validTypes.includes(file.type)) {
-      toast.error(t('documents.validationError.invalidType'))
+      toast.error(tr('documents.validationError.invalidType', 'Invalid file type. Use JPG, PNG, WEBP, or PDF.'))
       onUploadError?.('Invalid file type. Use JPG, PNG, or PDF.')
       return
     }
 
     // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error(t('documents.validationError.fileTooLarge'))
+      toast.error(tr('documents.validationError.fileTooLarge', 'File too large. Maximum 10MB.'))
       onUploadError?.('File too large. Maximum 10MB.')
       return
     }
@@ -79,12 +94,20 @@ export default function DocumentUploader({
   }
 
   const uploadFile = async (file) => {
+    if (!docType) {
+      const msg = tr('documents.validationError.docTypeRequired', 'Please select document type first.')
+      toast.error(msg)
+      onUploadError?.(msg)
+      return
+    }
+
     setIsUploading(true)
     setUploadProgress(0)
+    let progressInterval = null
 
     try {
       // Simulate progress (since axios doesn't easily expose upload progress)
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
           if (prev < 90) return prev + Math.random() * 30
           clearInterval(progressInterval)
@@ -92,11 +115,7 @@ export default function DocumentUploader({
         })
       }, 200)
 
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('doc_type', docType)
-
-      const response = await documentService.uploadDocument(formData)
+      const response = await documentService.uploadDocument(file, docType)
 
       clearInterval(progressInterval)
       setUploadProgress(100)
@@ -104,7 +123,9 @@ export default function DocumentUploader({
       // Wait 1 second to show 100%
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      toast.success(t('documents.uploadSuccess') || 'Document uploaded successfully')
+      toast.info(
+        tr('documents.uploadStartedProcessing', 'Document uploaded. Processing extraction...')
+      )
       onUploadSuccess?.(response.data.doc_id)
 
       // Reset
@@ -113,10 +134,15 @@ export default function DocumentUploader({
       setPreview(null)
     } catch (error) {
       console.error('Upload error:', error)
-      toast.error(error.message || t('documents.uploadError') || 'Upload failed')
-      onUploadError?.(error.message)
+      const message = getApiErrorMessage(error, tr('documents.uploadError', 'Upload failed'))
+      toast.error(message)
+      onUploadError?.(message)
       setIsUploading(false)
       setUploadProgress(0)
+    } finally {
+      if (progressInterval) {
+        clearInterval(progressInterval)
+      }
     }
   }
 
@@ -190,13 +216,13 @@ export default function DocumentUploader({
             className={`mx-auto mb-4 ${isDragging ? 'text-primary' : 'text-gray-400'}`}
           />
           <h3 className="text-lg font-semibold text-gray-800 mb-2">
-            {t('documents.uploadHeader') || 'Drag and drop your document'}
+            {tr('documents.uploadHeader', 'Drag and drop your document')}
           </h3>
           <p className="text-gray-500 text-sm mb-4">
-            {t('documents.uploadSubtext') || 'Or click to select from your device'}
+            {tr('documents.uploadSubtext', 'Or click to select from your device')}
           </p>
           <p className="text-xs text-gray-400">
-            {t('documents.supportedFormats') || `Supported: ${acceptedFormats.join(', ')}`}
+            {tr('documents.supportedFormats', `Supported: ${acceptedFormats.join(', ')}`)}
           </p>
         </div>
       )}
@@ -209,7 +235,7 @@ export default function DocumentUploader({
             className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-opacity-90 transition"
           >
             <Camera size={20} />
-            {t('documents.takePhoto') || 'Take Photo'}
+            {tr('documents.takePhoto', 'Take Photo')}
           </button>
         </div>
       )}
@@ -219,7 +245,7 @@ export default function DocumentUploader({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-700">
-              {t('common.uploading') || 'Uploading...'}
+              {tr('common.uploading', 'Uploading...')}
             </p>
             <span className="text-sm text-gray-500">{Math.round(uploadProgress)}%</span>
           </div>
@@ -230,8 +256,10 @@ export default function DocumentUploader({
             />
           </div>
           <p className="text-xs text-gray-500 text-center">
-            {t('documents.processingMessage') ||
-              'Document is being uploaded and processed. This may take a minute...'}
+            {tr(
+              'documents.processingMessage',
+              'Document is being uploaded and processed. This may take a minute...'
+            )}
           </p>
         </div>
       )}

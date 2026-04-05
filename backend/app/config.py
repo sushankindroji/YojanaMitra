@@ -4,11 +4,28 @@ Application configuration and settings.
 from pydantic_settings import BaseSettings
 from typing import Optional
 import os
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "sqlite:///./yojanamitra.db"
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:root@localhost:5432/yojanamitra")
+    DATABASE_TYPE: str = os.getenv("DATABASE_TYPE", "postgresql")
+    
+    # PostgreSQL (optional)
+    DB_HOST: Optional[str] = os.getenv("DB_HOST")
+    DB_PORT: Optional[int] = int(os.getenv("DB_PORT", "5432")) if os.getenv("DB_PORT") else None
+    DB_USER: Optional[str] = os.getenv("DB_USER")
+    DB_PASSWORD: Optional[str] = os.getenv("DB_PASSWORD")
+    DB_NAME: Optional[str] = os.getenv("DB_NAME")
+    
+    # Redis Cache
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_ENABLED: bool = False
+    CACHE_TTL: int = 3600  # 1 hour
     
     # JWT
     SECRET_KEY: str = "your_64_character_random_secret_key_here"

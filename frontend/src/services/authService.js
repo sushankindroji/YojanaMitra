@@ -1,6 +1,6 @@
 import api from './api'
 
-export const authService = {
+const authService = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
@@ -9,3 +9,5 @@ export const authService = {
   sendOTP: (phone) => api.post('/auth/send-otp', { phone }),
   verifyOTP: (phone, otp, name) => api.post('/auth/verify-otp', { phone, otp, name }),
 }
+
+export default authService

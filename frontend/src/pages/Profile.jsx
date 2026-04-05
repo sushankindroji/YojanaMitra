@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import LanguageSelector from '../components/common/LanguageSelector'
-import { profileService } from '../services/profileService'
+import profileService from '../services/profileService'
 
 export default function Profile() {
   const { t } = useTranslation()

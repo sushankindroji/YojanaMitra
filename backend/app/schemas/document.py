@@ -17,7 +17,10 @@ class DocumentResponse(BaseModel):
     doc_type: str
     file_name: str
     extraction_status: str
+    extracted_data: Optional[str]
     confidence_score: Optional[float]
+    retry_count: Optional[int]
+    error_message: Optional[str]
     uploaded_at: str
     processed_at: Optional[str]
 
