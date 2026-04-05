@@ -358,14 +358,28 @@ POST   /api/v1/schemes/check-all
 GET    /api/v1/schemes/search?q=
 
 Applications
-POST   /api/v1/applications/save
+POST   /api/v1/applications/save-scheme
 GET    /api/v1/applications
+GET    /api/v1/applications/stats/summary
 GET    /api/v1/applications/{app_id}
+PATCH  /api/v1/applications/{app_id}
 DELETE /api/v1/applications/{app_id}
 
-Sync
-GET    /api/v1/sync/status
-POST   /api/v1/sync/run
+Eligibility
+POST   /api/v1/eligibility/check
+GET    /api/v1/eligibility/schemes
+GET    /api/v1/eligibility/top
+GET    /api/v1/eligibility/summary
+GET    /api/v1/eligibility/scheme/{scheme_code}
+POST   /api/v1/eligibility/recalculate
+
+Admin
+GET    /api/v1/admin/dashboard/stats
+GET    /api/v1/admin/users
+GET    /api/v1/admin/schemes
+GET    /api/v1/admin/applications
+PATCH  /api/v1/admin/users/{user_id}/role
+GET    /api/v1/admin/audit-logs
 ```
 
 ---
@@ -457,20 +471,31 @@ npm test
 
 ## 🌍 DEPLOYMENT
 
-### Backend (Render)
-1. Push repo to GitHub
-2. Create new Web Service on Render
-3. Connect GitHub repo
-4. Set environment variables
-5. Build command: `pip install -r requirements.txt && python -m alembic upgrade head && python ../seed_data/seed_db.py`
-6. Start command: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
-7. Deploy
+Deployment target is **Render (backend)** + **Vercel (frontend)** with **no Docker**.
+
+### Backend (Render, no Docker)
+1. Push repo to GitHub.
+2. In Render, create a new **Web Service** using repository root directory `backend`.
+3. Use the provided [render.yaml](render.yaml) blueprint, or set commands manually:
+  Build command: `pip install -r requirements.txt`
+  Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Configure required env vars:
+  `ENVIRONMENT=production`
+  `DEBUG=false`
+  `DATABASE_URL=<render-postgres-url>`
+  `SECRET_KEY=<secure-random-value>`
+  `ENCRYPTION_KEY=<base64-32-byte-key>`
+  `ALLOWED_ORIGINS=https://<your-vercel-domain>`
+  `AUTO_RUN_MIGRATIONS=true`
+  `GEMINI_API_KEY=<optional-but-recommended>`
+5. Verify backend health at `/health` and API docs at `/docs`.
 
 ### Frontend (Vercel)
-1. Push repo to GitHub
-2. Import project in Vercel
-3. Set env var: `VITE_API_BASE_URL=<render-backend-url>`
-4. Deploy
+1. Import only `frontend` as the Vercel project root.
+2. Keep [frontend/vercel.json](frontend/vercel.json) for SPA rewrites.
+3. Set env var:
+  `VITE_API_BASE_URL=https://<your-render-backend-domain>`
+4. Deploy and validate login/profile/schemes flows against Render backend.
 
 ---
 

@@ -6,7 +6,7 @@
 ---
 
 ## 📊 Project Overview
-
+a
 YojanaMitra is a comprehensive government schemes discovery and eligibility matching platform that helps Indian citizens find and apply for government welfare schemes they're eligible for.
 
 ### Key Stats
@@ -15,6 +15,7 @@ YojanaMitra is a comprehensive government schemes discovery and eligibility matc
 - **API Endpoints:** 26+ fully functional
 - **Database Tables:** 8 optimized & indexed
 - **Languages Supported:** 8 (English, Hindi, Tamil, Bengali, Kannada, Marathi, Telugu, Spanish)
+- **Deployment Strategy:** Render (backend) + Vercel (frontend), no Docker
 - **Frontend:** React with Vite
 - **Backend:** FastAPI with SQLAlchemy ORM
 - **Database:** PostgreSQL (production-ready)

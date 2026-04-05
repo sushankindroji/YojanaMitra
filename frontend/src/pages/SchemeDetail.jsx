@@ -13,11 +13,31 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { ArrowLeft, MapPin, Award, Zap, Loader, AlertCircle, BookOpen, ExternalLink } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Award,
+  BookOpen,
+  ExternalLink,
+  Loader,
+  MapPin,
+  Zap,
+} from 'lucide-react'
 import EligibilityBadges from '../components/schemes/EligibilityBadges'
 import EligibilitySummary from '../components/schemes/EligibilitySummary'
 import schemeService from '../services/schemeService'
 import { applicationService } from '../services/applicationService'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import PageHeader from '../components/ui/PageHeader'
+import Skeleton from '../components/ui/Skeleton'
+
+const tabs = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'eligibility', label: 'Eligibility' },
+  { id: 'howToApply', label: 'How to Apply' },
+]
 
 export default function SchemeDetail() {
   const { t } = useTranslation()
@@ -58,7 +78,7 @@ export default function SchemeDetail() {
     }
 
     fetchSchemeDetails()
-  }, [params])
+  }, [params.id, params.schemeId, t])
 
   const handleApply = () => {
     // Navigate to application with scheme ID
@@ -77,191 +97,141 @@ export default function SchemeDetail() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">{t('common.loading')}</p>
+      <div className="space-y-3">
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-56 rounded-2xl" />
+        <div className="flex items-center justify-center gap-2 text-sm text-stone-500">
+          <Loader className="h-4 w-4 animate-spin" />
+          {t('common.loading')}
         </div>
       </div>
     )
   }
 
-  // Error state
   if (error || !scheme) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-        <div className="max-w-4xl mx-auto">
-          <button
-            onClick={() => navigate('/schemes')}
-            className="mb-6 flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            <ArrowLeft size={20} />
-            Back to Schemes
-          </button>
-
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <AlertCircle className="h-10 w-10 text-red-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Scheme</h2>
-            <p className="text-gray-600 mb-6">{error}</p>
-            <button
-              onClick={() => navigate('/schemes')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-            >
-              Back to Schemes
-            </button>
-          </div>
-        </div>
-      </div>
+      <Card className="border border-red-200 bg-red-50 py-10 text-center">
+        <AlertCircle className="mx-auto h-10 w-10 text-red-600" />
+        <h2 className="mt-3 text-2xl font-bold text-red-900">Error Loading Scheme</h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-red-800">{error || 'Scheme not found'}</p>
+        <Button onClick={() => navigate('/schemes')} className="mt-5">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Schemes
+        </Button>
+      </Card>
     )
   }
 
+  const schemeName = scheme.name_en || scheme.name || 'Scheme'
+  const schemeDescription = scheme.description_en || scheme.description
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header with back button */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto p-6">
-          <button
-            onClick={() => navigate('/schemes')}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-6"
-          >
-            <ArrowLeft size={20} />
-            Back to Schemes
-          </button>
+    <div className="space-y-5">
+      <PageHeader
+        title={schemeName}
+        description={schemeDescription || 'Detailed scheme information and eligibility guidance.'}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" onClick={() => navigate('/schemes')}>
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <Button variant="secondary" onClick={handleSaveScheme}>
+              Save Scheme
+            </Button>
+            <Button onClick={handleApply}>
+              Apply Now
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+      />
 
-          {/* Scheme Header */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">{scheme.name_en || scheme.name}</h1>
-              {scheme.ministry && (
-                <p className="text-gray-600 mb-4">Ministry: {scheme.ministry}</p>
-              )}
+      <Card className="border border-stone-200">
+        <div className="flex flex-wrap gap-2">
+          {scheme.sector ? (
+            <Badge variant="info">
+              <Zap className="h-3.5 w-3.5" />
+              {scheme.sector}
+            </Badge>
+          ) : null}
+          {scheme.state ? (
+            <Badge variant="success">
+              <MapPin className="h-3.5 w-3.5" />
+              {scheme.state}
+            </Badge>
+          ) : null}
+          {scheme.benefit_amount ? (
+            <Badge variant="warning">
+              <Award className="h-3.5 w-3.5" />
+              {(scheme.currency || 'Rs') + ' ' + scheme.benefit_amount}
+            </Badge>
+          ) : null}
+          {scheme.ministry ? <Badge variant="neutral">Ministry: {scheme.ministry}</Badge> : null}
+        </div>
+      </Card>
 
-              {/* Key Stats */}
-              <div className="flex flex-wrap gap-4 mt-6">
-                {scheme.sector && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                    <Zap size={16} />
-                    {scheme.sector}
-                  </div>
-                )}
-                {scheme.state && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                    <MapPin size={16} />
-                    {scheme.state}
-                  </div>
-                )}
-                {scheme.benefit_amount && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                    <Award size={16} />
-                    {scheme.currency || '₹'} {scheme.benefit_amount}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3">
+      <Card className="border border-stone-200 p-0">
+        <div className="border-b border-stone-200 px-2">
+          <div className="flex flex-wrap gap-1 p-2" role="tablist" aria-label="Scheme detail tabs">
+            {tabs.map((tab) => (
               <button
-                onClick={handleApply}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === tab.id
+                    ? 'bg-orange-600 text-white'
+                    : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                }`}
               >
-                <ExternalLink size={20} />
-                Apply Now
+                {tab.label}
               </button>
-              <button
-                onClick={handleSaveScheme}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 font-semibold transition-colors"
-              >
-                Save Scheme
-              </button>
-            </div>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200 bg-white rounded-t-lg">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'overview'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('eligibility')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'eligibility'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Eligibility
-          </button>
-          <button
-            onClick={() => setActiveTab('howToApply')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'howToApply'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            How to Apply
-          </button>
-        </div>
-
-        {/* Content Area */}
-        <div className="bg-white rounded-b-lg shadow p-8">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {(scheme.description_en || scheme.description) && (
+        <div className="p-5">
+          {activeTab === 'overview' ? (
+            <div className="space-y-5">
+              {schemeDescription ? (
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Scheme</h2>
-                  <p className="text-gray-700 whitespace-pre-line">{scheme.description_en || scheme.description}</p>
+                  <h2 className="text-xl font-bold text-stone-900">About This Scheme</h2>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700">{schemeDescription}</p>
                 </div>
-              )}
+              ) : null}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                {scheme.eligibility_criteria && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Eligibility Criteria</h3>
-                    <p className="text-gray-700 whitespace-pre-line text-sm">{scheme.eligibility_criteria}</p>
-                  </div>
-                )}
+              <div className="grid gap-4 md:grid-cols-2">
+                {scheme.eligibility_criteria ? (
+                  <Card className="h-full border border-stone-200 bg-stone-50">
+                    <h3 className="font-semibold text-stone-900">Eligibility Criteria</h3>
+                    <p className="mt-2 whitespace-pre-line text-sm text-stone-700">{scheme.eligibility_criteria}</p>
+                  </Card>
+                ) : null}
 
-                {scheme.benefits && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Benefits</h3>
-                    <p className="text-gray-700 whitespace-pre-line text-sm">{scheme.benefits}</p>
-                  </div>
-                )}
+                {scheme.benefits ? (
+                  <Card className="h-full border border-stone-200 bg-stone-50">
+                    <h3 className="font-semibold text-stone-900">Benefits</h3>
+                    <p className="mt-2 whitespace-pre-line text-sm text-stone-700">{scheme.benefits}</p>
+                  </Card>
+                ) : null}
               </div>
 
-              {scheme.application_deadline && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
-                  <p className="text-sm font-medium text-yellow-900">
-                    <strong>Deadline:</strong> {scheme.application_deadline}
-                  </p>
-                </div>
-              )}
+              {scheme.application_deadline ? (
+                <Card className="border border-amber-200 bg-amber-50">
+                  <p className="text-sm font-semibold text-amber-900">Deadline: {scheme.application_deadline}</p>
+                </Card>
+              ) : null}
             </div>
-          )}
+          ) : null}
 
-          {/* Eligibility Tab */}
-          {activeTab === 'eligibility' && (
+          {activeTab === 'eligibility' ? (
             <div className="space-y-6">
               {eligibility?.conditions && eligibility.conditions.length > 0 ? (
                 <>
-                  <EligibilityBadges
-                    conditions={eligibility.conditions}
-                    title="Your Eligibility Status"
-                  />
+                  <EligibilityBadges conditions={eligibility.conditions} title="Your Eligibility Status" />
                   <EligibilitySummary
                     explanation={eligibility.explanation}
                     explanationUserLang={eligibility.explanation_user_lang}
@@ -270,59 +240,55 @@ export default function SchemeDetail() {
                   />
                 </>
               ) : (
-                <div className="text-center py-8">
-                  <AlertCircle className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">
+                <div className="flex flex-col items-center py-8 text-center">
+                  <AlertCircle className="h-10 w-10 text-stone-400" />
+                  <p className="mt-3 text-sm text-stone-600">
                     {eligibility ? 'Eligibility information not available' : 'Unable to determine eligibility'}
                   </p>
                 </div>
               )}
             </div>
-          )}
+          ) : null}
 
-          {/* How to Apply Tab */}
-          {activeTab === 'howToApply' && (
+          {activeTab === 'howToApply' ? (
             <div>
               {scheme.application_procedure ? (
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">How to Apply</h2>
-                  <div className="prose max-w-none">
-                    <p className="text-gray-700 whitespace-pre-line">{scheme.application_procedure}</p>
-                  </div>
+                  <h2 className="text-xl font-bold text-stone-900">How to Apply</h2>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700">
+                    {scheme.application_procedure}
+                  </p>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <BookOpen className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">Application procedure details not available</p>
+                <div className="flex flex-col items-center py-8 text-center">
+                  <BookOpen className="h-10 w-10 text-stone-400" />
+                  <p className="mt-3 text-sm text-stone-600">Application procedure details not available</p>
                 </div>
               )}
 
-              {scheme.official_website && (
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-900 mb-2">For more information, visit the official website:</p>
+              {scheme.official_website ? (
+                <Card className="mt-5 border border-blue-200 bg-blue-50">
+                  <p className="text-sm text-blue-900">For more details, visit the official website:</p>
                   <a
                     href={scheme.official_website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
+                    className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
                   >
                     {scheme.official_website}
-                    <ExternalLink size={16} />
+                    <ExternalLink className="h-4 w-4" />
                   </a>
-                </div>
-              )}
+                </Card>
+              ) : null}
 
-              <button
-                onClick={handleApply}
-                className="mt-6 flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold w-full"
-              >
-                <ExternalLink size={20} />
+              <Button className="mt-5 w-full" onClick={handleApply}>
                 Proceed to Apply
-              </button>
+                <ExternalLink className="h-4 w-4" />
+              </Button>
             </div>
-          )}
+          ) : null}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft } from 'lucide-react'
+import { Compass } from 'lucide-react'
 import SchemeFilter from '../components/schemes/SchemeFilter'
 import SchemeResults from '../components/schemes/SchemeResults'
-import LanguageSelector from '../components/common/LanguageSelector'
+import Badge from '../components/ui/Badge'
+import PageHeader from '../components/ui/PageHeader'
 
 export default function Schemes() {
   const navigate = useNavigate()
@@ -20,48 +21,58 @@ export default function Schemes() {
     setFilters({})
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto p-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft size={20} />
-              {t('common.back')}
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{t('schemes.title') || 'Find Schemes'}</h1>
-              <p className="text-gray-600 text-sm mt-1">{t('schemes.subtitle') || 'Discover government schemes you are eligible for'}</p>
-            </div>
-          </div>
-          <LanguageSelector />
-        </div>
-      </div>
+  useEffect(() => {
+    const onKeyPress = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        const searchInput = document.querySelector('input[placeholder*="Search"]')
+        if (searchInput) {
+          searchInput.focus()
+        }
+      }
+    }
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar - Filters */}
-          <div className="lg:col-span-1">
+    window.addEventListener('keydown', onKeyPress)
+    return () => window.removeEventListener('keydown', onKeyPress)
+  }, [])
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title={t('schemes.title') || 'Find Schemes'}
+        description={t('schemes.subtitle') || 'Discover government schemes you are eligible for'}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="neutral">Ctrl/Cmd + K search</Badge>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100"
+              onClick={() => navigate('/dashboard')}
+            >
+              <Compass className="h-4 w-4" />
+              Dashboard
+            </button>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[19rem_1fr]">
+        <div className="xl:sticky xl:top-24 xl:self-start">
+          <div className="max-h-[calc(100vh-7rem)] overflow-auto pr-1">
             <SchemeFilter
               filters={filters}
               onFilterChange={handleFilterChange}
               onClear={handleClearFilters}
             />
           </div>
+        </div>
 
-          {/* Main - Results */}
-          <div className="lg:col-span-3">
-            <SchemeResults
-              filters={filters}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-            />
-          </div>
+        <div>
+          <SchemeResults
+            filters={filters}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+          />
         </div>
       </div>
     </div>

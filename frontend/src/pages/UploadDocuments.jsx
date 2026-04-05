@@ -13,13 +13,15 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
-import { FileText, Camera, Image as ImageIcon, CheckCircle, Loader } from 'lucide-react'
-import LanguageSelector from '../components/common/LanguageSelector'
+import { Camera, CheckCircle, FileText, Image as ImageIcon, Loader } from 'lucide-react'
 import DocumentUploader from '../components/documents/DocumentUploader'
 import CameraCapture from '../components/documents/CameraCapture'
 import ExtractionReview from '../components/documents/ExtractionReview'
 import documentService from '../services/documentService'
 import profileService from '../services/profileService'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import PageHeader from '../components/ui/PageHeader'
 
 const DOCUMENT_TYPES = [
   {
@@ -548,49 +550,45 @@ export default function UploadDocuments() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="tricolor-bar"></div>
-    
-      {/* Header */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-[#1A3A6B]">YojanaMitra</h2>
-          <LanguageSelector />
-        </div>
-      </nav>
+    <div className="space-y-5">
+      <PageHeader
+        title={tr('uploadDocuments.title', 'Upload Your Documents')}
+        description={tr(
+          'uploadDocuments.subtitle',
+          'Upload government ID and income documents to find eligible schemes'
+        )}
+        actions={
+          <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+            {tr('common.back', 'Back')}
+          </Button>
+        }
+      />
 
-      <div className="py-10">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-stone-900">
             {tr('uploadDocuments.title', 'Upload Your Documents')}
-          </h1>
-          <p className="text-gray-600 mt-2">
-            {tr(
-              'uploadDocuments.subtitle',
-              'Upload government ID and income documents to find eligible schemes'
-            )}
-          </p>
+          </h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Step {step} of 5</p>
         </div>
 
         {/* Progress Stepper */}
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-5 flex justify-between items-center">
           {[1, 2, 3, 4, 5].map((s) => (
             <div key={s} className="flex items-center">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition ${
+                className={`h-9 w-9 rounded-full flex items-center justify-center font-bold text-xs transition ${
                   step >= s
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-300 text-gray-600'
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-stone-300 text-stone-600'
                 }`}
               >
                 {step > s ? '✓' : s}
               </div>
               {s < 5 && (
                 <div
-                  className={`w-12 h-1 transition ${
-                    step > s ? 'bg-primary' : 'bg-gray-300'
+                  className={`h-1 w-8 transition md:w-12 ${
+                    step > s ? 'bg-orange-600' : 'bg-stone-300'
                   }`}
                 />
               )}
@@ -599,26 +597,26 @@ export default function UploadDocuments() {
         </div>
 
         {/* Step Labels */}
-        <div className="mb-8 grid grid-cols-5 gap-2 text-xs font-semibold text-center">
-          <div className={step === 1 ? 'text-primary' : 'text-gray-600'}>
+        <div className="mb-5 grid grid-cols-5 gap-2 text-[11px] font-semibold text-center">
+          <div className={step === 1 ? 'text-orange-700' : 'text-stone-500'}>
             {tr('uploadDocuments.selectType', 'Select')}
           </div>
-          <div className={step === 2 ? 'text-primary' : 'text-gray-600'}>
+          <div className={step === 2 ? 'text-orange-700' : 'text-stone-500'}>
             {tr('uploadDocuments.upload', 'Upload')}
           </div>
-          <div className={step === 3 ? 'text-primary' : 'text-gray-600'}>
+          <div className={step === 3 ? 'text-orange-700' : 'text-stone-500'}>
             {tr('uploadDocuments.processing', 'Processing')}
           </div>
-          <div className={step === 4 ? 'text-primary' : 'text-gray-600'}>
+          <div className={step === 4 ? 'text-orange-700' : 'text-stone-500'}>
             {tr('uploadDocuments.review', 'Review')}
           </div>
-          <div className={step === 5 ? 'text-primary' : 'text-gray-600'}>
+          <div className={step === 5 ? 'text-orange-700' : 'text-stone-500'}>
             {tr('uploadDocuments.complete', 'Complete')}
           </div>
         </div>
 
         {/* Content */}
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <Card className="border border-stone-200">
           {/* Step 1: Select Document Type */}
           {step === 1 && (
             <div className="space-y-6">
@@ -633,17 +631,17 @@ export default function UploadDocuments() {
                     <button
                       key={doc.id}
                       onClick={() => handleSelectDocType(doc.id)}
-                      className="p-6 border-2 border-gray-300 rounded-lg hover:border-primary hover:bg-blue-50 transition text-left"
+                      className="rounded-xl border-2 border-stone-200 p-5 text-left transition hover:border-orange-300 hover:bg-orange-50"
                     >
-                      <Icon size={32} className="text-primary mb-3" />
-                      <h3 className="font-bold text-gray-900">{doc.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{doc.description}</p>
+                      <Icon size={28} className="mb-3 text-orange-700" />
+                      <h3 className="font-bold text-stone-900">{doc.name}</h3>
+                      <p className="mt-1 text-sm text-stone-600">{doc.description}</p>
                     </button>
                   )
                 })}
               </div>
 
-              <p className="text-sm text-gray-600 text-center">
+              <p className="text-center text-sm text-stone-600">
                 {tr(
                   'uploadDocuments.optionalNote',
                   'You can upload these documents later if needed'
@@ -670,8 +668,8 @@ export default function UploadDocuments() {
                   onClick={() => setUseCamera(false)}
                   className={`px-4 py-2 font-semibold border-b-2 transition ${
                     !useCamera
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-gray-600'
+                      ? 'border-orange-600 text-orange-700'
+                      : 'border-transparent text-stone-600'
                   }`}
                 >
                   <ImageIcon size={18} className="inline mr-2" />
@@ -681,8 +679,8 @@ export default function UploadDocuments() {
                   onClick={() => setUseCamera(true)}
                   className={`px-4 py-2 font-semibold border-b-2 transition ${
                     useCamera
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-gray-600'
+                      ? 'border-orange-600 text-orange-700'
+                      : 'border-transparent text-stone-600'
                   }`}
                 >
                   <Camera size={18} className="inline mr-2" />
@@ -717,7 +715,7 @@ export default function UploadDocuments() {
           {step === 3 && (
             <div className="text-center py-12">
               <div className="inline-block">
-                <Loader size={48} className="text-primary animate-spin mb-4" />
+                <Loader size={48} className="mb-4 animate-spin text-orange-700" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 {tr('uploadDocuments.extractingData', 'Extracting Data')}
@@ -767,45 +765,49 @@ export default function UploadDocuments() {
               </div>
 
               <div className="space-y-3">
-                <button
+                <Button
                   onClick={handleContinue}
-                  className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition font-semibold"
+                  className="w-full"
+                  size="lg"
                 >
                   {uploadedCount < DOCUMENT_TYPES.length
                     ? tr('uploadDocuments.uploadMore', 'Upload Another Document')
                     : tr('uploadDocuments.viewSchemes', 'View Available Schemes')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => navigate('/schemes')}
-                  className="w-full px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
+                  className="w-full"
+                  variant="ghost"
+                  size="lg"
                 >
                   {tr('uploadDocuments.skipForNow', 'Skip for Now')}
-                </button>
+                </Button>
                 {docId && (
-                  <button
+                  <Button
                     onClick={handleDeleteUploadedDocument}
-                    className="w-full px-6 py-3 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition font-medium"
+                    className="w-full"
+                    variant="danger"
+                    size="lg"
                   >
                     {tr('documents.deleteUploaded', 'Delete Uploaded Document')}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
           )}
-        </div>
+        </Card>
 
         {/* Back Button (except on step 1) */}
         {step > 1 && step !== 3 && (
-          <div className="mt-6 flex justify-start">
-            <button
+          <div className="mt-4 flex justify-start">
+            <Button
               onClick={handleBack}
-              className="px-4 py-2 text-primary font-semibold hover:bg-blue-50 rounded transition"
+              variant="ghost"
             >
-              ← {tr('common.back', 'Back')}
-            </button>
+              {tr('common.back', 'Back')}
+            </Button>
           </div>
         )}
-      </div>
       </div>
     </div>
   )

@@ -14,17 +14,20 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  Archive,
-  RotateCcw,
-  Loader,
   AlertCircle,
+  Archive,
+  Edit,
+  Eye,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
 } from 'lucide-react'
 import api from '../../services/api'
+import Button from '../../components/ui/Button'
+import Card from '../../components/ui/Card'
+import PageHeader from '../../components/ui/PageHeader'
+import Skeleton from '../../components/ui/Skeleton'
 
 export default function AdminSchemes() {
   const { t } = useTranslation()
@@ -133,44 +136,40 @@ export default function AdminSchemes() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Scheme Management</h1>
-            <p className="text-gray-600">Manage government schemes and eligibility conditions</p>
-          </div>
-          <button
+    <div className="space-y-5">
+      <PageHeader
+        title="Scheme Management"
+        description="Manage government schemes and eligibility metadata"
+        actions={
+          <Button
             onClick={() => {
               setSelectedScheme(null)
               setShowForm(true)
             }}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
           >
             <Plus size={20} />
             Add New Scheme
-          </button>
-        </div>
+          </Button>
+        }
+      />
 
-        {/* Search & Filter */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <Card className="border border-stone-200">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+            <Search className="absolute left-3 top-3 text-stone-400" size={20} />
               <input
                 type="text"
                 placeholder="Search schemes by name or ministry..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-stone-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-orange-300"
               />
             </div>
 
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            className="rounded-lg border border-stone-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
             >
               <option value="active">Active Only</option>
               <option value="archived">Archived Only</option>
@@ -181,44 +180,44 @@ export default function AdminSchemes() {
           <div className="mt-4 text-sm text-gray-600">
             Showing {filteredSchemes.length} of {schemes.length} schemes
           </div>
-        </div>
+      </Card>
 
-        {/* Schemes Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+      <Card className="overflow-hidden border border-stone-200 p-0">
           {isLoading ? (
-            <div className="p-8 text-center">
-              <Loader className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600">Loading schemes...</p>
+          <div className="space-y-2 p-5">
+            <Skeleton className="h-10 rounded-lg" />
+            <Skeleton className="h-10 rounded-lg" />
+            <Skeleton className="h-10 rounded-lg" />
             </div>
           ) : filteredSchemes.length === 0 ? (
-            <div className="p-8 text-center">
-              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No schemes found</p>
+          <div className="p-8 text-center">
+            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-stone-400" />
+            <p className="text-stone-600">No schemes found</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="border-b border-stone-200 bg-stone-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
                       Scheme Name
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
                       Ministry
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
                       Benefit Amount
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
                       Conditions
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
                       Applications
                     </th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">
+                    <th className="px-6 py-3 text-center text-sm font-semibold text-stone-900">
                       Actions
                     </th>
                   </tr>
@@ -227,17 +226,17 @@ export default function AdminSchemes() {
                   {filteredSchemes.map((scheme) => (
                     <tr
                       key={scheme.id}
-                      className="border-b border-gray-200 hover:bg-gray-50 transition"
+                    className="border-b border-stone-100 transition hover:bg-stone-50"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{scheme.name}</div>
-                        <div className="text-xs text-gray-500">{scheme.id.substring(0, 8)}</div>
+                      <div className="font-medium text-stone-900">{scheme.name}</div>
+                      <div className="text-xs text-stone-500">{scheme.id.substring(0, 8)}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-stone-600">
                         {scheme.ministry || 'N/A'}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-stone-900">
                           ₹
                           {scheme.benefit_amount
                             ? (scheme.benefit_amount / 100000).toFixed(1)
@@ -247,10 +246,10 @@ export default function AdminSchemes() {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                        className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
                             scheme.is_active
                               ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-stone-100 text-stone-700'
                           }`}
                         >
                           {scheme.is_active ? 'Active' : 'Archived'}
@@ -262,7 +261,7 @@ export default function AdminSchemes() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-600">
+                      <span className="text-sm text-stone-600">
                           {scheme.applications_count || 0} apps
                         </span>
                       </td>
@@ -270,7 +269,7 @@ export default function AdminSchemes() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => setSelectedScheme(scheme)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50"
                             title="View Details"
                           >
                             <Eye size={18} />
@@ -280,7 +279,7 @@ export default function AdminSchemes() {
                               setSelectedScheme(scheme)
                               setShowForm(true)
                             }}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                          className="rounded-lg p-2 text-orange-600 transition hover:bg-orange-50"
                             title="Edit"
                           >
                             <Edit size={18} />
@@ -289,7 +288,7 @@ export default function AdminSchemes() {
                             <button
                               onClick={() => handleArchiveScheme(scheme.id)}
                               disabled={actionInProgress}
-                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
+                            className="rounded-lg p-2 text-stone-600 transition hover:bg-stone-100 disabled:opacity-50"
                               title="Archive"
                             >
                               <Archive size={18} />
@@ -298,7 +297,7 @@ export default function AdminSchemes() {
                             <button
                               onClick={() => handleRestoreScheme(scheme.id)}
                               disabled={actionInProgress}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition disabled:opacity-50"
+                            className="rounded-lg p-2 text-green-600 transition hover:bg-green-50 disabled:opacity-50"
                               title="Restore"
                             >
                               <RotateCcw size={18} />
@@ -307,7 +306,7 @@ export default function AdminSchemes() {
                           <button
                             onClick={() => handleDeleteScheme(scheme.id)}
                             disabled={actionInProgress}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                          className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                             title="Delete"
                           >
                             <Trash2 size={18} />
@@ -320,82 +319,80 @@ export default function AdminSchemes() {
               </table>
             </div>
           )}
-        </div>
+      </Card>
 
-        {/* Scheme Details Modal */}
-        {selectedScheme && !showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-96 overflow-y-auto">
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
-                <h3 className="text-2xl font-bold text-gray-900">Scheme Details</h3>
+      {selectedScheme && !showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="sticky top-0 flex items-center justify-between border-b border-stone-200 bg-white p-6">
+              <h3 className="text-2xl font-bold text-stone-900">Scheme Details</h3>
                 <button
                   onClick={() => setSelectedScheme(null)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                className="text-2xl text-stone-500 hover:text-stone-700"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+            <div className="space-y-6 p-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="text-sm text-gray-600">Scheme Name</p>
-                    <p className="font-medium text-gray-900">{selectedScheme.name}</p>
+                  <p className="text-sm text-stone-600">Scheme Name</p>
+                  <p className="font-medium text-stone-900">{selectedScheme.name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Ministry</p>
-                    <p className="font-medium text-gray-900">
+                  <p className="text-sm text-stone-600">Ministry</p>
+                  <p className="font-medium text-stone-900">
                       {selectedScheme.ministry || 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Benefit Amount</p>
-                    <p className="font-medium text-gray-900">
+                  <p className="text-sm text-stone-600">Benefit Amount</p>
+                  <p className="font-medium text-stone-900">
                       ₹{(selectedScheme.benefit_amount / 100000).toFixed(1)}L+
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Status</p>
-                    <p className="font-medium text-gray-900">
+                  <p className="text-sm text-stone-600">Status</p>
+                  <p className="font-medium text-stone-900">
                       {selectedScheme.is_active ? '✓ Active' : '✗ Archived'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Sector</p>
-                    <p className="font-medium text-gray-900">{selectedScheme.sector || 'N/A'}</p>
+                  <p className="text-sm text-stone-600">Sector</p>
+                  <p className="font-medium text-stone-900">{selectedScheme.sector || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">State</p>
-                    <p className="font-medium text-gray-900">{selectedScheme.state || 'All India'}</p>
+                  <p className="text-sm text-stone-600">State</p>
+                  <p className="font-medium text-stone-900">{selectedScheme.state || 'All India'}</p>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600 mb-2">Description</p>
-                  <p className="text-gray-900">{selectedScheme.description || 'No description'}</p>
+                <p className="mb-2 text-sm text-stone-600">Description</p>
+                <p className="text-stone-900">{selectedScheme.description || 'No description'}</p>
                 </div>
 
-                <div className="pt-4 border-t border-gray-200 flex gap-2">
+              <div className="flex gap-2 border-t border-stone-200 pt-4">
                   <button
                     onClick={() => {
                       setShowForm(true)
                     }}
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium text-sm"
+                  className="rounded-lg bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-200"
                   >
                     Edit Scheme
                   </button>
                   <button
                     onClick={() => setSelectedScheme(null)}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm"
+                  className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
                   >
                     Close
                   </button>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

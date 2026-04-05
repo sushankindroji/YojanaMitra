@@ -16,12 +16,14 @@ const LanguageSelector = () => {
     { code: 'bn', name: 'বাংলা', flag: '🇮🇳' },
   ]
 
-  const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
+  const activeLanguage = (i18n.language || 'en').split('-')[0]
+  const currentLang = languages.find(l => l.code === activeLanguage) || languages[0]
 
   const handleLanguageChange = (langCode) => {
     i18n.changeLanguage(langCode)
     setIsOpen(false)
     localStorage.setItem('preferredLanguage', langCode)
+    localStorage.setItem('i18nextLng', langCode)
   }
 
   return (
@@ -42,12 +44,12 @@ const LanguageSelector = () => {
               key={lang.code}
               onClick={() => handleLanguageChange(lang.code)}
               className={`w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2 ${
-                i18n.language === lang.code ? 'bg-blue-100 text-blue-700' : ''
+                activeLanguage === lang.code ? 'bg-blue-100 text-blue-700' : ''
               }`}
             >
               <span>{lang.flag}</span>
               <span>{lang.name}</span>
-              {i18n.language === lang.code && <span className="ml-auto text-blue-600">✓</span>}
+              {activeLanguage === lang.code && <span className="ml-auto text-blue-600">✓</span>}
             </button>
           ))}
         </div>

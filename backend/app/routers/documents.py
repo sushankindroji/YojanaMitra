@@ -1,23 +1,26 @@
 """
 Documents router - upload, OCR, extraction, download.
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body, BackgroundTasks, Response
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.dependencies import get_current_user
 from app.models import User, Document, Profile
 from app.services.storage_service import storage_service
 from app.services.ocr_service import ocr_service
 from app.schemas.document import DocumentResponse, ExtractionResult
 from app.core.audit import log_audit
+from app.config import settings
 from datetime import datetime
 import json
 import uuid
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Max 50MB per file
-MAX_FILE_SIZE = 50 * 1024 * 1024
+MAX_FILE_SIZE = settings.MAX_UPLOAD_SIZE
 
 DOC_TYPE_ALIASES = {
     "aadhaar": "aadhaar",
@@ -425,29 +428,37 @@ async def upload_document(
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large (max 50MB)")
 
-    # Save file (encrypted)
-    storage_path = await storage_service.save_file(file_bytes, file.filename, current_user.id)
-    normalized_doc_type = _normalize_doc_type(doc_type)
+    try:
+        # Save file (encrypted)
+        storage_path = await storage_service.save_file(file_bytes, file.filename, current_user.id)
+        normalized_doc_type = _normalize_doc_type(doc_type)
 
-    # Create document record
-    doc = Document(
-        id=str(uuid.uuid4()),
-        user_id=current_user.id,
-        doc_type=normalized_doc_type,
-        file_name=file.filename,
-        storage_path=storage_path,
-        extraction_status="pending",
-    )
-    db.add(doc)
-    db.commit()
-    db.refresh(doc)
+        # Create document record
+        doc = Document(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            doc_type=normalized_doc_type,
+            file_name=file.filename,
+            storage_path=storage_path,
+            extraction_status="pending",
+        )
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+    except Exception:
+        db.rollback()
+        logger.exception("Document upload persistence failed for user_id=%s", current_user.id)
+        raise HTTPException(status_code=500, detail="Failed to upload document")
 
     # Kick off OCR in background (non-blocking)
     if background_tasks:
-        background_tasks.add_task(process_ocr, doc.id, file_bytes, db)
+        background_tasks.add_task(process_ocr, doc.id, file_bytes)
 
     # Log audit
-    log_audit(db, "document_upload", "document", doc.id, current_user.id)
+    try:
+        log_audit(db, "document_upload", "document", doc.id, current_user.id)
+    except Exception:
+        logger.warning("Failed to write audit log for document upload doc_id=%s", doc.id)
 
     return {
         "doc_id": doc.id,
@@ -457,13 +468,14 @@ async def upload_document(
     }
 
 
-async def process_ocr(doc_id: str, image_bytes: bytes, db: Session):
+async def process_ocr(doc_id: str, image_bytes: bytes):
     """Background task to process OCR."""
-    doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        return
-
+    db = SessionLocal()
     try:
+        doc = db.query(Document).filter(Document.id == doc_id).first()
+        if not doc:
+            return
+
         doc.extraction_status = "processing"
         db.commit()
 
@@ -495,13 +507,23 @@ async def process_ocr(doc_id: str, image_bytes: bytes, db: Session):
 
         db.commit()
     except Exception as e:
-        doc.extraction_status = "failed"
-        doc.extracted_data = json.dumps({})
-        doc.confidence_score = 0.0
-        doc.error_message = str(e)
-        doc.retry_count += 1
-        doc.processed_at = datetime.utcnow().isoformat()
-        db.commit()
+        db.rollback()
+        failed_doc = db.query(Document).filter(Document.id == doc_id).first()
+        if failed_doc:
+            failed_doc.extraction_status = "failed"
+            failed_doc.extracted_data = json.dumps({})
+            failed_doc.confidence_score = 0.0
+            failed_doc.error_message = str(e)
+            failed_doc.retry_count = (failed_doc.retry_count or 0) + 1
+            failed_doc.processed_at = datetime.utcnow().isoformat()
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
+        logger.exception("OCR processing failed for doc_id=%s", doc_id)
+    finally:
+        db.close()
 
 
 @router.get("/")
@@ -671,6 +693,6 @@ async def reprocess_document(
     db.commit()
 
     # Reprocess
-    background_tasks.add_task(process_ocr, doc.id, file_bytes, db)
+    background_tasks.add_task(process_ocr, doc.id, file_bytes)
 
     return {"message": "Document reprocessing started", "retry_count": doc.retry_count}

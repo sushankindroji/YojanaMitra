@@ -1,6 +1,7 @@
 """
 Profile router - get, update, completeness.
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -11,6 +12,7 @@ from app.core.audit import log_audit
 from datetime import datetime
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=ProfileResponse)
@@ -36,22 +38,29 @@ async def update_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    # Update non-null fields
-    update_data = data.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(profile, field, value)
+    try:
+        # Update non-null fields
+        update_data = data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(profile, field, value)
 
-    profile.updated_at = datetime.utcnow().isoformat()
+        profile.updated_at = datetime.utcnow().isoformat()
 
-    # Recalculate completeness
-    profile.profile_complete_pct = calculate_profile_completeness(profile)
+        # Recalculate completeness
+        profile.profile_complete_pct = calculate_profile_completeness(profile)
 
-    db.commit()
-    db.refresh(profile)
+        db.commit()
+        db.refresh(profile)
 
-    log_audit(db, "profile_update", "profile", profile.id, current_user.id)
+        log_audit(db, "profile_update", "profile", profile.id, current_user.id)
 
-    return profile
+        return profile
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to update profile for user_id=%s", current_user.id)
+        raise HTTPException(status_code=500, detail="Failed to update profile")
 
 
 @router.get("/completeness")
@@ -67,27 +76,22 @@ async def get_profile_completeness(
     completeness_pct = profile.profile_complete_pct or 0
 
     essential_fields = [
-        profile.full_name,
-        profile.dob,
-        profile.gender,
-        profile.state,
-        profile.annual_income,
+        ("Full Name", profile.full_name),
+        ("Date of Birth", profile.dob),
+        ("Gender", profile.gender),
+        ("State", profile.state),
+        ("Annual Income", profile.annual_income),
     ]
 
-    filled_essential = sum(1 for f in essential_fields if f)
+    missing_fields = [label for label, value in essential_fields if not value]
+    filled_essential = len(essential_fields) - len(missing_fields)
     total_essential = len(essential_fields)
 
     return ProfileCompleteness(
         total_percentage=completeness_pct,
         filled_fields=filled_essential,
         total_fields=total_essential,
-        missing_fields=[
-            "Full Name",
-            "Date of Birth",
-            "Gender",
-            "State",
-            "Annual Income",
-        ][:total_essential - filled_essential],
+        missing_fields=missing_fields,
         priority_actions=[
             "Complete basic information",
             "Upload government documents",
@@ -107,31 +111,38 @@ async def update_optional_questions(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    # Map responses to profile fields
-    if "is_farmer" in responses:
-        profile.is_farmer = int(responses["is_farmer"])
-    if "is_student" in responses:
-        profile.is_student = int(responses["is_student"])
-    if "is_bpl" in responses:
-        profile.is_bpl = int(responses["is_bpl"])
-    if "has_disability" in responses:
-        profile.has_disability = int(responses["has_disability"])
-    if "is_senior_citizen" in responses:
-        profile.is_senior_citizen = int(responses["is_senior_citizen"])
-    if "is_minority" in responses:
-        profile.is_minority = int(responses["is_minority"])
-    if "is_woman_headed" in responses:
-        profile.is_woman_headed = int(responses["is_woman_headed"])
+    try:
+        # Map responses to profile fields
+        if "is_farmer" in responses:
+            profile.is_farmer = int(responses["is_farmer"])
+        if "is_student" in responses:
+            profile.is_student = int(responses["is_student"])
+        if "is_bpl" in responses:
+            profile.is_bpl = int(responses["is_bpl"])
+        if "has_disability" in responses:
+            profile.has_disability = int(responses["has_disability"])
+        if "is_senior_citizen" in responses:
+            profile.is_senior_citizen = int(responses["is_senior_citizen"])
+        if "is_minority" in responses:
+            profile.is_minority = int(responses["is_minority"])
+        if "is_woman_headed" in responses:
+            profile.is_woman_headed = int(responses["is_woman_headed"])
 
-    profile.updated_at = datetime.utcnow().isoformat()
-    profile.profile_complete_pct = calculate_profile_completeness(profile)
+        profile.updated_at = datetime.utcnow().isoformat()
+        profile.profile_complete_pct = calculate_profile_completeness(profile)
 
-    db.commit()
-    db.refresh(profile)
+        db.commit()
+        db.refresh(profile)
 
-    log_audit(db, "profile_optional_questions", "profile", profile.id, current_user.id)
+        log_audit(db, "profile_optional_questions", "profile", profile.id, current_user.id)
 
-    return {"message": "Optional questions updated", "profile": ProfileResponse.from_orm(profile)}
+        return {"message": "Optional questions updated", "profile": ProfileResponse.from_orm(profile)}
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to update optional questions for user_id=%s", current_user.id)
+        raise HTTPException(status_code=500, detail="Failed to update optional profile questions")
 
 
 def calculate_profile_completeness(profile: Profile) -> int:

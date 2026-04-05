@@ -12,6 +12,9 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, X, ChevronDown } from 'lucide-react'
+import Badge from '../ui/Badge'
+import Card from '../ui/Card'
+import Input from '../ui/Input'
 
 const SECTORS = [
   'Agriculture',
@@ -92,27 +95,30 @@ export default function SchemeFilter({
     (localFilters.states?.length || 0)
 
   return (
-    <div className="w-full bg-white rounded-lg shadow-sm p-6">
+    <Card className="w-full border border-stone-200">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold text-gray-900">
+        <h3 className="text-lg font-bold text-stone-900">
           {t('schemes.filter') || 'Filter Schemes'}
         </h3>
-        {activeFilterCount > 0 && (
-          <button
-            onClick={onClear}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-          >
-            <X size={16} />
-            {t('common.clear')}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <Badge variant="neutral">{activeFilterCount} active</Badge>
+          {activeFilterCount > 0 ? (
+            <button
+              onClick={onClear}
+              className="text-sm text-orange-700 hover:text-orange-800 font-medium flex items-center gap-1"
+            >
+              <X size={16} />
+              {t('common.clear')}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Active Filter Count */}
       {activeFilterCount > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
-          <p className="text-sm text-blue-800">
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-6">
+          <p className="text-sm text-orange-800">
             {t('common.active')} {activeFilterCount} {t('common.filter', { count: activeFilterCount })}
           </p>
         </div>
@@ -122,23 +128,20 @@ export default function SchemeFilter({
       <div className="mb-6">
         <button
           onClick={() => toggleSection('search')}
-          className="w-full flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg font-medium text-gray-900 transition-colors mb-3"
+          className="w-full flex items-center justify-between py-3 px-4 bg-stone-50 hover:bg-stone-100 rounded-lg font-medium text-stone-900 transition-colors mb-3"
         >
           <span>{t('common.search') || 'Search'}</span>
           {expandedSections.search ? <ChevronDown size={18} /> : <ChevronDown size={18} className="rotate-180" />}
         </button>
 
         {expandedSections.search && (
-          <div className="relative">
-            <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder={t('schemes.searchByName') || 'Search scheme name...'}
-              value={localFilters.search || ''}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder={t('schemes.searchByName') || 'Search scheme name...'}
+            value={localFilters.search || ''}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            leadingIcon={Search}
+          />
         )}
       </div>
 
@@ -146,10 +149,10 @@ export default function SchemeFilter({
       <div className="mb-6">
         <button
           onClick={() => toggleSection('sector')}
-          className="w-full flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg font-medium text-gray-900 transition-colors"
+          className="w-full flex items-center justify-between py-3 px-4 bg-stone-50 hover:bg-stone-100 rounded-lg font-medium text-stone-900 transition-colors"
         >
           <span>{t('schemes.sector') || 'Sector'}</span>
-          <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+          <span className="text-xs bg-orange-600 text-white px-2 py-1 rounded-full">
             {localFilters.sectors?.length || 0}
           </span>
         </button>
@@ -157,14 +160,14 @@ export default function SchemeFilter({
         {expandedSections.sector && (
           <div className="mt-3 space-y-2">
             {SECTORS.map((sector) => (
-              <label key={sector} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
+              <label key={sector} className="flex items-center gap-3 cursor-pointer rounded-lg border border-transparent p-2 hover:border-orange-200 hover:bg-orange-50">
                 <input
                   type="checkbox"
                   checked={(localFilters.sectors || []).includes(sector)}
                   onChange={() => handleSectorToggle(sector)}
-                  className="w-4 h-4 text-blue-600 rounded"
+                  className="h-4 w-4 rounded border-stone-300 text-orange-600 focus:ring-orange-300"
                 />
-                <span className="text-sm text-gray-700">{sector}</span>
+                <span className="text-sm text-stone-700">{sector}</span>
               </label>
             ))}
           </div>
@@ -175,10 +178,10 @@ export default function SchemeFilter({
       <div>
         <button
           onClick={() => toggleSection('state')}
-          className="w-full flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg font-medium text-gray-900 transition-colors"
+          className="w-full flex items-center justify-between py-3 px-4 bg-stone-50 hover:bg-stone-100 rounded-lg font-medium text-stone-900 transition-colors"
         >
           <span>{t('schemes.state') || 'State'}</span>
-          <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+          <span className="text-xs bg-orange-600 text-white px-2 py-1 rounded-full">
             {localFilters.states?.length || 0}
           </span>
         </button>
@@ -186,19 +189,19 @@ export default function SchemeFilter({
         {expandedSections.state && (
           <div className="mt-3 space-y-2 max-h-80 overflow-y-auto">
             {STATES.map((state) => (
-              <label key={state} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
+              <label key={state} className="flex items-center gap-3 cursor-pointer rounded-lg border border-transparent p-2 hover:border-orange-200 hover:bg-orange-50">
                 <input
                   type="checkbox"
                   checked={(localFilters.states || []).includes(state)}
                   onChange={() => handleStateToggle(state)}
-                  className="w-4 h-4 text-blue-600 rounded"
+                  className="h-4 w-4 rounded border-stone-300 text-orange-600 focus:ring-orange-300"
                 />
-                <span className="text-sm text-gray-700">{state}</span>
+                <span className="text-sm text-stone-700">{state}</span>
               </label>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </Card>
   )
 }

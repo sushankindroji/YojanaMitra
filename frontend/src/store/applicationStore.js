@@ -20,13 +20,15 @@ export const useApplicationStore = create((set) => ({
 
   // Actions
   setSavedApplicationIds: (ids) =>
-    set({ savedApplicationIds: new Set(ids) }),
+    set({
+      savedApplicationIds: new Set(
+        (ids || []).map((entry) => (typeof entry === 'string' ? entry : entry?.scheme_id || entry?.id)).filter(Boolean)
+      ),
+    }),
 
   isSaved: (schemeId) => {
     const state = useApplicationStore.getState()
-    return Array.from(state.savedApplicationIds).some(app =>
-      app.scheme_id === schemeId || app.id?.includes(schemeId)
-    )
+    return state.savedApplicationIds.has(schemeId)
   },
 
   setApplications: (applications) =>
@@ -40,7 +42,7 @@ export const useApplicationStore = create((set) => ({
       applications: [application, ...state.applications],
       savedApplicationIds: new Set([
         ...Array.from(state.savedApplicationIds),
-        application,
+        application.scheme_id,
       ]),
     })),
 
@@ -55,9 +57,10 @@ export const useApplicationStore = create((set) => ({
     set((state) => ({
       applications: state.applications.filter((app) => app.id !== applicationId),
       savedApplicationIds: new Set(
-        Array.from(state.savedApplicationIds).filter(
-          (app) => app.id !== applicationId
-        )
+        state.applications
+          .filter((app) => app.id !== applicationId)
+          .map((app) => app.scheme_id)
+          .filter(Boolean)
       ),
     })),
 

@@ -4,24 +4,45 @@ import { useTranslation } from 'react-i18next'
 import { applicationService } from '../services/applicationService'
 import { useApplicationStore } from '../store/applicationStore'
 import { toast } from 'react-toastify'
-import { FiTrash2, FiEdit2, FiCheckCircle, FiClock, FiAlertCircle } from 'react-icons/fi'
-import LanguageSelector from '../components/common/LanguageSelector'
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock3,
+  FileClock,
+  PencilLine,
+  Trash2,
+} from 'lucide-react'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import PageHeader from '../components/ui/PageHeader'
+import Skeleton from '../components/ui/Skeleton'
 
 const statusColors = {
   saved: 'bg-blue-50 border-blue-200 text-blue-700',
-  started: 'bg-yellow-50 border-yellow-200 text-yellow-700',
-  submitted: 'bg-purple-50 border-purple-200 text-purple-700',
+  started: 'bg-amber-50 border-amber-200 text-amber-700',
+  submitted: 'bg-indigo-50 border-indigo-200 text-indigo-700',
   acknowledged: 'bg-green-50 border-green-200 text-green-700',
   rejected: 'bg-red-50 border-red-200 text-red-700',
 }
 
 const statusIcons = {
-  saved: <FiClock className="w-4 h-4" />,
-  started: <FiEdit2 className="w-4 h-4" />,
-  submitted: <FiCheckCircle className="w-4 h-4" />,
-  acknowledged: <FiCheckCircle className="w-4 h-4" />,
-  rejected: <FiAlertCircle className="w-4 h-4" />,
+  saved: <Clock3 className="h-4 w-4" />,
+  started: <PencilLine className="h-4 w-4" />,
+  submitted: <FileClock className="h-4 w-4" />,
+  acknowledged: <CheckCircle2 className="h-4 w-4" />,
+  rejected: <AlertCircle className="h-4 w-4" />,
 }
+
+const statusCards = [
+  { key: 'total_saved', label: 'Saved', tone: 'info' },
+  { key: 'total_started', label: 'Started', tone: 'warning' },
+  { key: 'total_submitted', label: 'Submitted', tone: 'neutral' },
+  { key: 'total_acknowledged', label: 'Approved', tone: 'success' },
+  { key: 'total_rejected', label: 'Rejected', tone: 'danger' },
+]
+
+const statusFilterOptions = ['all', 'saved', 'started', 'submitted', 'acknowledged', 'rejected']
 
 export default function Applications() {
   const navigate = useNavigate()
@@ -97,114 +118,96 @@ export default function Applications() {
   const filtered = getFilteredApplications()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="tricolor-bar"></div>
-      
-      {/* Header */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-[#1A3A6B]">YojanaMitra</h2>
-            <p className="text-sm text-gray-600">{t('applications.trackAndManage')}</p>
-          </div>
-          <LanguageSelector />
-        </div>
-      </nav>
+    <div className="space-y-5">
+      <PageHeader
+        title={t('applications.title')}
+        description={t('applications.trackAndManage')}
+        actions={
+          <Button onClick={() => navigate('/eligibility')} variant="secondary">
+            Find New Schemes
+          </Button>
+        }
+      />
 
-      <div className="p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('applications.title')}</h1>
-          <p className="text-gray-600">{t('applications.trackAndManage')}</p>
-        </div>
-
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="text-sm text-blue-600 font-medium">Saved</div>
-              <div className="text-2xl font-bold text-blue-900">{stats.total_saved}</div>
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="text-sm text-yellow-600 font-medium">Started</div>
-              <div className="text-2xl font-bold text-yellow-900">{stats.total_started}</div>
-            </div>
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <div className="text-sm text-purple-600 font-medium">Submitted</div>
-              <div className="text-2xl font-bold text-purple-900">{stats.total_submitted}</div>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="text-sm text-green-600 font-medium">Approved</div>
-              <div className="text-2xl font-bold text-green-900">{stats.total_acknowledged}</div>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="text-sm text-red-600 font-medium">Rejected</div>
-              <div className="text-2xl font-bold text-red-900">{stats.total_rejected}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Filter Buttons */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {['all', 'saved', 'started', 'submitted', 'acknowledged', 'rejected'].map(status => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition ${
-                filter === status
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400'
-              }`}
-            >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
+      {stats ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          {statusCards.map((item) => (
+            <Card key={item.key} className="border border-stone-200 bg-white">
+              <Badge variant={item.tone}>{item.label}</Badge>
+              <p className="mt-2 text-2xl font-bold text-stone-900">{stats[item.key] || 0}</p>
+            </Card>
           ))}
         </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          {statusCards.map((item) => (
+            <Skeleton key={item.key} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+      )}
 
-        {/* Applications List */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <Card className="border border-stone-200 p-0">
+        <div className="border-b border-stone-200 p-3">
+          <div className="flex flex-wrap gap-2">
+            {statusFilterOptions.map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition ${
+                  filter === status
+                    ? 'bg-stone-900 text-white'
+                    : 'border border-stone-300 text-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-hidden">
           {loading ? (
-            <div className="p-8 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">Loading applications...</p>
+            <div className="space-y-2 p-5">
+              <Skeleton className="h-10 rounded-lg" />
+              <Skeleton className="h-10 rounded-lg" />
+              <Skeleton className="h-10 rounded-lg" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center">
-              <FiAlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">
+            <div className="p-10 text-center">
+              <AlertCircle className="mx-auto h-10 w-10 text-stone-400" />
+              <p className="mt-3 text-sm text-stone-600">
                 {applications.length === 0
                   ? 'No applications yet. Check eligibility and save schemes!'
                   : `No ${filter} applications`}
               </p>
-              <button
+              <Button
                 onClick={() => navigate('/eligibility')}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="mt-4"
               >
                 Check Eligibility
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="border-b border-stone-200 bg-stone-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Scheme Name</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Ministry</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Benefit Amount</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Saved Date</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">Actions</th>
+                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Scheme Name</th>
+                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Status</th>
+                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Ministry</th>
+                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Benefit</th>
+                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Saved Date</th>
+                    <th className="px-5 py-3 text-center text-sm font-semibold text-stone-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(app => (
-                    <tr key={app.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{app.scheme_name}</div>
-                        <div className="text-sm text-gray-500">{app.id.substring(0, 8)}</div>
+                  {filtered.map((app) => (
+                    <tr key={app.id} className="border-b border-stone-100 transition hover:bg-stone-50">
+                      <td className="px-5 py-4">
+                        <div className="font-medium text-stone-900">{app.scheme_name}</div>
+                        <div className="text-xs text-stone-500">{app.id.substring(0, 8)}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${statusColors[app.status]}`}>
                           {statusIcons[app.status]}
                           <span className="text-sm font-medium">
@@ -212,21 +215,21 @@ export default function Applications() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-5 py-4 text-sm text-stone-600">
                         {app.scheme_ministry || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {app.scheme_benefit_amount ? `₹${(app.scheme_benefit_amount / 100000).toFixed(1)}L+` : 'N/A'}
+                      <td className="px-5 py-4 text-sm font-medium text-stone-900">
+                        {app.scheme_benefit_amount ? `Rs ${(app.scheme_benefit_amount / 100000).toFixed(1)}L+` : 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-5 py-4 text-sm text-stone-600">
                         {new Date(app.saved_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         <div className="flex items-center justify-center gap-3">
                           <select
                             value={app.status}
                             onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                            className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
+                            className="h-8 rounded-md border border-stone-300 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-orange-300"
                           >
                             <option value="saved">Saved</option>
                             <option value="started">Started</option>
@@ -236,10 +239,10 @@ export default function Applications() {
                           </select>
                           <button
                             onClick={() => handleDelete(app.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                            className="rounded-lg p-2 text-red-600 transition hover:bg-red-50"
                             title="Delete"
                           >
-                            <FiTrash2 className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -250,30 +253,18 @@ export default function Applications() {
             </div>
           )}
         </div>
+      </Card>
 
-        {/* Help Section */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="font-semibold text-blue-900 mb-3">Application Status Guide</h3>
-          <div className="grid md:grid-cols-3 gap-4 text-sm text-blue-800">
-            <div>
-              <strong>Saved:</strong> You've bookmarked this scheme for later
-            </div>
-            <div>
-              <strong>Started:</strong> You've begun filling out the application
-            </div>
-            <div>
-              <strong>Submitted:</strong> Application officially submitted to scheme
-            </div>
-            <div>
-              <strong>Acknowledged:</strong> Government has received your application
-            </div>
-            <div>
-              <strong>Rejected:</strong> Your application was not approved
-            </div>
-          </div>
+      <Card className="border border-blue-200 bg-blue-50">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-blue-900">Application Status Guide</h3>
+        <div className="mt-3 grid gap-2 text-sm text-blue-900 md:grid-cols-2">
+          <p><strong>Saved:</strong> You bookmarked a scheme for later.</p>
+          <p><strong>Started:</strong> Application form filling has begun.</p>
+          <p><strong>Submitted:</strong> Form submitted to the scheme authority.</p>
+          <p><strong>Acknowledged:</strong> Authority has recorded your application.</p>
+          <p><strong>Rejected:</strong> Application was not approved.</p>
         </div>
-      </div>
-      </div>
+      </Card>
     </div>
   )
 }

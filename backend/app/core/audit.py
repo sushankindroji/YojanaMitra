@@ -27,9 +27,13 @@ def log_audit(
         resource_id=resource_id,
         ip_address=ip_address,
         user_agent=user_agent,
-        metadata=json.dumps(metadata or {}),
+        meta_data=json.dumps(metadata or {}),
         created_at=datetime.utcnow().isoformat(),
     )
     db.add(log)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return log

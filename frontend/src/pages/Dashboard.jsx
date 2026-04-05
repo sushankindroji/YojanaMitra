@@ -2,7 +2,44 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
+import { ArrowRight, FileText, Fingerprint, Search, UploadCloud } from 'lucide-react'
 import authService from '../services/authService'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import PageHeader from '../components/ui/PageHeader'
+import ProgressRing from '../components/ui/ProgressRing'
+
+const priorityActions = [
+  {
+    title: 'Upload documents',
+    description: 'Add Aadhaar, income certificate, and supporting proof for better matching.',
+    icon: UploadCloud,
+    action: '/upload',
+    tone: 'secondary',
+  },
+  {
+    title: 'Complete profile',
+    description: 'Fill demographics and occupation details for stronger recommendations.',
+    icon: Fingerprint,
+    action: '/profile',
+    tone: 'primary',
+  },
+  {
+    title: 'Check eligibility',
+    description: 'Run AI-based checks against the latest scheme criteria.',
+    icon: Search,
+    action: '/eligibility',
+    tone: 'primary',
+  },
+  {
+    title: 'Track applications',
+    description: 'View submitted applications and status changes in one timeline.',
+    icon: FileText,
+    action: '/applications',
+    tone: 'ghost',
+  },
+]
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -26,78 +63,73 @@ export default function Dashboard() {
     fetchUser()
   }, [])
 
-  if (loading) return <div className="flex items-center justify-center h-screen">{t('common.loading')}</div>
+  if (loading) return <div className="flex min-h-[40vh] items-center justify-center">{t('common.loading')}</div>
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA]">
-      <div className="tricolor-bar"></div>
-      
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8 text-[#1A1A2E]">{t('dashboard.welcomeBack')}, {user?.name || user?.email}!</h1>
-        
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="card">
-            <h2 className="font-bold text-lg mb-4">{t('dashboard.profileStatus')}</h2>
-            <div className="w-full bg-gray-200 rounded-full h-4">
-              <div className="bg-[#138808] h-4 rounded-full" style={{width: '45%'}}></div>
+    <div className="space-y-5">
+      <PageHeader
+        title={`${t('dashboard.welcomeBack', { defaultValue: 'Welcome back' })}, ${user?.name || user?.email || 'Citizen'}!`}
+        description="Track your progress and complete priority tasks to unlock more schemes."
+        actions={
+          <Button onClick={() => navigate('/schemes')}>
+            {t('dashboard.viewSchemes', { defaultValue: 'View Schemes' })}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        }
+      />
+
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <Card className="bg-gradient-to-br from-white via-orange-50 to-green-50">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Profile Completion</p>
+              <h2 className="mt-1 text-2xl font-bold text-stone-900">45% complete</h2>
+              <p className="mt-2 max-w-xl text-sm text-stone-600">
+                Add family, income, and education details to improve eligibility confidence and recommendation quality.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Badge variant="warning">Needs attention</Badge>
+                <Badge variant="neutral">7 fields pending</Badge>
+              </div>
             </div>
-            <p className="text-sm text-gray-600 mt-2">45% {t('dashboard.complete')}</p>
-          </div>
 
-          <div className="card">
-            <h2 className="font-bold text-lg mb-4">{t('dashboard.eligibleSchemes')}</h2>
-            <p className="text-3xl font-bold text-[#FF6B00]">24</p>
-            <button 
-              onClick={() => navigate('/schemes')}
-              className="btn-primary mt-4 w-full"
-            >
-              {t('dashboard.viewSchemes')}
-            </button>
+            <ProgressRing value={45} size={108} strokeWidth={10} label="Profile" />
           </div>
-        </div>
+        </Card>
 
-        <div className="grid md:grid-cols-4 gap-8 mt-8">
-          <div className="card">
-            <h3 className="font-bold text-lg mb-2">📄 {t('dashboard.uploadDocuments')}</h3>
-            <button 
-              onClick={() => navigate('/upload')}
-              className="btn-secondary w-full text-sm"
-            >
-              {t('dashboard.upload')}
-            </button>
-          </div>
+        <Card variant="elevated" className="bg-blue-950 text-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-200">Scheme Insight</p>
+          <h2 className="mt-1 text-3xl font-bold">24</h2>
+          <p className="mt-2 text-sm text-blue-100">Schemes currently matching your profile snapshot.</p>
+          <Button className="mt-4 w-full" variant="secondary" onClick={() => navigate('/eligibility')}>
+            {t('dashboard.checkNow', { defaultValue: 'Run Eligibility Check' })}
+          </Button>
+        </Card>
+      </section>
 
-          <div className="card">
-            <h3 className="font-bold text-lg mb-2">👤 {t('dashboard.completeProfile')}</h3>
-            <button 
-              onClick={() => navigate('/profile')}
-              className="btn-primary w-full text-sm"
-            >
-              {t('dashboard.editProfile')}
-            </button>
-          </div>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {priorityActions.map((item) => {
+          const Icon = item.icon
+          return (
+            <Card key={item.title} className="flex h-full flex-col">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
+                <Icon className="h-5 w-5" />
+              </div>
 
-          <div className="card">
-            <h3 className="font-bold text-lg mb-2">✓ {t('dashboard.checkEligibility')}</h3>
-            <button 
-              onClick={() => navigate('/eligibility')}
-              className="btn-primary w-full text-sm"
-            >
-              {t('dashboard.checkNow')}
-            </button>
-          </div>
+              <h3 className="text-base font-semibold text-stone-900">{item.title}</h3>
+              <p className="mt-1 flex-1 text-sm text-stone-600">{item.description}</p>
 
-          <div className="card">
-            <h3 className="font-bold text-lg mb-2">📋 {t('dashboard.viewApplications')}</h3>
-            <button 
-              onClick={() => navigate('/applications')}
-              className="btn-primary w-full text-sm"
-            >
-              {t('common.view')}
-            </button>
-          </div>
-        </div>
-      </div>
+              <Button
+                variant={item.tone}
+                className="mt-4 w-full"
+                onClick={() => navigate(item.action)}
+              >
+                Continue
+              </Button>
+            </Card>
+          )
+        })}
+      </section>
     </div>
   )
 }

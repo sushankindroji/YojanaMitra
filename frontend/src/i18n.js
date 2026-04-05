@@ -27,6 +27,7 @@ i18n
     },
     detection: {
       order: ['localStorage', 'navigator'],
+      lookupLocalStorage: 'preferredLanguage',
       caches: ['localStorage'],
     },
   })

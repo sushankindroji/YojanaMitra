@@ -1,81 +1,119 @@
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ArrowRight, Languages, ShieldCheck, Sparkles } from 'lucide-react'
 import LanguageSelector from '../components/common/LanguageSelector'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+
+const quickStats = [
+  { label: 'Total Schemes Indexed', value: '4,504+' },
+  { label: 'Languages Supported', value: '7' },
+  { label: 'API Endpoints', value: '26+' },
+]
 
 export default function Landing() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const language = (i18n.language || 'en').split('-')[0]
+  const greeting =
+    {
+      en: 'Namaste',
+      hi: 'नमस्ते',
+      te: 'నమస్తే',
+      ta: 'வணக்கம்',
+      mr: 'नमस्कार',
+      bn: 'নমস্কার',
+      kn: 'ನಮಸ್ಕಾರ',
+    }[language] || 'Namaste'
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* Tricolor Bar */}
-      <div className="tricolor-bar"></div>
+    <div className="min-h-screen pb-12">
+      <div className="tricolor-bar" />
 
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-[#1A3A6B]">YojanaMitra</h1>
-          <div className="flex items-center gap-4">
+      <header className="mx-auto max-w-7xl px-4 py-5 md:px-8">
+        <div className="ds-surface flex items-center justify-between rounded-2xl border border-stone-200 px-4 py-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">YojanaMitra</p>
+            <p className="text-sm text-stone-600">Your scheme, your right</p>
+          </div>
+
+          <div className="flex items-center gap-2">
             <LanguageSelector />
-            <div className="space-x-4">
-              <a href="/login" className="btn-primary">{t('nav.login')}</a>
-              <a href="/register" className="btn-secondary">{t('nav.register')}</a>
-            </div>
+            <Link to="/login">
+              <Button variant="ghost">{t('nav.login', { defaultValue: 'Login' })}</Button>
+            </Link>
+            <Link to="/register">
+              <Button>{t('nav.register', { defaultValue: 'Register' })}</Button>
+            </Link>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* Hero */}
-      <section className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-4xl font-bold mb-4 text-[#1A1A2E]">
-          {t('landing.heroTitle')}
-        </h2>
-        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          {t('landing.heroDesc')}
-          <br />
-          <span className="font-bold text-[#FF6B00]">{t('landing.tagline')}</span>
-        </p>
-        <div className="space-x-4">
-          <a href="/register" className="btn-primary text-lg">{t('landing.getStarted')}</a>
-          <a href="/login" className="btn-secondary text-lg">{t('landing.alreadyMember')}</a>
-        </div>
-      </section>
+      <main className="mx-auto mt-5 max-w-7xl px-4 md:px-8">
+        <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <Card className="relative overflow-hidden border-orange-200 bg-gradient-to-br from-orange-50 via-white to-green-50 p-7 md:p-10">
+            <div className="absolute -right-14 -top-14 h-52 w-52 rounded-full bg-orange-200/30" />
+            <div className="absolute -bottom-16 right-20 h-44 w-44 rounded-full bg-green-200/30" />
 
-      {/* Features */}
-      <section className="bg-white py-16">
-        <div className="max-w-7xl mx-auto px-4">
-          <h3 className="text-3xl font-bold mb-12 text-center">{t('landing.howItWorks')}</h3>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="card text-center">
-              <div className="text-4xl mb-4">📄</div>
-              <h4 className="font-bold text-lg mb-2">{t('landing.uploadTitle')}</h4>
-              <p className="text-gray-600">{t('landing.uploadDesc')}</p>
+            <p className="relative mb-3 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/75 px-3 py-1 text-xs font-semibold text-orange-700">
+              <Sparkles className="h-3.5 w-3.5" />
+              {greeting}
+            </p>
+
+            <h1 className="relative text-3xl font-extrabold leading-tight text-stone-900 md:text-5xl">
+              {t('landing.heroTitle', {
+                defaultValue: 'Find every government scheme you deserve, in your own language.',
+              })}
+            </h1>
+
+            <p className="relative mt-4 max-w-2xl text-base text-stone-600 md:text-lg">
+              {t('landing.heroDesc', {
+                defaultValue:
+                  'YojanaMitra maps your profile to verified central and state schemes so you can discover, compare, and apply with confidence.',
+              })}
+            </p>
+
+            <div className="relative mt-6 flex flex-wrap gap-3">
+              <Link to="/register">
+                <Button size="lg">
+                  {t('landing.getStarted', { defaultValue: 'Get Started' })}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button variant="secondary" size="lg">
+                  {t('landing.alreadyMember', { defaultValue: 'I already have an account' })}
+                </Button>
+              </Link>
             </div>
-            <div className="card text-center">
-              <div className="text-4xl mb-4">🤖</div>
-              <h4 className="font-bold text-lg mb-2">{t('landing.aiTitle')}</h4>
-              <p className="text-gray-600">{t('landing.aiDesc')}</p>
-            </div>
-            <div className="card text-center">
-              <div className="text-4xl mb-4">✅</div>
-              <h4 className="font-bold text-lg mb-2">{t('landing.trackTitle')}</h4>
-              <p className="text-gray-600">{t('landing.trackDesc')}</p>
+          </Card>
+
+          <div className="space-y-4">
+            <Card variant="elevated" className="bg-blue-950 text-white">
+              <p className="mb-1 text-sm font-semibold text-blue-200">Trust & Security</p>
+              <h2 className="text-xl font-bold">Built for citizen-first privacy and transparent eligibility checks.</h2>
+              <ul className="mt-4 space-y-2 text-sm text-blue-100">
+                <li className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" />
+                  Encrypted document processing pipeline
+                </li>
+                <li className="flex items-center gap-2">
+                  <Languages className="h-4 w-4" />
+                  Multilingual interface and explainers
+                </li>
+              </ul>
+            </Card>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-1">
+              {quickStats.map((stat) => (
+                <Card key={stat.label} className="p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-stone-500">{stat.label}</p>
+                  <p className="mt-1 text-2xl font-bold text-stone-900">{stat.value}</p>
+                </Card>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="bg-[#1A3A6B] text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-5xl font-bold mb-2">4,200+</p>
-          <p className="text-xl">{t('landing.statsDesc')}</p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p>&copy; 2025 YojanaMitra. {t('landing.tagline')}</p>
-        </div>
-      </footer>
+        </section>
+      </main>
     </div>
   )
 }

@@ -39,6 +39,7 @@ frontend/.vite/
 # IDE
 .vscode/
 .idea/
+.sfdx/
 *.swp
 *.swo
 *.swn

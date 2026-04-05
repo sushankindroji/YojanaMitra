@@ -2,8 +2,25 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
-import LanguageSelector from '../components/common/LanguageSelector'
+import { ArrowLeft, BadgeCheck, MapPin, UserCircle2, Wallet } from 'lucide-react'
 import profileService from '../services/profileService'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import Input from '../components/ui/Input'
+import PageHeader from '../components/ui/PageHeader'
+import ProgressRing from '../components/ui/ProgressRing'
+import Skeleton from '../components/ui/Skeleton'
+
+const categoryFlags = [
+  { key: 'is_farmer', labelKey: 'profile.isFarmer', fallback: 'Farmer' },
+  { key: 'is_student', labelKey: 'profile.isStudent', fallback: 'Student' },
+  { key: 'is_senior_citizen', labelKey: 'profile.isSeniorCitizen', fallback: 'Senior Citizen' },
+  { key: 'has_disability', labelKey: 'profile.hasDisability', fallback: 'Disability' },
+  { key: 'is_bpl', labelKey: 'profile.isBpl', fallback: 'BPL Family' },
+  { key: 'is_woman_headed', labelKey: 'profile.isWomanHeaded', fallback: 'Woman-headed household' },
+  { key: 'is_minority', labelKey: 'profile.isMinority', fallback: 'Minority' },
+]
 
 export default function Profile() {
   const { t } = useTranslation()
@@ -109,88 +126,80 @@ export default function Profile() {
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-screen">{t('common.loading')}</div>
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-48 rounded-2xl" />
+        <Skeleton className="h-48 rounded-2xl" />
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA]">
-      <div className="tricolor-bar"></div>
-
-      {/* Header */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="text-gray-600 hover:text-gray-900 mr-4"
-            >
-              ← {t('common.back')}
-            </button>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-[#1A3A6B]">{t('profile.title')}</h2>
-              <div className="mt-2 flex items-center gap-4">
-                <div className="w-64 bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-[#138808] h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${completeness}%` }}
-                  ></div>
-                </div>
-                <span className="text-sm font-semibold text-gray-700">{completeness}% {t('profile.complete')}</span>
-              </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t('profile.title')}
+        description="Complete your demographic and eligibility profile to improve recommendation quality."
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="h-4 w-4" />
+              {t('common.back')}
+            </Button>
+            <div className="rounded-2xl border border-stone-200 bg-white p-2">
+              <ProgressRing value={completeness} size={72} strokeWidth={8} label="Profile" />
             </div>
+            <Badge variant={completeness >= 70 ? 'success' : 'warning'}>
+              {completeness}% {t('profile.complete')}
+            </Badge>
           </div>
-          <LanguageSelector />
-        </div>
-      </nav>
+        }
+      />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm p-8">
-          {/* Basic Information Section */}
-          <h3 className="text-xl font-bold mb-6 text-[#1A1A2E]">👤 {t('profile.basicInfo')}</h3>
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.fullName')} *</label>
-              <input
-                type="text"
-                name="full_name"
-                value={formData.full_name}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
-                placeholder={t('profile.enterFullName')}
-                required
-              />
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Card className="border border-stone-200">
+          <div className="mb-4 flex items-center gap-2">
+            <UserCircle2 className="h-5 w-5 text-orange-700" />
+            <h3 className="text-lg font-bold text-stone-900">{t('profile.basicInfo')}</h3>
+          </div>
 
-            <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.dob')} *</label>
-              <input
-                type="date"
-                name="dob"
-                value={formData.dob}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
-                required
-              />
-            </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Input
+              label={`${t('profile.fullName')} *`}
+              type="text"
+              name="full_name"
+              value={formData.full_name}
+              onChange={handleChange}
+              placeholder={t('profile.enterFullName')}
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.age')}</label>
-              <input
-                type="number"
-                name="age"
-                value={formData.age}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
-                placeholder={t('profile.enterAge')}
-              />
-            </div>
+            <Input
+              label={`${t('profile.dob')} *`}
+              type="date"
+              name="dob"
+              value={formData.dob}
+              onChange={handleChange}
+              required
+            />
+
+            <Input
+              label={t('profile.age')}
+              type="number"
+              name="age"
+              value={formData.age}
+              onChange={handleChange}
+              placeholder={t('profile.enterAge')}
+            />
 
             <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.gender')} *</label>
+              <label className="mb-1.5 block text-sm font-medium text-stone-700">{t('profile.gender')} *</label>
               <select
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
+                className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-300"
                 required
               >
                 <option value="">{t('profile.selectGender')}</option>
@@ -200,83 +209,78 @@ export default function Profile() {
               </select>
             </div>
           </div>
+        </Card>
 
-          {/* Address Section */}
-          <h3 className="text-xl font-bold mb-6 text-[#1A1A2E]">📍 {t('profile.address')}</h3>
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.state')} *</label>
-              <input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
-                placeholder={t('profile.enterState')}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.district')}</label>
-              <input
-                type="text"
-                name="district"
-                value={formData.district}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
-                placeholder={t('profile.enterDistrict')}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.pincode')}</label>
-              <input
-                type="text"
-                name="pincode"
-                value={formData.pincode}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
-                placeholder={t('profile.enterPincode')}
-              />
-            </div>
+        <Card className="border border-stone-200">
+          <div className="mb-4 flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-blue-700" />
+            <h3 className="text-lg font-bold text-stone-900">{t('profile.address')}</h3>
           </div>
 
-          {/* Economic Information */}
-          <h3 className="text-xl font-bold mb-6 text-[#1A1A2E]">💰 {t('profile.economicInfo')}</h3>
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.annualIncome')} *</label>
-              <input
-                type="number"
-                name="annual_income"
-                value={formData.annual_income}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
-                placeholder={t('profile.enterIncome')}
-                required
-              />
-            </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Input
+              label={`${t('profile.state')} *`}
+              type="text"
+              name="state"
+              value={formData.state}
+              onChange={handleChange}
+              placeholder={t('profile.enterState')}
+              required
+            />
+
+            <Input
+              label={t('profile.district')}
+              type="text"
+              name="district"
+              value={formData.district}
+              onChange={handleChange}
+              placeholder={t('profile.enterDistrict')}
+            />
+
+            <Input
+              label={t('profile.pincode')}
+              type="text"
+              name="pincode"
+              value={formData.pincode}
+              onChange={handleChange}
+              placeholder={t('profile.enterPincode')}
+            />
+          </div>
+        </Card>
+
+        <Card className="border border-stone-200">
+          <div className="mb-4 flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-green-700" />
+            <h3 className="text-lg font-bold text-stone-900">{t('profile.economicInfo')}</h3>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Input
+              label={`${t('profile.annualIncome')} *`}
+              type="number"
+              name="annual_income"
+              value={formData.annual_income}
+              onChange={handleChange}
+              placeholder={t('profile.enterIncome')}
+              required
+            />
+
+            <Input
+              label={t('profile.occupation')}
+              type="text"
+              name="occupation"
+              value={formData.occupation}
+              onChange={handleChange}
+              placeholder={t('profile.enterOccupation')}
+            />
 
             <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.occupation')}</label>
-              <input
-                type="text"
-                name="occupation"
-                value={formData.occupation}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
-                placeholder={t('profile.enterOccupation')}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-2">{t('profile.socialCategory')}</label>
+              <label className="mb-1.5 block text-sm font-medium text-stone-700">{t('profile.socialCategory')}</label>
               <select
                 name="social_category"
                 value={formData.social_category}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A3A6B]"
+                className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-300"
               >
                 <option value="">{t('profile.selectCategory')}</option>
                 <option value="general">{t('profile.general')}</option>
@@ -287,98 +291,50 @@ export default function Profile() {
               </select>
             </div>
           </div>
+        </Card>
 
-          {/* Categories Section */}
-          <h3 className="text-xl font-bold mb-6 text-[#1A1A2E]">✓ {t('profile.yourCategories')}</h3>
-          <div className="grid md:grid-cols-2 gap-4 mb-8">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_farmer"
-                checked={formData.is_farmer === 1}
-                onChange={handleChange}
-                className="w-4 h-4 mr-3"
-              />
-              <span className="text-gray-700">{t('profile.isFarmer')}</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_student"
-                checked={formData.is_student === 1}
-                onChange={handleChange}
-                className="w-4 h-4 mr-3"
-              />
-              <span className="text-gray-700">{t('profile.isStudent')}</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_senior_citizen"
-                checked={formData.is_senior_citizen === 1}
-                onChange={handleChange}
-                className="w-4 h-4 mr-3"
-              />
-              <span className="text-gray-700">{t('profile.isSeniorCitizen')}</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="has_disability"
-                checked={formData.has_disability === 1}
-                onChange={handleChange}
-                className="w-4 h-4 mr-3"
-              />
-              <span className="text-gray-700">{t('profile.hasDisability')}</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_bpl"
-                checked={formData.is_bpl === 1}
-                onChange={handleChange}
-                className="w-4 h-4 mr-3"
-              />
-              <span className="text-gray-700">{t('profile.isBpl')}</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_woman_headed"
-                checked={formData.is_woman_headed === 1}
-                onChange={handleChange}
-                className="w-4 h-4 mr-3"
-              />
-              <span className="text-gray-700">{t('profile.isWomanHeaded')}</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_minority"
-                checked={formData.is_minority === 1}
-                onChange={handleChange}
-                className="w-4 h-4 mr-3"
-              />
-              <span className="text-gray-700">{t('profile.isMinority')}</span>
-            </label>
+        <Card className="border border-stone-200">
+          <div className="mb-4 flex items-center gap-2">
+            <BadgeCheck className="h-5 w-5 text-purple-700" />
+            <h3 className="text-lg font-bold text-stone-900">{t('profile.yourCategories')}</h3>
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={saving}
-            className="btn-primary w-full py-3 text-lg"
-          >
-            {saving ? t('profile.saving') : t('profile.saveProfile')}
-          </button>
-        </form>
-      </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {categoryFlags.map((item) => {
+              const checked = formData[item.key] === 1
+              return (
+                <label
+                  key={item.key}
+                  className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${
+                    checked
+                      ? 'border-orange-300 bg-orange-50 text-orange-800'
+                      : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    name={item.key}
+                    checked={checked}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded border-stone-300 text-orange-600 focus:ring-orange-300"
+                  />
+                  <span>{t(item.labelKey, { defaultValue: item.fallback })}</span>
+                </label>
+              )
+            })}
+          </div>
+        </Card>
+
+        <Button
+          type="submit"
+          loading={saving}
+          disabled={saving}
+          className="w-full"
+          size="lg"
+        >
+          {saving ? t('profile.saving') : t('profile.saveProfile')}
+        </Button>
+      </form>
     </div>
   )
 }

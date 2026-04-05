@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: yojanamitra-backend
+    runtime: python
+    rootDir: backend
+    plan: starter
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: AUTO_RUN_MIGRATIONS
+        value: "true"
+      - key: DATABASE_TYPE
+        value: postgresql
+      - key: REDIS_ENABLED
+        value: "false"
+      - key: CACHE_TTL
+        value: "3600"
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

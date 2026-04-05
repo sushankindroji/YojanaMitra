@@ -15,8 +15,16 @@ export const useAuthStore = create(
       setTokens: (accessToken, refreshToken, userRole = null, userId = null) => {
         localStorage.setItem('access_token', accessToken)
         localStorage.setItem('refresh_token', refreshToken)
-        if (userRole) localStorage.setItem('user_role', userRole)
-        if (userId) localStorage.setItem('user_id', userId)
+        if (userRole) {
+          localStorage.setItem('user_role', userRole)
+        } else {
+          localStorage.removeItem('user_role')
+        }
+        if (userId) {
+          localStorage.setItem('user_id', userId)
+        } else {
+          localStorage.removeItem('user_id')
+        }
         set({ 
           accessToken, 
           refreshToken, 
@@ -30,6 +38,7 @@ export const useAuthStore = create(
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('user_role')
         localStorage.removeItem('user_id')
+        localStorage.removeItem('user')
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, userRole: null, userId: null })
       },
       setUserRole: (role) => {

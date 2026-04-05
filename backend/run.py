@@ -2,9 +2,9 @@
 """
 Startup script for YojanaMitra backend server.
 """
-import uvicorn
 import os
 import sys
+import uvicorn
 from dotenv import load_dotenv
 
 # Get the directory where this script is located
@@ -17,10 +17,13 @@ load_dotenv(os.path.join(script_dir, '.env'))
 sys.path.insert(0, script_dir)
 
 if __name__ == "__main__":
+    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+    debug_enabled = os.getenv("DEBUG", "false").strip().lower() == "true"
+
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8000")),
+        reload=environment != "production" and debug_enabled,
         log_level="info"
     )

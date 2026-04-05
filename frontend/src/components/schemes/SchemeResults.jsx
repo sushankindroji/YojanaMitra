@@ -12,9 +12,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Loader, AlertCircle } from 'lucide-react'
+import { AlertCircle, Loader, SearchX } from 'lucide-react'
 import SchemeCard from './SchemeCard'
 import schemeService from '../../services/schemeService'
+import Button from '../ui/Button'
+import Card from '../ui/Card'
+import Select from '../ui/Select'
+import Skeleton from '../ui/Skeleton'
 
 const ITEMS_PER_PAGE = 20
 
@@ -105,9 +109,14 @@ export default function SchemeResults({
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader className="animate-spin h-10 w-10 text-blue-600 mb-4" />
-        <p className="text-gray-600">{t('common.loading') || 'Loading schemes...'}</p>
+      <div className="space-y-3 py-2">
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-40 rounded-2xl" />
+        <Skeleton className="h-40 rounded-2xl" />
+        <div className="flex items-center justify-center gap-2 text-sm text-stone-500">
+          <Loader className="h-4 w-4 animate-spin" />
+          {t('common.loading') || 'Loading schemes...'}
+        </div>
       </div>
     )
   }
@@ -115,57 +124,54 @@ export default function SchemeResults({
   // Error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 bg-red-50 rounded-lg border border-red-200">
-        <AlertCircle className="h-10 w-10 text-red-600 mb-4" />
-        <p className="text-red-800 font-medium">{error}</p>
-        <button
-          onClick={fetchSchemes}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-        >
+      <Card className="flex flex-col items-center justify-center border border-red-200 bg-red-50 py-14 text-center">
+        <AlertCircle className="h-9 w-9 text-red-600" />
+        <p className="mt-3 font-medium text-red-800">{error}</p>
+        <Button onClick={fetchSchemes} className="mt-4" variant="danger">
           {t('common.retry')}
-        </button>
-      </div>
+        </Button>
+      </Card>
     )
   }
 
   // No results state
   if (totalCount === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-        <AlertCircle className="h-10 w-10 text-gray-400 mb-4" />
-        <p className="text-gray-600 font-medium">{t('schemes.noResults') || 'No schemes found'}</p>
-        <p className="text-gray-500 text-sm mt-2">
+      <Card className="flex flex-col items-center justify-center border border-stone-200 bg-stone-50 py-14 text-center">
+        <SearchX className="h-9 w-9 text-stone-500" />
+        <p className="mt-3 font-medium text-stone-700">{t('schemes.noResults') || 'No schemes found'}</p>
+        <p className="mt-1 text-sm text-stone-500">
           {t('schemes.tryAdjustingFilters') || 'Try adjusting your filters'}
         </p>
-      </div>
+      </Card>
     )
   }
 
   return (
     <div>
       {/* Results Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-stone-900">
             {t('schemes.availableSchemes') || 'Available Schemes'}
           </h2>
-          <p className="text-gray-600 mt-2">
+          <p className="mt-1 text-sm text-stone-600">
             {t('schemes.showing')} {totalCount} {t('schemes.schemeFound', { count: totalCount })}
           </p>
         </div>
 
         {/* Sort Dropdown */}
-        <select
-          value={sortBy}
-          onChange={(e) => {
-            onSortChange(e.target.value)
-          }}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="eligibility">{t('schemes.sortByEligibility', { defaultValue: 'Eligibility %' })}</option>
-          <option value="name">{t('schemes.sortByName', { defaultValue: 'Name A-Z' })}</option>
-          <option value="benefit">{t('schemes.sortByBenefit', { defaultValue: 'Benefit Amount' })}</option>
-        </select>
+        <div className="w-full max-w-[14rem]">
+          <Select
+            value={sortBy}
+            onChange={(value) => onSortChange(value)}
+            options={[
+              { value: 'eligibility', label: t('schemes.sortByEligibility', { defaultValue: 'Eligibility %' }) },
+              { value: 'name', label: t('schemes.sortByName', { defaultValue: 'Name A-Z' }) },
+              { value: 'benefit', label: t('schemes.sortByBenefit', { defaultValue: 'Benefit Amount' }) },
+            ]}
+          />
+        </div>
       </div>
 
       {/* Schemes Grid */}
@@ -181,14 +187,14 @@ export default function SchemeResults({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-center gap-2">
-          <button
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+          <Button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            variant="ghost"
           >
             {t('common.previous')}
-          </button>
+          </Button>
 
           {/* Page Numbers */}
           <div className="flex gap-1">
@@ -196,10 +202,10 @@ export default function SchemeResults({
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
-                className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                className={`h-9 min-w-[2.25rem] rounded-lg px-2 text-sm font-semibold transition-colors ${
                   currentPage === page
-                    ? 'bg-blue-600 text-white'
-                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'bg-orange-600 text-white'
+                    : 'border border-stone-300 text-stone-700 hover:bg-stone-50'
                 }`}
               >
                 {page}
@@ -207,18 +213,18 @@ export default function SchemeResults({
             ))}
           </div>
 
-          <button
+          <Button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            variant="ghost"
           >
             {t('common.next')}
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Page Info */}
-      <div className="mt-6 text-center text-sm text-gray-600">
+      <div className="mt-4 text-center text-xs text-stone-500">
         {totalCount > 0
           ? `${t('schemes.showing')} ${startIdx + 1}-${Math.min(startIdx + ITEMS_PER_PAGE, totalCount)} ${t('schemes.of')} ${totalCount}`
           : t('schemes.noResults') || 'No schemes found'}

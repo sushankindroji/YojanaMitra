@@ -9,9 +9,9 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'react-toastify'
+import { Link } from 'react-router-dom'
 import {
+  Activity,
   Users,
   Briefcase,
   FileText,
@@ -21,9 +21,27 @@ import {
   Loader,
 } from 'lucide-react'
 import api from '../../services/api'
+import Badge from '../../components/ui/Badge'
+import Card from '../../components/ui/Card'
+import PageHeader from '../../components/ui/PageHeader'
+import Skeleton from '../../components/ui/Skeleton'
+
+const appStatusRows = [
+  { label: 'Saved', key: 'apps_saved', pctKey: 'apps_saved_pct', color: 'bg-blue-600' },
+  { label: 'Started', key: 'apps_started', pctKey: 'apps_started_pct', color: 'bg-amber-600' },
+  { label: 'Submitted', key: 'apps_submitted', pctKey: 'apps_submitted_pct', color: 'bg-indigo-600' },
+  { label: 'Acknowledged', key: 'apps_acknowledged', pctKey: 'apps_acknowledged_pct', color: 'bg-green-600' },
+  { label: 'Rejected', key: 'apps_rejected', pctKey: 'apps_rejected_pct', color: 'bg-red-600' },
+]
+
+const quickActions = [
+  { label: 'Manage Users', path: '/admin/users', icon: Users, tone: 'info' },
+  { label: 'Manage Schemes', path: '/admin/schemes', icon: Briefcase, tone: 'success' },
+  { label: 'Review Applications', path: '/admin/applications', icon: FileText, tone: 'warning' },
+  { label: 'System Settings', path: '/admin/settings', icon: Settings, tone: 'neutral' },
+]
 
 export default function AdminDashboard() {
-  const { t } = useTranslation()
   const [stats, setStats] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -57,106 +75,75 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="space-y-3">
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-28 rounded-2xl" />
+        <Skeleton className="h-44 rounded-2xl" />
+        <div className="flex items-center justify-center gap-2 text-sm text-stone-500">
+          <Loader className="h-4 w-4 animate-spin" />
+          Loading dashboard...
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">System overview and key metrics</p>
-        </div>
+    <div className="space-y-5">
+      <PageHeader title="Admin Dashboard" description="System overview and key governance metrics" />
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Users */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-600 font-medium">Total Users</h3>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Users className="text-blue-600" size={24} />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {stats?.total_users || 0}
-            </div>
-            <p className="text-sm text-gray-500 mt-2">
-              {stats?.active_users || 0} active this month
-            </p>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Card className="border border-stone-200">
+          <div className="flex items-center justify-between">
+            <Badge variant="info">Users</Badge>
+            <Users className="h-5 w-5 text-blue-700" />
           </div>
+          <p className="mt-2 text-3xl font-bold text-stone-900">{stats?.total_users || 0}</p>
+          <p className="text-sm text-stone-500">{stats?.active_users || 0} active this month</p>
+        </Card>
 
-          {/* Total Schemes */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-600 font-medium">Total Schemes</h3>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Briefcase className="text-green-600" size={24} />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {stats?.total_schemes || 0}
-            </div>
-            <p className="text-sm text-gray-500 mt-2">
-              {stats?.active_schemes || 0} active schemes
-            </p>
+        <Card className="border border-stone-200">
+          <div className="flex items-center justify-between">
+            <Badge variant="success">Schemes</Badge>
+            <Briefcase className="h-5 w-5 text-green-700" />
           </div>
+          <p className="mt-2 text-3xl font-bold text-stone-900">{stats?.total_schemes || 0}</p>
+          <p className="text-sm text-stone-500">{stats?.active_schemes || 0} active schemes</p>
+        </Card>
 
-          {/* Total Applications */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-600 font-medium">Total Applications</h3>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <FileText className="text-purple-600" size={24} />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {stats?.total_applications || 0}
-            </div>
-            <p className="text-sm text-gray-500 mt-2">
-              {stats?.pending_applications || 0} pending review
-            </p>
+        <Card className="border border-stone-200">
+          <div className="flex items-center justify-between">
+            <Badge variant="neutral">Applications</Badge>
+            <FileText className="h-5 w-5 text-indigo-700" />
           </div>
+          <p className="mt-2 text-3xl font-bold text-stone-900">{stats?.total_applications || 0}</p>
+          <p className="text-sm text-stone-500">{stats?.pending_applications || 0} pending review</p>
+        </Card>
 
-          {/* Submission Rate */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-600 font-medium">Submission Rate</h3>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <TrendingUp className="text-orange-600" size={24} />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {stats?.submission_rate || 0}%
-            </div>
-            <p className="text-sm text-gray-500 mt-2">Applications submitted</p>
+        <Card className="border border-stone-200">
+          <div className="flex items-center justify-between">
+            <Badge variant="warning">Submission Rate</Badge>
+            <TrendingUp className="h-5 w-5 text-amber-700" />
           </div>
-        </div>
+          <p className="mt-2 text-3xl font-bold text-stone-900">{stats?.submission_rate || 0}%</p>
+          <p className="text-sm text-stone-500">Applications submitted</p>
+        </Card>
+      </section>
 
-        {/* Overview Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* User Status Breakdown */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Users size={20} />
+      <section className="grid gap-4 lg:grid-cols-3">
+        <Card className="border border-stone-200">
+          <h3 className="mb-4 flex items-center gap-2 font-semibold text-stone-900">
+            <Users size={18} />
               User Status Breakdown
-            </h3>
+          </h3>
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Registered</span>
-                  <span className="font-medium text-gray-900">
+                  <span className="text-stone-600">Registered</span>
+                  <span className="font-medium text-stone-900">
                     {stats?.users_registered || 0}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="h-2 w-full rounded-full bg-stone-200">
                   <div
                     className="bg-blue-600 h-2 rounded-full"
                     style={{
@@ -167,12 +154,12 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Profile Complete</span>
-                  <span className="font-medium text-gray-900">
+                  <span className="text-stone-600">Profile Complete</span>
+                  <span className="font-medium text-stone-900">
                     {stats?.users_profile_complete || 0}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="h-2 w-full rounded-full bg-stone-200">
                   <div
                     className="bg-green-600 h-2 rounded-full"
                     style={{
@@ -183,12 +170,12 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Email Verified</span>
-                  <span className="font-medium text-gray-900">
+                  <span className="text-stone-600">Email Verified</span>
+                  <span className="font-medium text-stone-900">
                     {stats?.users_email_verified || 0}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="h-2 w-full rounded-full bg-stone-200">
                   <div
                     className="bg-purple-600 h-2 rounded-full"
                     style={{
@@ -198,109 +185,88 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-          </div>
+        </Card>
 
-          {/* Application Status Breakdown */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText size={20} />
+        <Card className="border border-stone-200">
+          <h3 className="mb-4 flex items-center gap-2 font-semibold text-stone-900">
+            <FileText size={18} />
               Application Status
-            </h3>
+          </h3>
             <div className="space-y-3">
-              {[
-                { label: 'Saved', value: 'saved', color: 'blue' },
-                { label: 'Started', value: 'started', color: 'yellow' },
-                { label: 'Submitted', value: 'submitted', color: 'purple' },
-                { label: 'Acknowledged', value: 'acknowledged', color: 'green' },
-                { label: 'Rejected', value: 'rejected', color: 'red' },
-              ].map((status) => (
-                <div key={status.value}>
+              {appStatusRows.map((status) => (
+                <div key={status.key}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">{status.label}</span>
-                    <span className="font-medium text-gray-900">
-                      {stats?.[`apps_${status.value}`] || 0}
+                    <span className="text-stone-600">{status.label}</span>
+                    <span className="font-medium text-stone-900">
+                      {stats?.[status.key] || 0}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="h-2 w-full rounded-full bg-stone-200">
                     <div
-                      className={`bg-${status.color}-600 h-2 rounded-full`}
+                      className={`${status.color} h-2 rounded-full`}
                       style={{
-                        width: `${stats?.[`apps_${status.value}_pct`] || 0}%`,
+                        width: `${stats?.[status.pctKey] || 0}%`,
                       }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+        </Card>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Settings size={20} />
+        <Card className="border border-stone-200">
+          <h3 className="mb-4 flex items-center gap-2 font-semibold text-stone-900">
+            <Settings size={18} />
               Quick Actions
-            </h3>
-            <div className="space-y-2">
-              <a
-                href="/admin/users"
-                className="block px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm transition"
-              >
-                👥 Manage Users
-              </a>
-              <a
-                href="/admin/schemes"
-                className="block px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 font-medium text-sm transition"
-              >
-                📋 Manage Schemes
-              </a>
-              <a
-                href="/admin/applications"
-                className="block px-4 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 font-medium text-sm transition"
-              >
-                📄 Review Applications
-              </a>
-              <a
-                href="/admin/settings"
-                className="block px-4 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 font-medium text-sm transition"
-              >
-                ⚙️ System Settings
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* System Health */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <BarChart3 size={20} />
-            System Health
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              {quickActions.map((item) => {
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className="flex items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+        </Card>
+      </section>
+
+      <Card className="border border-stone-200">
+        <h3 className="mb-4 flex items-center gap-2 font-semibold text-stone-900">
+          <BarChart3 size={18} />
+            System Health
+        </h3>
+        <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <p className="text-gray-600 text-sm mb-2">Database Health</p>
+            <p className="mb-2 text-sm text-stone-600">Database Health</p>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-500 rounded-full" />
-                <span className="font-medium text-gray-900">Operational</span>
+              <Activity className="h-4 w-4 text-green-600" />
+              <span className="font-medium text-stone-900">Operational</span>
               </div>
             </div>
             <div>
-              <p className="text-gray-600 text-sm mb-2">API Status</p>
+            <p className="mb-2 text-sm text-stone-600">API Status</p>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-500 rounded-full" />
-                <span className="font-medium text-gray-900">Operational</span>
+              <Activity className="h-4 w-4 text-green-600" />
+              <span className="font-medium text-stone-900">Operational</span>
               </div>
             </div>
             <div>
-              <p className="text-gray-600 text-sm mb-2">Last Updated</p>
-              <span className="font-medium text-gray-900">
+            <p className="mb-2 text-sm text-stone-600">Last Updated</p>
+            <span className="font-medium text-stone-900">
                 {stats?.last_updated
                   ? new Date(stats.last_updated).toLocaleString()
                   : 'N/A'}
               </span>
             </div>
           </div>
-        </div>
-      </div>
+      </Card>
     </div>
   )
 }

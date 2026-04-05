@@ -31,6 +31,7 @@ class OTPVerify(BaseModel):
     """Verify OTP."""
     phone: str
     otp: str = Field(..., min_length=6, max_length=6)
+    name: Optional[str] = None
 
 
 class TokenResponse(BaseModel):

@@ -1,11 +1,23 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  BadgeIndianRupee,
+  BookmarkPlus,
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  ShieldAlert,
+} from 'lucide-react'
 import { applicationService } from '../../services/applicationService'
 import { useApplicationStore } from '../../store/applicationStore'
 import { toast } from 'react-toastify'
-import { FiExternalLink, FiChevronDown, FiChevronUp, FiCheck, FiAlertCircle, FiBookmark } from 'react-icons/fi'
+import Badge from '../ui/Badge'
+import Button from '../ui/Button'
+import Card from '../ui/Card'
 
-export default function SchemeCard({ scheme, isEligible = true }) {
+export default function SchemeCard({ scheme, isEligible = true, onViewDetails }) {
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -28,13 +40,16 @@ export default function SchemeCard({ scheme, isEligible = true }) {
           }
         })()
       : []
-  
-  const eligibilityColor = isEligible ? 'text-green-600' : 'text-orange-600'
-  const eligibilityBg = isEligible ? 'bg-green-50' : 'bg-orange-50'
-  const eligibilityBorder = isEligible ? 'border-green-200' : 'border-orange-200'
+
+  const eligibilityTone = isEligible ? 'success' : 'warning'
 
   const handleApplyClick = () => {
-    navigate(`/apply/${schemeId}`)
+    if (onViewDetails) {
+      onViewDetails(schemeId)
+      return
+    }
+
+    navigate(`/schemes/${schemeId}`)
   }
 
   const handleSaveApplication = async () => {
@@ -55,146 +70,120 @@ export default function SchemeCard({ scheme, isEligible = true }) {
   // Format benefit amount
   const formatAmount = (amount) => {
     if (!amount) return 'N/A'
-    return `₹${(amount / 100000).toFixed(1)}L+` || `₹${amount.toLocaleString()}`
+    if (amount >= 100000) return `Rs ${(amount / 100000).toFixed(1)}L+`
+    return `Rs ${amount.toLocaleString()}`
   }
 
   return (
-    <div className={`border rounded-xl p-6 mb-4 transition hover:shadow-lg ${eligibilityBg} ${eligibilityBorder}`}>
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          {/* Scheme Name */}
-          <h3 className="text-xl font-bold text-[#1A3A6B] mb-2">
-            {schemeName}
-          </h3>
-          
-          {/* Ministry/Sector */}
-          <p className="text-sm text-gray-600 mb-3">
-            <span className="font-semibold">{scheme.ministry || scheme.sector}</span>
+    <Card className="mb-4 border border-stone-200 bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-xl font-bold text-stone-900">{schemeName}</h3>
+          <p className="mt-1 flex items-center gap-1 text-sm text-stone-600">
+            <Building2 className="h-4 w-4" />
+            <span className="truncate">{scheme.ministry || scheme.sector || 'General'}</span>
           </p>
-
-          {/* Description */}
-          <p className="text-gray-700 mb-4">
-            {schemeDescription}
-          </p>
+          <p className="mt-3 text-sm leading-relaxed text-stone-600">{schemeDescription || 'No description available.'}</p>
         </div>
 
-        {/* Eligibility Badge */}
-        <div className={`flex items-center gap-2 ml-4 ${eligibilityColor}`}>
-          {isEligible ? (
-            <>
-              <FiCheck className="w-5 h-5" />
-              <span className="font-semibold">Eligible</span>
-            </>
-          ) : (
-            <>
-              <FiAlertCircle className="w-5 h-5" />
-              <span className="font-semibold">Partial</span>
-            </>
-          )}
+        <div className="flex items-center gap-2">
+          {isEligible ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <ShieldAlert className="h-5 w-5 text-amber-600" />}
+          <Badge variant={eligibilityTone}>{isEligible ? 'Eligible' : 'Partially Eligible'}</Badge>
         </div>
       </div>
 
-      {/* Benefit Info */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-3 bg-white rounded-lg">
+      <div className="mt-4 grid gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="text-xs text-gray-600 font-semibold uppercase">Benefit Amount</p>
-          <p className="text-lg font-bold text-[#1A3A6B]">{formatAmount(benefitAmount)}</p>
-        </div>
-        
-        <div>
-          <p className="text-xs text-gray-600 font-semibold uppercase">Type</p>
-          <p className="text-lg font-bold text-[#1A3A6B]">{scheme.benefit_type || 'Cash'}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Benefit Amount</p>
+          <p className="mt-1 flex items-center gap-1 text-sm font-bold text-stone-900">
+            <BadgeIndianRupee className="h-4 w-4 text-green-700" />
+            {formatAmount(benefitAmount)}
+          </p>
         </div>
 
         <div>
-          <p className="text-xs text-gray-600 font-semibold uppercase">Frequency</p>
-          <p className="text-lg font-bold text-[#1A3A6B]">{scheme.benefit_frequency || 'One-time'}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Benefit Type</p>
+          <p className="mt-1 text-sm font-semibold text-stone-800">{scheme.benefit_type || 'Cash'}</p>
         </div>
 
         <div>
-          <p className="text-xs text-gray-600 font-semibold uppercase">Match %</p>
-          <p className="text-lg font-bold text-green-600">{eligibilityPercentage || 100}%</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Frequency</p>
+          <p className="mt-1 text-sm font-semibold text-stone-800">{scheme.benefit_frequency || 'One-time'}</p>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Match Score</p>
+          <p className="mt-1 text-sm font-bold text-green-700">{eligibilityPercentage || 100}%</p>
         </div>
       </div>
 
-      {/* Condition Details */}
-      <div className="mb-4">
+      <div className="mt-4">
         <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 text-[#1A3A6B] font-semibold hover:text-[#2A5A9B] transition"
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-orange-700 hover:text-orange-800"
         >
-          {expanded ? <FiChevronUp /> : <FiChevronDown />}
-          <span>Eligibility Details</span>
+          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          Eligibility Details
         </button>
 
-        {expanded && (
-          <div className="mt-3 space-y-2 pl-6 border-l-2 border-gray-300">
+        {expanded ? (
+          <div className="mt-3 space-y-2 rounded-lg border border-stone-200 bg-white p-3">
             {conditionResults.length > 0 ? (
-              conditionResults.map((condition, idx) => (
-                <div
-                  key={idx}
-                  className={`text-sm py-2 ${
-                    condition.status === 'PASS' ? 'text-green-700' : 'text-orange-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-block w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white
-                      ${condition.status === 'PASS' ? 'bg-green-500' : 'bg-orange-500'}`}
+              conditionResults.map((condition, idx) => {
+                const passed = condition.status === 'PASS'
+                return (
+                  <div key={idx} className="flex items-start gap-2 text-sm">
+                    <span
+                      className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white ${
+                        passed ? 'bg-green-600' : 'bg-amber-600'
+                      }`}
                     >
-                      {condition.status === 'PASS' ? '✓' : '✗'}
+                      {passed ? 'Y' : 'N'}
                     </span>
-                    <span>{condition.label_en || condition.field}</span>
+                    <div>
+                      <p className={passed ? 'text-green-800' : 'text-amber-800'}>{condition.label_en || condition.field}</p>
+                      {condition.is_mandatory ? (
+                        <p className="text-xs text-stone-500">Mandatory requirement</p>
+                      ) : null}
+                    </div>
                   </div>
-                  {condition.is_mandatory && (
-                    <p className="text-xs text-gray-600 ml-8">(Mandatory requirement)</p>
-                  )}
-                </div>
-              ))
+                )
+              })
             ) : (
-              <p className="text-sm text-gray-600">No specific conditions</p>
+              <p className="text-sm text-stone-500">No specific conditions available.</p>
             )}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col gap-3 mt-6">
-        <div className="flex gap-3">
-          <button
-            onClick={handleApplyClick}
-            className="flex-1 btn-primary flex items-center justify-center gap-2 hover:shadow-lg transition"
-          >
-            <span>How to Apply</span>
-            <FiExternalLink className="w-4 h-4" />
-          </button>
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+        <Button className="flex-1" onClick={handleApplyClick}>
+          View Details
+          <ExternalLink className="h-4 w-4" />
+        </Button>
 
-          <button
-            onClick={handleSaveApplication}
-            disabled={saving}
-            className="flex-1 bg-blue-50 border-2 border-blue-600 text-blue-600 px-4 py-3 rounded-lg font-semibold hover:bg-blue-100 transition flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <FiBookmark className="w-4 h-4" />
-            <span>{saving ? 'Saving...' : 'Save'}</span>
-          </button>
-        </div>
+        <Button variant="ghost" className="flex-1" onClick={handleSaveApplication} loading={saving}>
+          <BookmarkPlus className="h-4 w-4" />
+          {saving ? 'Saving...' : 'Save Scheme'}
+        </Button>
 
-        {officialPortalUrl && (
+        {officialPortalUrl ? (
           <a
             href={officialPortalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full bg-white border border-[#1A3A6B] text-[#1A3A6B] px-4 py-3 rounded-lg font-semibold hover:bg-[#F5F7FA] transition flex items-center justify-center gap-2"
+            className="inline-flex h-10 min-w-[6rem] flex-1 items-center justify-center gap-2 rounded-full bg-green-700 px-4 text-sm font-semibold text-white transition-all duration-150 hover:bg-green-800"
           >
-            <span>Official Portal</span>
-            <FiExternalLink className="w-4 h-4" />
+            Official Portal
+            <ExternalLink className="h-4 w-4" />
           </a>
-        )}
+        ) : null}
       </div>
 
-      {/* Application Mode */}
-      <p className="text-xs text-gray-600 mt-4 text-center">
-        Application Mode: <span className="font-semibold">{scheme.application_mode || 'Online'}</span>
+      <p className="mt-3 text-xs text-stone-500">
+        Application mode: <span className="font-semibold text-stone-700">{scheme.application_mode || 'Online'}</span>
       </p>
-    </div>
+    </Card>
   )
 }

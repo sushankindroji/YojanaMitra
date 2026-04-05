@@ -1,11 +1,16 @@
 """
 Document encryption/decryption using AES-256.
 """
+import logging
+import hashlib
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import os
 import base64
 from app.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentEncryption:
@@ -15,8 +20,21 @@ class DocumentEncryption:
         """Initialize with encryption key from settings."""
         key_b64 = settings.ENCRYPTION_KEY
         if not key_b64:
-            raise ValueError("ENCRYPTION_KEY is not set in environment")
-        self.key = base64.b64decode(key_b64)
+            if settings.is_production:
+                raise ValueError("ENCRYPTION_KEY is not set in environment")
+
+            # Keep development bootstrapping simple while production stays strict.
+            logger.warning(
+                "ENCRYPTION_KEY not set; deriving deterministic development key from SECRET_KEY"
+            )
+            self.key = hashlib.sha256(settings.SECRET_KEY.encode("utf-8")).digest()
+            return
+
+        try:
+            self.key = base64.b64decode(key_b64, validate=True)
+        except Exception as exc:
+            raise ValueError("ENCRYPTION_KEY must be valid base64") from exc
+
         if len(self.key) != 32:
             raise ValueError("ENCRYPTION_KEY must be 32 bytes (256 bits)")
 

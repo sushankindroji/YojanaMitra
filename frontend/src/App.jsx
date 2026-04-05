@@ -6,11 +6,10 @@ import { useAuthStore } from './store/authStore'
 
 // Components
 import ErrorBoundary from './components/common/ErrorBoundary'
-import Navbar from './components/common/Navbar'
-import Footer from './components/common/Footer'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import ProtectedAdminRoute from './components/common/ProtectedAdminRoute'
 import AdminLayout from './components/admin/AdminLayout'
+import AppShell from './components/layout/AppShell'
 
 // Pages
 import Landing from './pages/Landing'
@@ -31,15 +30,6 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminSchemes from './pages/admin/AdminSchemes'
 import AdminApplications from './pages/admin/AdminApplications'
-
-// Layout component for pages with navbar
-const LayoutWithNavbar = () => (
-  <>
-    <Navbar />
-    <Outlet />
-    <Footer />
-  </>
-)
 
 // Layout wrapper for admin routes
 const AdminShell = () => (
@@ -119,7 +109,7 @@ function App() {
           <Route
             element={
               <ProtectedRoute>
-                <LayoutWithNavbar />
+                <AppShell />
               </ProtectedRoute>
             }
           >

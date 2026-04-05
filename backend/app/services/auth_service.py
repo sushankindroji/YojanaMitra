@@ -2,11 +2,14 @@
 Authentication service.
 """
 from datetime import datetime
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.models import User
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 import uuid
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -55,30 +58,28 @@ class AuthService:
     @staticmethod
     def authenticate_user(db: Session, email: str = None, phone: str = None, password: str = None) -> User:
         """Authenticate user by email/phone and password."""
-        import time
-        start = time.time()
-        
         if email:
-            print(f"[AUTH] Fetching user by email: {email}")
             user = db.query(User).filter(User.email == email).first()
         elif phone:
-            print(f"[AUTH] Fetching user by phone: {phone}")
             user = db.query(User).filter(User.phone == phone).first()
         else:
             return None
 
-        if not user:
-            print(f"[AUTH] User not found")
+        if not user or not user.password_hash:
             return None
-            
-        print(f"[AUTH] User found, verifying password...")
-        if verify_password(password, user.password_hash):
-            print(f"[AUTH] Password verified in {time.time() - start:.2f}s")
-            user.last_login = datetime.utcnow().isoformat()
+
+        if not verify_password(password, user.password_hash):
+            return None
+
+        user.last_login = datetime.utcnow().isoformat()
+        try:
             db.commit()
-            return user
-        
-        print(f"[AUTH] Password verification failed in {time.time() - start:.2f}s")
+        except Exception:
+            db.rollback()
+            logger.exception("Failed to persist last_login for user_id=%s", user.id)
+
+        return user
+
         return None
 
     @staticmethod

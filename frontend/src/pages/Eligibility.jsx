@@ -2,10 +2,14 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
-import { FiArrowLeft, FiRefreshCw } from 'react-icons/fi'
-import LanguageSelector from '../components/common/LanguageSelector'
+import { ArrowLeft, RefreshCw, Wallet } from 'lucide-react'
 import SchemeCard from '../components/schemes/SchemeCard'
 import schemeService from '../services/schemeService'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import PageHeader from '../components/ui/PageHeader'
+import Skeleton from '../components/ui/Skeleton'
 
 export default function Eligibility() {
   const navigate = useNavigate()
@@ -130,140 +134,130 @@ export default function Eligibility() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#F5F7FA]">
-        <div className="text-center">
-          <div className="inline-block">
-            <div className="w-12 h-12 border-4 border-[#1A3A6B] border-t-orange-500 rounded-full animate-spin"></div>
-          </div>
-          <p className="mt-4 text-lg font-semibold text-gray-700">{t('eligibility.finding')}</p>
-        </div>
+      <div className="space-y-3">
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-32 rounded-2xl" />
+        <Skeleton className="h-40 rounded-2xl" />
+        <p className="text-center text-sm text-stone-500">{t('eligibility.finding')}</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA]">
-      <div className="tricolor-bar"></div>
-
-      {/* Header */}
-      <nav className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <LanguageSelector />
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="text-gray-600 hover:text-gray-900 transition"
-              title="Back to Dashboard"
+    <div className="space-y-5">
+      <PageHeader
+        title={t('eligibility.title')}
+        description="See all schemes where you qualify fully or partially based on your latest profile and documents."
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </Button>
+            <Button
+              onClick={handleRunCheck}
+              loading={checking}
+              disabled={checking}
             >
-              <FiArrowLeft className="w-6 h-6" />
+              <RefreshCw className={`h-4 w-4 ${checking ? 'animate-spin' : ''}`} />
+              {t('eligibility.recheck')}
+            </Button>
+          </div>
+        }
+      />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border border-green-200 bg-gradient-to-br from-green-50 to-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-green-700">{t('eligibility.fullyEligible')}</p>
+          <p className="mt-2 text-4xl font-bold text-green-700">{totalEligible}</p>
+          <p className="mt-1 text-xs text-green-800/80">{t('eligibility.fullyEligibleDesc')}</p>
+        </Card>
+
+        <Card className="border border-amber-200 bg-gradient-to-br from-amber-50 to-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">{t('eligibility.partiallyEligible')}</p>
+          <p className="mt-2 text-4xl font-bold text-amber-700">{totalPartial}</p>
+          <p className="mt-1 text-xs text-amber-800/80">{t('eligibility.partiallyEligibleDesc')}</p>
+        </Card>
+
+        <Card className="border border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-700">{t('eligibility.totalBenefit')}</p>
+          <p className="mt-2 flex items-center gap-1 text-4xl font-bold text-blue-700">
+            <Wallet className="h-7 w-7" />
+            {totalBenefit > 0 ? `Rs ${(totalBenefit / 100000).toFixed(1)}L+` : 'N/A'}
+          </p>
+          <p className="mt-1 text-xs text-blue-800/80">Combined annual/one-time benefits</p>
+        </Card>
+      </div>
+
+      <Card className="border border-stone-200 p-0">
+        <div className="border-b border-stone-200 px-2">
+          <div className="flex flex-wrap gap-1 p-2">
+            <button
+              onClick={() => setActiveTab('eligible')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                activeTab === 'eligible'
+                  ? 'bg-green-600 text-white'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+              }`}
+            >
+              Fully Eligible ({totalEligible})
             </button>
-            <h1 className="text-2xl font-bold text-[#1A3A6B]">{t('eligibility.title')}</h1>
-          </div>
-
-          <button
-            onClick={handleRunCheck}
-            disabled={checking}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1A3A6B] text-white rounded-lg hover:bg-[#2A5A9B] transition disabled:opacity-50"
-          >
-            <FiRefreshCw className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} />
-            <span>{t('eligibility.recheck')}</span>
-          </button>
-        </div>
-      </nav>
-
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-green-500">
-            <p className="text-sm text-gray-600 font-semibold mb-2">{t('eligibility.fullyEligible')}</p>
-            <p className="text-4xl font-bold text-green-600">{totalEligible}</p>
-            <p className="text-xs text-gray-500 mt-2">{t('eligibility.fullyEligibleDesc')}</p>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-orange-500">
-            <p className="text-sm text-gray-600 font-semibold mb-2">{t('eligibility.partiallyEligible')}</p>
-            <p className="text-4xl font-bold text-orange-600">{totalPartial}</p>
-            <p className="text-xs text-gray-500 mt-2">{t('eligibility.partiallyEligibleDesc')}</p>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-blue-500">
-            <p className="text-sm text-gray-600 font-semibold mb-2">{t('eligibility.totalBenefit')}</p>
-            <p className="text-4xl font-bold text-blue-600">
-              {totalBenefit > 0 ? `₹${(totalBenefit / 100000).toFixed(1)}L+` : 'N/A'}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">Combined annual/one-time benefits</p>
+            <button
+              onClick={() => setActiveTab('partial')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                activeTab === 'partial'
+                  ? 'bg-amber-600 text-white'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+              }`}
+            >
+              Partially Eligible ({totalPartial})
+            </button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-4 mb-6 border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab('eligible')}
-            className={`px-6 py-3 font-semibold border-b-2 transition ${
-              activeTab === 'eligible'
-                ? 'border-green-500 text-green-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Fully Eligible ({totalEligible})
-          </button>
-          <button
-            onClick={() => setActiveTab('partial')}
-            className={`px-6 py-3 font-semibold border-b-2 transition ${
-              activeTab === 'partial'
-                ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Partially Eligible ({totalPartial})
-          </button>
-        </div>
-
-        {/* Sector Filter */}
-        {sectors.length > 0 && (
-          <div className="mb-6">
-            <label className="text-sm font-semibold text-gray-700 mb-2 block">Filter by Sector:</label>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSectorFilter('all')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                  sectorFilter === 'all'
-                    ? 'bg-[#1A3A6B] text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:border-gray-500'
-                }`}
-              >
-                All Sectors ({eligibleSchemes.length + partiallyEligibleSchemes.length})
-              </button>
-              {sectors.map(sector => {
-                const count = currentSchemes.filter(s => s.sector === sector).length
-                return (
+        <div className="space-y-5 p-5">
+          {sectors.length > 0 ? (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Filter by Sector</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSectorFilter('all')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    sectorFilter === 'all'
+                      ? 'bg-stone-900 text-white'
+                      : 'border border-stone-300 text-stone-700 hover:bg-stone-100'
+                  }`}
+                >
+                  All ({eligibleSchemes.length + partiallyEligibleSchemes.length})
+                </button>
+                {sectors.map((sector) => (
                   <button
                     key={sector}
                     onClick={() => setSectorFilter(sector)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                       sectorFilter === sector
-                        ? 'bg-[#1A3A6B] text-white'
-                        : 'bg-white border border-gray-300 text-gray-700 hover:border-gray-500'
+                        ? 'bg-stone-900 text-white'
+                        : 'border border-stone-300 text-stone-700 hover:bg-stone-100'
                     }`}
                   >
-                    {sector} ({eligibleSchemes.filter(s => s.sector === sector).length + partiallyEligibleSchemes.filter(s => s.sector === sector).length})
+                    {sector} ({eligibleSchemes.filter((s) => s.sector === sector).length + partiallyEligibleSchemes.filter((s) => s.sector === sector).length})
                   </button>
-                )
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          ) : null}
 
-        {/* Schemes List */}
-        <div>
           {currentSchemes.length > 0 ? (
             <div>
-              <p className="text-sm text-gray-600 mb-4">
-                Showing {currentSchemes.length} scheme{currentSchemes.length !== 1 ? 's' : ''} 
-                {sectorFilter !== 'all' ? ` in ${sectorFilter}` : ''}
-              </p>
+              <div className="mb-3 flex items-center gap-2">
+                <p className="text-sm text-stone-600">
+                  Showing {currentSchemes.length} scheme{currentSchemes.length !== 1 ? 's' : ''}
+                </p>
+                {sectorFilter !== 'all' ? <Badge variant="neutral">Sector: {sectorFilter}</Badge> : null}
+              </div>
+
               <div>
-                {currentSchemes.map(scheme => (
+                {currentSchemes.map((scheme) => (
                   <SchemeCard
                     key={scheme.scheme_id}
                     scheme={scheme}
@@ -273,40 +267,39 @@ export default function Eligibility() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
-              <p className="text-lg text-gray-600 font-semibold mb-2">
+            <Card className="border border-stone-200 py-12 text-center">
+              <p className="text-lg font-semibold text-stone-700">
                 {activeTab === 'eligible'
                   ? 'No fully eligible schemes found'
                   : 'No partially eligible schemes found'}
               </p>
-              <p className="text-gray-500 mb-6">
+              <p className="mx-auto mt-2 max-w-xl text-sm text-stone-500">
                 {activeTab === 'eligible'
                   ? 'Try filling out more profile information to match more schemes.'
                   : 'You do not partially qualify for any schemes.'}
               </p>
               {activeTab === 'eligible' && (
-                <button
+                <Button
                   onClick={() => navigate('/profile', { state: { returnTo: '/eligibility' } })}
-                  className="btn-primary"
+                  className="mt-5"
                 >
                   Complete Your Profile
-                </button>
+                </Button>
               )}
-            </div>
+            </Card>
           )}
         </div>
+      </Card>
 
-        {/* Help Section */}
-        <div className="mt-12 bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <h3 className="font-bold text-[#1A3A6B] mb-3">💡 How It Works</h3>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>✅ <strong>Fully Eligible:</strong> You meet all the mandatory requirements</li>
-            <li>⚠️ <strong>Partially Eligible:</strong> You meet some requirements, may qualify with additional documents</li>
-            <li>💰 <strong>Benefit Amount:</strong> Schemes are ranked by highest benefit amount</li>
-            <li>📋 <strong>How to Apply:</strong> Click "How to Apply" for step-by-step instructions</li>
-          </ul>
-        </div>
-      </div>
+      <Card className="border border-blue-200 bg-blue-50">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-blue-800">How Eligibility Works</h3>
+        <ul className="mt-3 space-y-1.5 text-sm text-blue-900">
+          <li>Fully eligible means mandatory conditions are satisfied.</li>
+          <li>Partially eligible means some conditions are met and additional documents may help.</li>
+          <li>Benefit value estimates are aggregated from available scheme metadata.</li>
+          <li>Use View Details inside each card for specific application guidance.</li>
+        </ul>
+      </Card>
     </div>
   )
 }
