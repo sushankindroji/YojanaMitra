@@ -30,7 +30,7 @@ export default function FormTextarea({
       {label && (
         <label
           htmlFor={name}
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="mb-2 block text-label font-medium text-gray-700"
         >
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
@@ -50,7 +50,7 @@ export default function FormTextarea({
           rows={rows}
           maxLength={maxLength}
           className={`
-            w-full px-4 py-2 border rounded-lg transition-all
+            w-full border px-4 py-2 text-body rounded-lg transition-all
             ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'}
             ${hasError 
               ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
@@ -80,14 +80,14 @@ export default function FormTextarea({
 
       {/* Character count */}
       {maxLength && (
-        <p className={`mt-1 text-xs ${charCount > maxLength * 0.9 ? 'text-orange-600' : 'text-gray-500'}`}>
+        <p className={`mt-1 text-caption ${charCount > maxLength * 0.9 ? 'text-orange-600' : 'text-gray-500'}`}>
           {charCount} / {maxLength}
         </p>
       )}
 
       {/* Error message */}
       {hasError && (
-        <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+        <p className="mt-1 flex items-center gap-1 text-caption text-red-600">
           <AlertCircle size={14} />
           {error}
         </p>
@@ -95,7 +95,7 @@ export default function FormTextarea({
 
       {/* Helper text */}
       {!hasError && helperText && (
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-caption text-gray-600">
           {helperText}
         </p>
       )}

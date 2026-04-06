@@ -31,6 +31,20 @@ const formatDateTime = (value) => {
   })
 }
 
+const countUploadedDocumentTypes = (documents = []) => {
+  const uploadedTypes = new Set()
+
+  documents.forEach((doc) => {
+    const type = String(doc?.doc_type || '').trim().toLowerCase()
+    const status = String(doc?.extraction_status || '').trim().toLowerCase()
+
+    if (!type || status === 'failed') return
+    uploadedTypes.add(type)
+  })
+
+  return uploadedTypes.size
+}
+
 const waitForJobCompletion = async (jobId, timeoutMs = 90000) => {
   const start = Date.now()
 
@@ -74,7 +88,7 @@ export default function Dashboard() {
       setDashboard(dashboardPayload)
 
       const docs = Array.isArray(docsResponse.data) ? docsResponse.data : []
-      setDocumentsCount(docs.length)
+      setDocumentsCount(countUploadedDocumentTypes(docs))
 
       const appStats = appsStatsResponse.data || {}
       const appCountFromStats =
@@ -116,6 +130,7 @@ export default function Dashboard() {
       toast.error(error.message || 'Could not refresh eligibility now')
     } finally {
       setChecking(false)
+      navigate('/eligibility')
     }
   }
 
@@ -131,6 +146,8 @@ export default function Dashboard() {
 
   const quickStats = dashboard?.quick_stats || {}
   const insight = dashboard?.scheme_insight || {}
+  const fullyEligibleCount = Number(quickStats?.fully_eligible || 0)
+  const highlyEligibleCount = Number(quickStats?.highly_eligible || 0)
   const sectorBreakdown = dashboard?.sector_breakdown || {}
   const sectorEntries = Object.entries(sectorBreakdown)
 
@@ -166,9 +183,9 @@ export default function Dashboard() {
         <Card className="bg-gradient-to-br from-white via-orange-50 to-green-50">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Profile Completion</p>
-              <h2 className="mt-1 text-2xl font-bold text-stone-900">{completeness}% complete</h2>
-              <p className="mt-2 max-w-xl text-sm text-stone-600">
+              <p className="text-micro font-medium uppercase tracking-wider text-stone-500">Profile Completion</p>
+              <h2 className="mt-1 text-h2 font-medium text-stone-900">{completeness}% complete</h2>
+              <p className="mt-2 max-w-xl text-body-sm text-stone-600">
                 {dashboard?.profile_completeness?.message || 'Add missing profile fields to unlock more schemes.'}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -189,14 +206,20 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card variant="elevated" className="bg-blue-950 text-white">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-200">Scheme Insight</p>
-          <h2 className="mt-1 text-3xl font-bold">{dashboard?.total_eligible_count || 0}</h2>
-          <p className="mt-2 text-sm text-blue-100">{insight.headline || 'No eligibility run found yet.'}</p>
-          <p className="mt-2 text-xs text-blue-200">{insight.highlight || 'Run eligibility check to see personalized scheme insight.'}</p>
+        <Card variant="elevated" className="!bg-blue-950 !text-white border-blue-900">
+          <p className="text-micro font-medium uppercase tracking-wider text-blue-200">Matched Schemes (Full + High)</p>
+          <h2 className="mt-1 text-h2 font-medium">{dashboard?.total_eligible_count || 0}</h2>
+          <p className="mt-2 text-body-sm text-blue-100">{insight.headline || 'No eligibility run found yet.'}</p>
+          <p className="mt-2 text-caption text-blue-200">{insight.highlight || 'Run eligibility check to see personalized scheme insight.'}</p>
+          <p className="mt-2 text-caption text-blue-300">Fully Eligible is a stricter subset of this total.</p>
+          {(fullyEligibleCount > 0 || highlyEligibleCount > 0) ? (
+            <p className="mt-2 text-caption text-blue-200">
+              Breakdown: {fullyEligibleCount} fully eligible + {highlyEligibleCount} highly matched
+            </p>
+          ) : null}
 
           {topScheme ? (
-            <div className="mt-3 rounded-lg border border-blue-700 bg-blue-900/50 p-3 text-xs text-blue-100">
+            <div className="mt-3 rounded-lg border border-blue-700 bg-blue-900/50 p-3 text-caption text-blue-100">
               Top scheme: {topScheme.name || 'N/A'} ({formatCurrency(topScheme.benefit)})
             </div>
           ) : null}
@@ -208,7 +231,7 @@ export default function Dashboard() {
                 const widthPct = Math.max(8, Math.round((Number(count || 0) / max) * 100))
                 return (
                   <div key={sector}>
-                    <div className="flex items-center justify-between text-[10px] text-blue-200">
+                    <div className="flex items-center justify-between text-caption text-blue-200">
                       <span>{sector}</span>
                       <span>{count}</span>
                     </div>
@@ -229,13 +252,13 @@ export default function Dashboard() {
 
       {featuredSchemes.length > 0 ? (
         <section>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Featured Schemes</p>
+          <p className="mb-2 text-micro font-medium uppercase tracking-wider text-stone-500">Featured Schemes</p>
           <div className="grid gap-3 md:grid-cols-3">
             {featuredSchemes.slice(0, 3).map((scheme) => (
               <Card key={scheme.scheme_id || scheme.scheme_code} className="border border-stone-200">
-                <h3 className="text-sm font-semibold text-stone-900">{scheme.scheme_name || 'Scheme'}</h3>
-                <p className="mt-1 text-xs text-stone-600">{scheme.benefit_summary || 'Benefit details available in scheme page.'}</p>
-                <p className="mt-2 text-xs font-medium text-stone-700">Score: {Math.round(Number(scheme.match_score || 0) * 100)}%</p>
+                <h3 className="text-h4 font-medium text-stone-900">{scheme.scheme_name || 'Scheme'}</h3>
+                <p className="mt-1 text-body-sm text-stone-600">{scheme.benefit_summary || 'Benefit details available in scheme page.'}</p>
+                <p className="mt-2 text-label font-medium text-stone-700">Score: {Math.round(Number(scheme.match_score || 0) * 100)}%</p>
               </Card>
             ))}
           </div>
@@ -247,8 +270,8 @@ export default function Dashboard() {
           <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
             <UploadCloud className="h-5 w-5" />
           </div>
-          <h3 className="text-base font-semibold text-stone-900">Upload documents</h3>
-          <p className="mt-1 flex-1 text-sm text-stone-600">{documentsCount} document{documentsCount !== 1 ? 's' : ''} uploaded.</p>
+          <h3 className="text-h3 font-medium text-stone-900">Upload documents</h3>
+          <p className="mt-1 flex-1 text-body-sm text-stone-600">{documentsCount} document type{documentsCount !== 1 ? 's' : ''} uploaded.</p>
           <Button className="mt-4 w-full" onClick={() => navigate('/upload')}>Continue</Button>
         </Card>
 
@@ -256,8 +279,8 @@ export default function Dashboard() {
           <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
             <Fingerprint className="h-5 w-5" />
           </div>
-          <h3 className="text-base font-semibold text-stone-900">Complete profile</h3>
-          <p className="mt-1 flex-1 text-sm text-stone-600">
+          <h3 className="text-h3 font-medium text-stone-900">Complete profile</h3>
+          <p className="mt-1 flex-1 text-body-sm text-stone-600">
             {completeness}% complete. {missingFields.length > 0 ? `Missing: ${missingFields.slice(0, 2).join(', ')}` : 'No key fields missing.'}
           </p>
           <Button className="mt-4 w-full" onClick={() => navigate('/profile')}>Continue</Button>
@@ -267,9 +290,9 @@ export default function Dashboard() {
           <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
             <Search className="h-5 w-5" />
           </div>
-          <h3 className="text-base font-semibold text-stone-900">Check eligibility</h3>
-          <p className="mt-1 flex-1 text-sm text-stone-600">Last checked: {formatDateTime(dashboard?.last_checked)}</p>
-          <Button className="mt-4 w-full" onClick={handleCheckNow} loading={checking} disabled={checking}>
+          <h3 className="text-h3 font-medium text-stone-900">Check eligibility</h3>
+          <p className="mt-1 flex-1 text-body-sm text-stone-600">Last checked: {formatDateTime(dashboard?.last_checked)}</p>
+          <Button className="mt-4 w-full" onClick={() => navigate('/eligibility')}>
             Continue
           </Button>
         </Card>
@@ -278,8 +301,8 @@ export default function Dashboard() {
           <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
             <FileText className="h-5 w-5" />
           </div>
-          <h3 className="text-base font-semibold text-stone-900">Track applications</h3>
-          <p className="mt-1 flex-1 text-sm text-stone-600">{applicationsCount} application{applicationsCount !== 1 ? 's' : ''} in your tracker.</p>
+          <h3 className="text-h3 font-medium text-stone-900">Track applications</h3>
+          <p className="mt-1 flex-1 text-body-sm text-stone-600">{applicationsCount} application{applicationsCount !== 1 ? 's' : ''} in your tracker.</p>
           <Button className="mt-4 w-full" onClick={() => navigate('/applications')}>Continue</Button>
         </Card>
       </section>

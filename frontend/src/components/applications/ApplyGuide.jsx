@@ -331,7 +331,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Full Name *
           </label>
           <input
@@ -346,7 +346,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Email *
           </label>
           <input
@@ -359,7 +359,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Phone Number *
           </label>
           <input
@@ -372,7 +372,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Date of Birth
           </label>
           <input
@@ -395,7 +395,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Employment Status
           </label>
           <select
@@ -415,7 +415,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Occupation
           </label>
           <input
@@ -430,7 +430,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Annual Income
           </label>
           <input
@@ -445,7 +445,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Employer/Organization Name
           </label>
           <input
@@ -468,14 +468,14 @@ export default function ApplyGuide({ schemeId, onComplete }) {
   const renderBankStep = () => (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
+        <p className="text-body-sm text-blue-800">
           💡 Bank details are needed for benefit transfer. Ensure accuracy.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Account Holder Name *
           </label>
           <input
@@ -490,7 +490,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Bank Account Number *
           </label>
           <input
@@ -505,7 +505,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             IFSC Code *
           </label>
           <input
@@ -520,7 +520,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-900 mb-2">
+          <label className="mb-2 block text-label font-medium text-gray-900">
             Bank Name
           </label>
           <input
@@ -541,7 +541,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
   const renderAdditionalInfoStep = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label className="mb-2 block text-label font-medium text-gray-900">
           Additional Notes or Comments
         </label>
         <textarea
@@ -554,22 +554,22 @@ export default function ApplyGuide({ schemeId, onComplete }) {
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <h4 className="font-semibold text-amber-900 mb-3">Document Checklist</h4>
-        <ul className="space-y-2 text-sm text-amber-800">
+        <h4 className="font-medium text-amber-900 mb-3">Document Checklist</h4>
+        <ul className="space-y-2 text-body-sm text-amber-800">
           <li className="flex items-center gap-2">
-            <span className="text-lg">📄</span> Aadhar/ID Proof
+            <span className="text-h4">📄</span> Aadhar/ID Proof
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-lg">💰</span> Income Certificate (if required)
+            <span className="text-h4">💰</span> Income Certificate (if required)
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-lg">🏠</span> Address Proof
+            <span className="text-h4">🏠</span> Address Proof
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-lg">🏦</span> Bank Passbook/Statement
+            <span className="text-h4">🏦</span> Bank Passbook/Statement
           </li>
         </ul>
-        <p className="text-xs text-amber-600 mt-3">
+        <p className="text-caption text-amber-600 mt-3">
           Keep these documents ready for submission
         </p>
       </div>
@@ -583,9 +583,9 @@ export default function ApplyGuide({ schemeId, onComplete }) {
     <div className="space-y-6">
       {/* Scheme Info Summary */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h4 className="font-semibold text-gray-900 mb-3">Scheme Information</h4>
+        <h4 className="font-medium text-gray-900 mb-3">Scheme Information</h4>
         {scheme && (
-          <div className="space-y-2 text-sm text-gray-700">
+          <div className="space-y-2 text-body-sm text-gray-700">
             <div>
               <span className="font-medium">Scheme Name:</span> {scheme.name}
             </div>
@@ -606,8 +606,8 @@ export default function ApplyGuide({ schemeId, onComplete }) {
 
       {/* Personal Details Summary */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-        <h4 className="font-semibold text-gray-900 mb-3">Personal Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+        <h4 className="font-medium text-gray-900 mb-3">Personal Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-body-sm text-gray-700">
           <div>
             <span className="font-medium">Name:</span> {formData.personal.full_name}
           </div>
@@ -626,8 +626,8 @@ export default function ApplyGuide({ schemeId, onComplete }) {
 
       {/* Bank Details Summary */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-        <h4 className="font-semibold text-gray-900 mb-3">Bank Details (Masked)</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+        <h4 className="font-medium text-gray-900 mb-3">Bank Details (Masked)</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-body-sm text-gray-700">
           <div>
             <span className="font-medium">Account Holder:</span>{' '}
             {formData.bank.account_holder_name}
@@ -660,7 +660,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
             className="mt-1 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
           />
           <div className="flex-1">
-            <p className="text-sm text-gray-700">
+            <p className="text-body-sm text-gray-700">
               I confirm that the information provided is true and correct. I agree to
               the scheme terms and conditions and authorize the scheme authority to
               verify my details.
@@ -670,7 +670,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
       </div>
 
       {!formData.additional.terms_agreed && (
-        <div className="text-sm text-red-600 font-medium">
+        <div className="text-body-sm text-red-600 font-medium">
           Please agree to terms before submitting
         </div>
       )}
@@ -693,7 +693,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
             </div>
 
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              <h2 className="text-h1 font-medium text-gray-900 mb-2">
                 Application Submitted!
               </h2>
               <p className="text-gray-600">
@@ -702,10 +702,10 @@ export default function ApplyGuide({ schemeId, onComplete }) {
             </div>
 
             <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-left">
-              <h4 className="font-semibold text-green-900 mb-3">
+              <h4 className="font-medium text-green-900 mb-3">
                 Acknowledgement Details
               </h4>
-              <div className="space-y-2 text-sm text-green-800">
+              <div className="space-y-2 text-body-sm text-green-800">
                 <div>
                   <span className="font-medium">Acknowledgement No:</span>{' '}
                   {submissionStatus.acknowledgementNo}
@@ -721,8 +721,8 @@ export default function ApplyGuide({ schemeId, onComplete }) {
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-              <h4 className="font-semibold text-blue-900 mb-2">Next Steps</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
+              <h4 className="font-medium text-blue-900 mb-2">Next Steps</h4>
+              <ul className="text-body-sm text-blue-800 space-y-1">
                 <li>✓ Your application is now under review</li>
                 <li>✓ You will receive email updates on progress</li>
                 <li>✓ Check your Applications dashboard for status updates</li>
@@ -764,7 +764,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg shadow p-8 text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-red-600 mx-auto" />
-            <h2 className="text-2xl font-bold text-gray-900">Error Loading Application</h2>
+            <h2 className="text-h2 font-medium text-gray-900">Error Loading Application</h2>
             <p className="text-gray-600">{error}</p>
             <button
               onClick={() => window.history.back()}
@@ -785,7 +785,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         <div className="max-w-4xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Apply for Scheme</h1>
+              <h1 className="text-h2 font-medium text-gray-900">Apply for Scheme</h1>
               {scheme && <p className="text-gray-600">{scheme.name}</p>}
             </div>
             <button
@@ -801,7 +801,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
             {FORM_STEPS.map((step, idx) => (
               <div key={step.id} className="flex items-center flex-1">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-medium text-body-sm transition-all ${
                     currentStep >= step.id
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-600'
@@ -827,13 +827,13 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         {/* Scheme Eligibility Check */}
         {eligibility && currentStep === 1 && (
           <div className="mb-8 bg-white rounded-lg shadow p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Eligibility Status</h3>
+            <h3 className="font-medium text-gray-900 mb-4">Eligibility Status</h3>
             {eligibility.conditions && Array.isArray(eligibility.conditions) && (
               <EligibilityBadges conditions={eligibility.conditions} compact />
             )}
             {eligibility.eligible_percentage && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
-                <p className="text-sm text-blue-800">
+                <p className="text-body-sm text-blue-800">
                   You appear to be <strong>{eligibility.eligible_percentage}%</strong>{' '}
                   eligible for this scheme
                 </p>
@@ -845,7 +845,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         {/* Form Content */}
         <div className="bg-white rounded-lg shadow p-8 mb-8">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-h2 font-medium text-gray-900 mb-2">
               {FORM_STEPS[currentStep - 1].title}
             </h2>
             <p className="text-gray-600">
@@ -924,3 +924,4 @@ export default function ApplyGuide({ schemeId, onComplete }) {
     </div>
   )
 }
+

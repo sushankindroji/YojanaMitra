@@ -62,8 +62,8 @@ export default function ProgressRing({
         />
       </svg>
       <div className="absolute text-center">
-        <p className="text-sm font-semibold text-stone-900">{displayValue}%</p>
-        {label ? <p className="text-[10px] text-stone-500">{label}</p> : null}
+        <p className="text-body-sm font-medium text-stone-900">{displayValue}%</p>
+        {label ? <p className="text-caption text-stone-500">{label}</p> : null}
       </div>
     </div>
   )

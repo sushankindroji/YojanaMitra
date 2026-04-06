@@ -22,6 +22,25 @@ import Skeleton from '../ui/Skeleton'
 
 const ITEMS_PER_PAGE = 20
 
+const getPaginationItems = (currentPage, totalPages) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const items = [1]
+  const start = Math.max(2, currentPage - 1)
+  const end = Math.min(totalPages - 1, currentPage + 1)
+
+  if (start > 2) items.push('...')
+  for (let page = start; page <= end; page += 1) {
+    items.push(page)
+  }
+  if (end < totalPages - 1) items.push('...')
+
+  items.push(totalPages)
+  return items
+}
+
 export default function SchemeResults({
   filters = {},
   sortBy = 'name',
@@ -101,8 +120,10 @@ export default function SchemeResults({
   // Pagination
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
   const startIdx = totalCount === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE
+  const paginationItems = getPaginationItems(currentPage, totalPages)
 
   const handleViewDetails = (schemeId) => {
+    if (!schemeId) return
     navigate(`/schemes/${schemeId}`)
   }
 
@@ -113,9 +134,9 @@ export default function SchemeResults({
         <Skeleton className="h-24 rounded-2xl" />
         <Skeleton className="h-40 rounded-2xl" />
         <Skeleton className="h-40 rounded-2xl" />
-        <div className="flex items-center justify-center gap-2 text-sm text-stone-500">
+        <div className="flex items-center justify-center gap-2 text-body-sm text-stone-500">
           <Loader className="h-4 w-4 animate-spin" />
-          {t('common.loading') || 'Loading schemes...'}
+          {t('common.loading', { defaultValue: 'Loading schemes...' })}
         </div>
       </div>
     )
@@ -128,7 +149,7 @@ export default function SchemeResults({
         <AlertCircle className="h-9 w-9 text-red-600" />
         <p className="mt-3 font-medium text-red-800">{error}</p>
         <Button onClick={fetchSchemes} className="mt-4" variant="danger">
-          {t('common.retry')}
+          {t('common.retry', { defaultValue: 'Retry' })}
         </Button>
       </Card>
     )
@@ -139,9 +160,9 @@ export default function SchemeResults({
     return (
       <Card className="flex flex-col items-center justify-center border border-stone-200 bg-stone-50 py-14 text-center">
         <SearchX className="h-9 w-9 text-stone-500" />
-        <p className="mt-3 font-medium text-stone-700">{t('schemes.noResults') || 'No schemes found'}</p>
-        <p className="mt-1 text-sm text-stone-500">
-          {t('schemes.tryAdjustingFilters') || 'Try adjusting your filters'}
+        <p className="mt-3 font-medium text-stone-700">{t('schemes.noResults', { defaultValue: 'No schemes found' })}</p>
+        <p className="mt-1 text-body-sm text-stone-500">
+          {t('schemes.tryAdjustingFilters', { defaultValue: 'Try adjusting your filters' })}
         </p>
       </Card>
     )
@@ -152,11 +173,11 @@ export default function SchemeResults({
       {/* Results Header */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-stone-900">
-            {t('schemes.availableSchemes') || 'Available Schemes'}
+          <h2 className="text-h2 font-medium text-stone-900">
+            {t('schemes.availableSchemes', { defaultValue: 'Available Schemes' })}
           </h2>
-          <p className="mt-1 text-sm text-stone-600">
-            {t('schemes.showing')} {totalCount} {t('schemes.schemeFound', { count: totalCount })}
+          <p className="mt-1 text-body-sm text-stone-600">
+            {totalCount} {totalCount === 1 ? 'scheme found' : 'schemes found'}
           </p>
         </div>
 
@@ -178,9 +199,9 @@ export default function SchemeResults({
       <div className="space-y-4">
         {schemes.map((scheme) => (
           <SchemeCard
-            key={scheme.id}
+            key={scheme.id || scheme.scheme_id}
             scheme={scheme}
-            onViewDetails={() => handleViewDetails(scheme.id)}
+            onViewDetails={() => handleViewDetails(scheme.id || scheme.scheme_id)}
           />
         ))}
       </div>
@@ -193,24 +214,34 @@ export default function SchemeResults({
             disabled={currentPage === 1}
             variant="ghost"
           >
-            {t('common.previous')}
+            {t('common.previous', { defaultValue: 'Previous' })}
           </Button>
 
           {/* Page Numbers */}
-          <div className="flex gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`h-9 min-w-[2.25rem] rounded-lg px-2 text-sm font-semibold transition-colors ${
-                  currentPage === page
-                    ? 'bg-orange-600 text-white'
-                    : 'border border-stone-300 text-stone-700 hover:bg-stone-50'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
+          <div className="flex max-w-full flex-wrap items-center justify-center gap-1">
+            {paginationItems.map((page, index) => {
+              if (page === '...') {
+                return (
+                  <span key={`ellipsis-${index}`} className="px-1 text-body-sm font-medium text-stone-500">
+                    ...
+                  </span>
+                )
+              }
+
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`h-9 min-w-[2.25rem] rounded-lg px-2 text-body-sm font-medium transition-colors ${
+                    currentPage === page
+                      ? 'bg-orange-600 text-white'
+                      : 'border border-stone-300 text-stone-700 hover:bg-stone-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              )
+            })}
           </div>
 
           <Button
@@ -218,16 +249,16 @@ export default function SchemeResults({
             disabled={currentPage === totalPages}
             variant="ghost"
           >
-            {t('common.next')}
+            {t('common.next', { defaultValue: 'Next' })}
           </Button>
         </div>
       )}
 
       {/* Page Info */}
-      <div className="mt-4 text-center text-xs text-stone-500">
+      <div className="mt-4 text-center text-caption text-stone-500">
         {totalCount > 0
-          ? `${t('schemes.showing')} ${startIdx + 1}-${Math.min(startIdx + ITEMS_PER_PAGE, totalCount)} ${t('schemes.of')} ${totalCount}`
-          : t('schemes.noResults') || 'No schemes found'}
+          ? `Showing ${startIdx + 1}-${Math.min(startIdx + ITEMS_PER_PAGE, totalCount)} of ${totalCount}`
+          : t('schemes.noResults', { defaultValue: 'No schemes found' })}
       </div>
     </div>
   )

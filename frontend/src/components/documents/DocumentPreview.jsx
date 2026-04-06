@@ -64,10 +64,10 @@ export default function DocumentPreview({
     <div className="w-full max-w-4xl mx-auto p-6 bg-white rounded-lg shadow">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+        <h2 className="text-h2 font-medium text-gray-900 mb-2">
           {t('documents.preview') || 'Document Preview'}
         </h2>
-        <p className="text-gray-600">
+        <p className="text-body text-gray-600">
           {t('documents.previewDesc') || 'Review your document before confirming'}
         </p>
       </div>
@@ -89,7 +89,7 @@ export default function DocumentPreview({
           />
         ) : (
           <div className="text-center">
-            <p className="text-gray-500">{t('documents.noImage') || 'No image to display'}</p>
+            <p className="text-body text-gray-500">{t('documents.noImage') || 'No image to display'}</p>
           </div>
         )}
       </div>
@@ -130,8 +130,8 @@ export default function DocumentPreview({
 
       {/* Zoom Level Indicator */}
       <div className="mb-6 flex items-center justify-center gap-2 text-gray-600">
-        <span className="text-sm font-medium">{t('documents.zoom') || 'Zoom'}:</span>
-        <span className="text-lg font-bold text-blue-600">{zoom}%</span>
+        <span className="text-label font-medium">{t('documents.zoom') || 'Zoom'}:</span>
+        <span className="text-body-sm font-medium text-blue-600">{zoom}%</span>
       </div>
 
       {/* Action Buttons */}
@@ -156,7 +156,7 @@ export default function DocumentPreview({
 
       {/* Info Message */}
       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-800">
+        <p className="text-body-sm text-blue-800">
           {t('documents.previewInfo') || 'Ensure the document is clear, well-lit, and fully visible. Low quality images may result in poor data extraction.'}
         </p>
       </div>

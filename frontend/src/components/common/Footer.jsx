@@ -27,8 +27,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {/* About Section */}
           <div>
-            <h3 className="text-lg font-bold text-white mb-4">YojanaMitra</h3>
-            <p className="text-sm text-gray-400 mb-4">
+            <h3 className="text-h3 font-medium text-white mb-4">YojanaMitra</h3>
+            <p className="text-body-sm text-gray-400 mb-4">
               Making government schemes accessible to every Indian citizen.
             </p>
             <div className="flex gap-4">
@@ -46,8 +46,8 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Quick Links</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="text-white font-medium mb-4">Quick Links</h4>
+            <ul className="space-y-2 text-body-sm">
               <li>
                 <a href="/dashboard" className="hover:text-white transition-colors">
                   Dashboard
@@ -73,8 +73,8 @@ export default function Footer() {
 
           {/* Resources */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Resources</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="text-white font-medium mb-4">Resources</h4>
+            <ul className="space-y-2 text-body-sm">
               <li>
                 <a href="#" className="hover:text-white transition-colors">
                   FAQ
@@ -100,8 +100,8 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Contact Us</h4>
-            <ul className="space-y-3 text-sm">
+            <h4 className="text-white font-medium mb-4">Contact Us</h4>
+            <ul className="space-y-3 text-body-sm">
               <li className="flex items-center gap-2">
                 <Mail size={16} className="flex-shrink-0" />
                 <a href="mailto:support@yojanamitra.in" className="hover:text-white transition-colors">
@@ -127,36 +127,36 @@ export default function Footer() {
           {/* Info Badges */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="p-3 bg-gray-800 rounded-lg text-center">
-              <p className="text-2xl font-bold text-blue-400">1000+</p>
-              <p className="text-xs text-gray-400">Schemes Available</p>
+              <p className="text-h2 font-medium text-blue-400">1000+</p>
+              <p className="text-caption text-gray-400">Schemes Available</p>
             </div>
             <div className="p-3 bg-gray-800 rounded-lg text-center">
-              <p className="text-2xl font-bold text-green-400">500K+</p>
-              <p className="text-xs text-gray-400">Users Registered</p>
+              <p className="text-h2 font-medium text-green-400">500K+</p>
+              <p className="text-caption text-gray-400">Users Registered</p>
             </div>
             <div className="p-3 bg-gray-800 rounded-lg text-center">
-              <p className="text-2xl font-bold text-purple-400">₹100Cr</p>
-              <p className="text-xs text-gray-400">Benefits Accessed</p>
+              <p className="text-h2 font-medium text-purple-400">₹100Cr</p>
+              <p className="text-caption text-gray-400">Benefits Accessed</p>
             </div>
             <div className="p-3 bg-gray-800 rounded-lg text-center">
-              <p className="text-2xl font-bold text-yellow-400">7</p>
-              <p className="text-xs text-gray-400">Languages</p>
+              <p className="text-h2 font-medium text-yellow-400">7</p>
+              <p className="text-caption text-gray-400">Languages</p>
             </div>
           </div>
 
           {/* Copyright */}
-          <div className="flex flex-col md:flex-row items-center justify-between text-sm text-gray-400">
+          <div className="flex flex-col md:flex-row items-center justify-between text-body-sm text-gray-400">
             <p>
               © {currentYear} YojanaMitra. All rights reserved. | Made with ❤️ in India
             </p>
             <p>
               Government schemes made accessible by{' '}
-              <span className="text-white font-semibold">YojanaMitra</span>
+              <span className="text-white font-medium">YojanaMitra</span>
             </p>
           </div>
 
           {/* Disclaimer */}
-          <div className="mt-6 p-3 bg-gray-800 rounded-lg text-xs text-gray-400">
+          <div className="mt-6 p-3 bg-gray-800 rounded-lg text-caption text-gray-400">
             <p>
               <strong>Disclaimer:</strong> YojanaMitra is an independent platform. We are not affiliated with or endorsed by the Government of India. 
               Always verify details on official government portals.

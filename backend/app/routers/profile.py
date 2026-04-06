@@ -9,6 +9,7 @@ from app.dependencies import get_current_user
 from app.models import User, Profile
 from app.schemas.profile import ProfileUpdate, ProfileResponse, ProfileCompleteness
 from app.core.audit import log_audit
+from app.agents.agent_orchestrator import clear_cached_pipeline_result
 from app.services.profile_completeness import calculate_profile_completeness, sync_profile_aliases, update_profile_completeness
 from datetime import datetime
 
@@ -26,6 +27,8 @@ async def get_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     sync_profile_aliases(profile)
+    completeness_pct, _, _, _ = calculate_profile_completeness(profile)
+    profile.profile_complete_pct = completeness_pct
     return profile
 
 
@@ -53,6 +56,7 @@ async def update_profile(
         update_profile_completeness(profile)
 
         db.commit()
+        clear_cached_pipeline_result(current_user.id)
         db.refresh(profile)
 
         log_audit(db, "profile_update", "profile", profile.id, current_user.id)
@@ -79,8 +83,6 @@ async def get_profile_completeness(
     sync_profile_aliases(profile)
     completeness_pct, missing_fields, filled_count, total_count = calculate_profile_completeness(profile)
     profile.profile_complete_pct = completeness_pct
-    profile.updated_at = datetime.utcnow().isoformat()
-    db.commit()
 
     return ProfileCompleteness(
         total_percentage=completeness_pct,
@@ -144,6 +146,7 @@ async def update_optional_questions(
         update_profile_completeness(profile)
 
         db.commit()
+        clear_cached_pipeline_result(current_user.id)
         db.refresh(profile)
 
         log_audit(db, "profile_optional_questions", "profile", profile.id, current_user.id)

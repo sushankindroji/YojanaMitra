@@ -78,12 +78,12 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
     <Card className="mb-4 border border-stone-200 bg-white">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-xl font-bold text-stone-900">{schemeName}</h3>
-          <p className="mt-1 flex items-center gap-1 text-sm text-stone-600">
+          <h3 className="text-h3 font-medium text-stone-900">{schemeName}</h3>
+          <p className="mt-1 flex items-center gap-1 text-body-sm text-stone-600">
             <Building2 className="h-4 w-4" />
             <span className="truncate">{scheme.ministry || scheme.sector || 'General'}</span>
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-stone-600">{schemeDescription || 'No description available.'}</p>
+          <p className="mt-3 text-body-sm leading-relaxed text-stone-600">{schemeDescription || 'No description available.'}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -94,26 +94,26 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
 
       <div className="mt-4 grid gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Benefit Amount</p>
-          <p className="mt-1 flex items-center gap-1 text-sm font-bold text-stone-900">
+          <p className="text-micro font-medium uppercase tracking-wider text-stone-500">Benefit Amount</p>
+          <p className="mt-1 flex items-center gap-1 text-body-sm font-medium text-stone-900">
             <BadgeIndianRupee className="h-4 w-4 text-green-700" />
             {formatAmount(benefitAmount)}
           </p>
         </div>
 
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Benefit Type</p>
-          <p className="mt-1 text-sm font-semibold text-stone-800">{scheme.benefit_type || 'Cash'}</p>
+          <p className="text-micro font-medium uppercase tracking-wider text-stone-500">Benefit Type</p>
+          <p className="mt-1 text-body-sm font-medium text-stone-800">{scheme.benefit_type || 'Cash'}</p>
         </div>
 
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Frequency</p>
-          <p className="mt-1 text-sm font-semibold text-stone-800">{scheme.benefit_frequency || 'One-time'}</p>
+          <p className="text-micro font-medium uppercase tracking-wider text-stone-500">Frequency</p>
+          <p className="mt-1 text-body-sm font-medium text-stone-800">{scheme.benefit_frequency || 'One-time'}</p>
         </div>
 
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Match Score</p>
-          <p className="mt-1 text-sm font-bold text-green-700">{eligibilityPercentage || 100}%</p>
+          <p className="text-micro font-medium uppercase tracking-wider text-stone-500">Match Score</p>
+          <p className="mt-1 text-body-sm font-medium text-green-700">{eligibilityPercentage || 100}%</p>
         </div>
       </div>
 
@@ -121,7 +121,7 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-orange-700 hover:text-orange-800"
+          className="inline-flex items-center gap-2 text-body-sm font-medium text-orange-700 hover:text-orange-800"
         >
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           Eligibility Details
@@ -133,9 +133,9 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
               conditionResults.map((condition, idx) => {
                 const passed = condition.status === 'PASS'
                 return (
-                  <div key={idx} className="flex items-start gap-2 text-sm">
+                  <div key={idx} className="flex items-start gap-2 text-body-sm">
                     <span
-                      className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white ${
+                      className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-caption font-medium text-white ${
                         passed ? 'bg-green-600' : 'bg-amber-600'
                       }`}
                     >
@@ -144,14 +144,14 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
                     <div>
                       <p className={passed ? 'text-green-800' : 'text-amber-800'}>{condition.label_en || condition.field}</p>
                       {condition.is_mandatory ? (
-                        <p className="text-xs text-stone-500">Mandatory requirement</p>
+                        <p className="text-caption text-stone-500">Mandatory requirement</p>
                       ) : null}
                     </div>
                   </div>
                 )
               })
             ) : (
-              <p className="text-sm text-stone-500">No specific conditions available.</p>
+              <p className="text-body-sm text-stone-500">No specific conditions available.</p>
             )}
           </div>
         ) : null}
@@ -173,7 +173,7 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
             href={officialPortalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-10 min-w-[6rem] flex-1 items-center justify-center gap-2 rounded-full bg-green-700 px-4 text-sm font-semibold text-white transition-all duration-150 hover:bg-green-800"
+            className="inline-flex h-10 min-w-[6rem] flex-1 items-center justify-center gap-2 rounded-full bg-green-700 px-4 text-body-sm font-medium text-white transition-all duration-150 hover:bg-green-800"
           >
             Official Portal
             <ExternalLink className="h-4 w-4" />
@@ -181,8 +181,8 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
         ) : null}
       </div>
 
-      <p className="mt-3 text-xs text-stone-500">
-        Application mode: <span className="font-semibold text-stone-700">{scheme.application_mode || 'Online'}</span>
+      <p className="mt-3 text-caption text-stone-500">
+        Application mode: <span className="font-medium text-stone-700">{scheme.application_mode || 'Online'}</span>
       </p>
     </Card>
   )

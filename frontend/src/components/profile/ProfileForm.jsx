@@ -499,11 +499,11 @@ export default function ProfileForm({
     const confidence = rawConfidence > 0 && rawConfidence <= 1 ? rawConfidence * 100 : rawConfidence
 
     if (confidence >= 80) {
-      return <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">High confidence</span>
+      return <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-caption rounded">High confidence</span>
     } else if (confidence >= 60) {
-      return <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">Medium confidence</span>
+      return <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-caption rounded">Medium confidence</span>
     }
-    return <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs rounded">Low confidence</span>
+    return <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-caption rounded">Low confidence</span>
   }
 
   // Render input field
@@ -569,12 +569,12 @@ export default function ProfileForm({
     <div className="w-full max-w-4xl mx-auto p-6 bg-white rounded-lg shadow">
       {/* Header with Completeness */}
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        <h2 className="text-h2 font-medium text-gray-900 mb-4">
           {t('profile.editProfile') || 'Edit Your Profile'}
         </h2>
 
         {autoFilledCount > 0 && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-900">
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-body-sm text-green-900">
             {`Auto-filled ${autoFilledCount} field(s) from uploaded document. Please review and save.`}
           </div>
         )}
@@ -582,10 +582,10 @@ export default function ProfileForm({
         {/* Completeness Bar */}
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-body-sm font-medium text-gray-700">
               {t('profile.completeness') || 'Profile Completeness'}
             </span>
-            <span className="text-sm font-bold text-blue-600">{completeness}%</span>
+            <span className="text-body-sm font-medium text-blue-600">{completeness}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div

@@ -177,7 +177,7 @@ export default function AdminSchemes() {
             </select>
           </div>
 
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-4 text-body-sm text-gray-600">
             Showing {filteredSchemes.length} of {schemes.length} schemes
           </div>
       </Card>
@@ -199,25 +199,25 @@ export default function AdminSchemes() {
               <table className="w-full">
                 <thead className="border-b border-stone-200 bg-stone-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Scheme Name
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Ministry
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Benefit Amount
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Conditions
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Applications
                     </th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-center text-label font-medium tracking-wide text-stone-900">
                       Actions
                     </th>
                   </tr>
@@ -230,13 +230,13 @@ export default function AdminSchemes() {
                     >
                       <td className="px-6 py-4">
                       <div className="font-medium text-stone-900">{scheme.name}</div>
-                      <div className="text-xs text-stone-500">{scheme.id.substring(0, 8)}</div>
+                      <div className="text-caption text-stone-500">{scheme.id.substring(0, 8)}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-stone-600">
+                      <td className="px-6 py-4 text-body-sm text-stone-600">
                         {scheme.ministry || 'N/A'}
                       </td>
                       <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-stone-900">
+                      <span className="text-body-sm font-medium text-stone-900">
                           ₹
                           {scheme.benefit_amount
                             ? (scheme.benefit_amount / 100000).toFixed(1)
@@ -246,7 +246,7 @@ export default function AdminSchemes() {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                        className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+                        className={`inline-block rounded-full px-3 py-1 text-caption font-medium ${
                             scheme.is_active
                               ? 'bg-green-100 text-green-800'
                               : 'bg-stone-100 text-stone-700'
@@ -256,12 +256,12 @@ export default function AdminSchemes() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-block px-2 py-1 rounded text-caption font-medium bg-blue-100 text-blue-800">
                           {scheme.conditions_count || 0} conditions
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                      <span className="text-sm text-stone-600">
+                      <span className="text-body-sm text-stone-600">
                           {scheme.applications_count || 0} apps
                         </span>
                       </td>
@@ -325,10 +325,10 @@ export default function AdminSchemes() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="sticky top-0 flex items-center justify-between border-b border-stone-200 bg-white p-6">
-              <h3 className="text-2xl font-bold text-stone-900">Scheme Details</h3>
+              <h3 className="text-h3 font-medium text-stone-900">Scheme Details</h3>
                 <button
                   onClick={() => setSelectedScheme(null)}
-                className="text-2xl text-stone-500 hover:text-stone-700"
+                className="text-h3 text-stone-500 hover:text-stone-700"
                 >
                   ✕
                 </button>
@@ -337,39 +337,39 @@ export default function AdminSchemes() {
             <div className="space-y-6 p-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                  <p className="text-sm text-stone-600">Scheme Name</p>
+                  <p className="text-label text-stone-600">Scheme Name</p>
                   <p className="font-medium text-stone-900">{selectedScheme.name}</p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Ministry</p>
+                  <p className="text-label text-stone-600">Ministry</p>
                   <p className="font-medium text-stone-900">
                       {selectedScheme.ministry || 'N/A'}
                     </p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Benefit Amount</p>
+                  <p className="text-label text-stone-600">Benefit Amount</p>
                   <p className="font-medium text-stone-900">
                       ₹{(selectedScheme.benefit_amount / 100000).toFixed(1)}L+
                     </p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Status</p>
+                  <p className="text-label text-stone-600">Status</p>
                   <p className="font-medium text-stone-900">
                       {selectedScheme.is_active ? '✓ Active' : '✗ Archived'}
                     </p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Sector</p>
+                  <p className="text-label text-stone-600">Sector</p>
                   <p className="font-medium text-stone-900">{selectedScheme.sector || 'N/A'}</p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">State</p>
+                  <p className="text-label text-stone-600">State</p>
                   <p className="font-medium text-stone-900">{selectedScheme.state || 'All India'}</p>
                   </div>
                 </div>
 
                 <div>
-                <p className="mb-2 text-sm text-stone-600">Description</p>
+                <p className="mb-2 text-label text-stone-600">Description</p>
                 <p className="text-stone-900">{selectedScheme.description || 'No description'}</p>
                 </div>
 
@@ -378,13 +378,13 @@ export default function AdminSchemes() {
                     onClick={() => {
                       setShowForm(true)
                     }}
-                  className="rounded-lg bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-200"
+                  className="rounded-lg bg-blue-100 px-4 py-2 text-body-sm font-medium text-blue-700 hover:bg-blue-200"
                   >
                     Edit Scheme
                   </button>
                   <button
                     onClick={() => setSelectedScheme(null)}
-                  className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+                  className="rounded-lg bg-stone-100 px-4 py-2 text-body-sm font-medium text-stone-700 hover:bg-stone-200"
                   >
                     Close
                   </button>

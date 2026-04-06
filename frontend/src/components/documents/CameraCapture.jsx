@@ -82,10 +82,10 @@ export default function CameraCapture({ onCapture, onCancel }) {
   if (!hasCamera) {
     return (
       <div className="w-full max-w-2xl mx-auto p-6 text-center">
-        <p className="text-red-600 font-semibold">
+        <p className="text-red-600 font-medium">
           {tr('camera.notAvailable', 'Camera is not available')}
         </p>
-        <p className="text-gray-600 text-sm mt-2">
+        <p className="text-gray-600 text-body-sm mt-2">
           {tr('camera.permissionRequired', 'Please enable camera permissions and try again')}
         </p>
         <button
@@ -141,7 +141,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
             />
             <div className="absolute inset-0 flex items-center justify-center">
               <div
-                className="text-yellow-400 text-4xl opacity-50"
+                className="text-yellow-400 text-caption opacity-50"
                 style={{
                   textShadow: '0 0 10px rgba(200, 200, 0, 0.5)',
                 }}
@@ -154,7 +154,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
       </div>
 
       {/* Instructions */}
-      <p className="text-center text-sm text-gray-600 mb-4">
+      <p className="text-center text-body-sm text-gray-600 mb-4">
         {!capturedImage &&
           tr(
             'camera.instructions',
@@ -174,7 +174,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
             {/* Capture Button */}
             <button
               onClick={capturePhoto}
-              className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition font-semibold"
+              className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition font-medium"
             >
               <Camera size={20} />
               {tr('camera.capture', 'Capture')}
@@ -210,7 +210,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
             {/* Confirm Button */}
             <button
               onClick={confirmCapture}
-              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
             >
               <Check size={20} />
               {tr('common.confirm', 'Confirm')}
@@ -238,7 +238,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
       </div>
 
       {/* Permissions Reminder */}
-      <p className="text-xs text-gray-500 text-center mt-4">
+      <p className="text-caption text-gray-500 text-center mt-4">
         {tr(
           'camera.permissionsNote',
           'Make sure your browser has permission to access the camera'

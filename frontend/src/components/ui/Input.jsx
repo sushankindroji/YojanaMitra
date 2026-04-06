@@ -16,7 +16,7 @@ export default function Input({
   return (
     <div className={clsx('w-full', className)}>
       {label ? (
-        <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-stone-700">
+        <label htmlFor={inputId} className="mb-1.5 block text-label font-medium text-stone-700">
           {label}
         </label>
       ) : null}
@@ -34,7 +34,7 @@ export default function Input({
         <input
           id={inputId}
           className={clsx(
-            'h-10 w-full bg-transparent text-sm text-stone-900 placeholder:text-stone-400',
+            'h-10 w-full bg-transparent text-body text-stone-900 placeholder:text-stone-400',
             'focus:outline-none',
             inputClassName
           )}
@@ -46,9 +46,9 @@ export default function Input({
       </div>
 
       {error ? (
-        <p className="mt-1 text-xs font-medium text-red-700">{error}</p>
+        <p className="mt-1 text-caption font-medium text-red-700">{error}</p>
       ) : helperText ? (
-        <p className="mt-1 text-xs text-stone-500">{helperText}</p>
+        <p className="mt-1 text-caption text-stone-500">{helperText}</p>
       ) : null}
     </div>
   )

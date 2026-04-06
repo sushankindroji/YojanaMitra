@@ -59,19 +59,27 @@ export default function SchemeDetail() {
       try {
         setIsLoading(true)
         setError(null)
+        setEligibility(null)
 
         // Fetch scheme details
         const schemeResponse = await schemeService.getSchemeDetail(schemeId)
         setScheme(schemeResponse.data)
 
-        // Fetch eligibility info
-        const eligibilityResponse = await schemeService.getSchemeEligibility?.(schemeId)
-        if (eligibilityResponse?.data) {
-          setEligibility(eligibilityResponse.data)
+        // Eligibility is optional here. Many schemes may not have computed eligibility yet.
+        try {
+          const eligibilityResponse = await schemeService.getSchemeEligibility?.(schemeId)
+          if (eligibilityResponse?.data) {
+            setEligibility(eligibilityResponse.data)
+          }
+        } catch (eligibilityError) {
+          const status = eligibilityError?.response?.status
+          if (![401, 403, 404].includes(status)) {
+            console.warn('Error fetching scheme eligibility:', eligibilityError)
+          }
         }
       } catch (err) {
         console.error('Error fetching scheme details:', err)
-        setError(t('schemes.fetchError') || 'Failed to load scheme details')
+        setError(t('schemes.fetchError', { defaultValue: 'Failed to load scheme details' }))
       } finally {
         setIsLoading(false)
       }
@@ -100,7 +108,7 @@ export default function SchemeDetail() {
       <div className="space-y-3">
         <Skeleton className="h-24 rounded-2xl" />
         <Skeleton className="h-56 rounded-2xl" />
-        <div className="flex items-center justify-center gap-2 text-sm text-stone-500">
+        <div className="flex items-center justify-center gap-2 text-body-sm text-stone-500">
           <Loader className="h-4 w-4 animate-spin" />
           {t('common.loading')}
         </div>
@@ -112,8 +120,8 @@ export default function SchemeDetail() {
     return (
       <Card className="border border-red-200 bg-red-50 py-10 text-center">
         <AlertCircle className="mx-auto h-10 w-10 text-red-600" />
-        <h2 className="mt-3 text-2xl font-bold text-red-900">Error Loading Scheme</h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-red-800">{error || 'Scheme not found'}</p>
+        <h2 className="mt-3 text-h2 font-medium text-red-900">Error Loading Scheme</h2>
+        <p className="mx-auto mt-2 max-w-xl text-body-sm text-red-800">{error || 'Scheme not found'}</p>
         <Button onClick={() => navigate('/schemes')} className="mt-5">
           <ArrowLeft className="h-4 w-4" />
           Back to Schemes
@@ -181,7 +189,7 @@ export default function SchemeDetail() {
                 role="tab"
                 aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                className={`rounded-lg px-4 py-2 text-body-sm font-medium transition ${
                   activeTab === tab.id
                     ? 'bg-orange-600 text-white'
                     : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
@@ -198,30 +206,30 @@ export default function SchemeDetail() {
             <div className="space-y-5">
               {schemeDescription ? (
                 <div>
-                  <h2 className="text-xl font-bold text-stone-900">About This Scheme</h2>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700">{schemeDescription}</p>
+                  <h2 className="text-h3 font-medium text-stone-900">About This Scheme</h2>
+                  <p className="mt-2 whitespace-pre-line text-body-sm leading-relaxed text-stone-700">{schemeDescription}</p>
                 </div>
               ) : null}
 
               <div className="grid gap-4 md:grid-cols-2">
                 {scheme.eligibility_criteria ? (
                   <Card className="h-full border border-stone-200 bg-stone-50">
-                    <h3 className="font-semibold text-stone-900">Eligibility Criteria</h3>
-                    <p className="mt-2 whitespace-pre-line text-sm text-stone-700">{scheme.eligibility_criteria}</p>
+                    <h3 className="font-medium text-stone-900">Eligibility Criteria</h3>
+                    <p className="mt-2 whitespace-pre-line text-body-sm text-stone-700">{scheme.eligibility_criteria}</p>
                   </Card>
                 ) : null}
 
                 {scheme.benefits ? (
                   <Card className="h-full border border-stone-200 bg-stone-50">
-                    <h3 className="font-semibold text-stone-900">Benefits</h3>
-                    <p className="mt-2 whitespace-pre-line text-sm text-stone-700">{scheme.benefits}</p>
+                    <h3 className="font-medium text-stone-900">Benefits</h3>
+                    <p className="mt-2 whitespace-pre-line text-body-sm text-stone-700">{scheme.benefits}</p>
                   </Card>
                 ) : null}
               </div>
 
               {scheme.application_deadline ? (
                 <Card className="border border-amber-200 bg-amber-50">
-                  <p className="text-sm font-semibold text-amber-900">Deadline: {scheme.application_deadline}</p>
+                  <p className="text-body-sm font-medium text-amber-900">Deadline: {scheme.application_deadline}</p>
                 </Card>
               ) : null}
             </div>
@@ -242,7 +250,7 @@ export default function SchemeDetail() {
               ) : (
                 <div className="flex flex-col items-center py-8 text-center">
                   <AlertCircle className="h-10 w-10 text-stone-400" />
-                  <p className="mt-3 text-sm text-stone-600">
+                  <p className="mt-3 text-body-sm text-stone-600">
                     {eligibility ? 'Eligibility information not available' : 'Unable to determine eligibility'}
                   </p>
                 </div>
@@ -254,26 +262,26 @@ export default function SchemeDetail() {
             <div>
               {scheme.application_procedure ? (
                 <div>
-                  <h2 className="text-xl font-bold text-stone-900">How to Apply</h2>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700">
+                  <h2 className="text-h3 font-medium text-stone-900">How to Apply</h2>
+                  <p className="mt-2 whitespace-pre-line text-body-sm leading-relaxed text-stone-700">
                     {scheme.application_procedure}
                   </p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center py-8 text-center">
                   <BookOpen className="h-10 w-10 text-stone-400" />
-                  <p className="mt-3 text-sm text-stone-600">Application procedure details not available</p>
+                  <p className="mt-3 text-body-sm text-stone-600">Application procedure details not available</p>
                 </div>
               )}
 
               {scheme.official_website ? (
                 <Card className="mt-5 border border-blue-200 bg-blue-50">
-                  <p className="text-sm text-blue-900">For more details, visit the official website:</p>
+                  <p className="text-body-sm text-blue-900">For more details, visit the official website:</p>
                   <a
                     href={scheme.official_website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
+                    className="mt-2 inline-flex items-center gap-2 text-body-sm font-medium text-blue-700 hover:text-blue-800"
                   >
                     {scheme.official_website}
                     <ExternalLink className="h-4 w-4" />

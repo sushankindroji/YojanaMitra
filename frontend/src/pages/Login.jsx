@@ -13,7 +13,7 @@ export default function Login() {
 
       <nav className="mx-auto max-w-7xl px-4 py-5 md:px-8">
         <div className="ds-surface flex items-center justify-between rounded-2xl border border-stone-200 px-4 py-3">
-          <Link to="/" className="text-lg font-bold text-stone-900">
+          <Link to="/" className="text-h3 font-medium text-stone-900">
             YojanaMitra
           </Link>
           <LanguageSelector />
@@ -22,15 +22,15 @@ export default function Login() {
 
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-10 md:px-8 lg:grid-cols-2 lg:py-14">
         <section className="hidden rounded-3xl border border-blue-100 bg-blue-950 p-8 text-white shadow-xl lg:block">
-          <p className="inline-flex items-center rounded-full border border-blue-300/30 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue-100">
+          <p className="inline-flex items-center rounded-full border border-blue-300/30 px-3 py-1 text-caption font-medium uppercase tracking-[0.14em] text-blue-100">
             Secure Citizen Access
           </p>
-          <h1 className="mt-4 text-4xl font-extrabold leading-tight">Continue where you left off.</h1>
+          <h1 className="mt-4 text-h1 font-medium leading-tight">Continue where you left off.</h1>
           <p className="mt-4 text-blue-100">
             Track application progress, review eligibility decisions, and discover fresh schemes tailored to your profile.
           </p>
 
-          <ul className="mt-8 space-y-3 text-sm text-blue-100">
+          <ul className="mt-8 space-y-3 text-body-sm text-blue-100">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
               Personalized recommendations
@@ -49,9 +49,9 @@ export default function Login() {
         <section className="mx-auto w-full max-w-md lg:max-w-none lg:self-center">
           <LoginForm />
           <div className="mt-6 text-center">
-            <p className="text-sm text-stone-600">
+            <p className="text-body-sm text-stone-600">
               {t('auth.noAccount', { defaultValue: 'Do not have an account?' })}{' '}
-              <Link to="/register" className="font-semibold text-orange-700 hover:text-orange-800">
+              <Link to="/register" className="font-medium text-orange-700 hover:text-orange-800">
                 {t('auth.registerLink', { defaultValue: 'Create one now' })}
               </Link>
             </p>

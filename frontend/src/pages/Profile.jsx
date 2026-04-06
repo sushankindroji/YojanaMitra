@@ -21,6 +21,18 @@ const categoryFlags = [
   { key: 'is_woman_headed', labelKey: 'profile.isWomanHeaded', fallback: 'Woman-headed household' },
   { key: 'is_minority', labelKey: 'profile.isMinority', fallback: 'Minority' },
 ]
+const educationLevelOptions = [
+  'No Formal Schooling',
+  'Primary',
+  'Middle School',
+  'Secondary (10th)',
+  'Higher Secondary (12th)',
+  'Diploma',
+  'Graduate',
+  'Postgraduate',
+  'Doctorate',
+  'Other',
+]
 
 export default function Profile() {
   const { t } = useTranslation()
@@ -40,6 +52,7 @@ export default function Profile() {
     pincode: '',
     annual_income: '',
     occupation: '',
+    education_level: '',
     social_category: '',
     is_farmer: 0,
     is_student: 0,
@@ -68,6 +81,7 @@ export default function Profile() {
           pincode: profileData.pincode || '',
           annual_income: profileData.annual_income || '',
           occupation: profileData.occupation || '',
+          education_level: profileData.education_level || '',
           social_category: profileData.social_category || '',
           is_farmer: profileData.is_farmer || 0,
           is_student: profileData.is_student || 0,
@@ -113,11 +127,8 @@ export default function Profile() {
       const response = await profileService.updateProfile(submitData)
       setCompleteness(response.data.profile_complete_pct || 0)
       toast.success(t('profile.updateSuccess'))
-      
-      // Redirect after 1.5 seconds to let user see the success message
-      setTimeout(() => {
-        navigate(location.state?.returnTo || '/dashboard', { replace: true })
-      }, 1500)
+
+      navigate(location.state?.returnTo || '/dashboard', { replace: true })
     } catch (error) {
       console.error('Failed to update profile:', error)
       toast.error(error.response?.data?.detail || t('profile.updateFailed'))
@@ -161,7 +172,7 @@ export default function Profile() {
         <Card className="border border-stone-200">
           <div className="mb-4 flex items-center gap-2">
             <UserCircle2 className="h-5 w-5 text-orange-700" />
-            <h3 className="text-lg font-bold text-stone-900">{t('profile.basicInfo')}</h3>
+            <h3 className="text-h3 font-medium text-stone-900">{t('profile.basicInfo')}</h3>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -194,12 +205,12 @@ export default function Profile() {
             />
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-stone-700">{t('profile.gender')} *</label>
+              <label className="mb-1.5 block text-label font-medium text-stone-700">{t('profile.gender')} *</label>
               <select
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-body text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-300"
                 required
               >
                 <option value="">{t('profile.selectGender')}</option>
@@ -214,7 +225,7 @@ export default function Profile() {
         <Card className="border border-stone-200">
           <div className="mb-4 flex items-center gap-2">
             <MapPin className="h-5 w-5 text-blue-700" />
-            <h3 className="text-lg font-bold text-stone-900">{t('profile.address')}</h3>
+            <h3 className="text-h3 font-medium text-stone-900">{t('profile.address')}</h3>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -251,7 +262,7 @@ export default function Profile() {
         <Card className="border border-stone-200">
           <div className="mb-4 flex items-center gap-2">
             <Wallet className="h-5 w-5 text-green-700" />
-            <h3 className="text-lg font-bold text-stone-900">{t('profile.economicInfo')}</h3>
+            <h3 className="text-h3 font-medium text-stone-900">{t('profile.economicInfo')}</h3>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -275,12 +286,31 @@ export default function Profile() {
             />
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-stone-700">{t('profile.socialCategory')}</label>
+              <label className="mb-1.5 block text-label font-medium text-stone-700">
+                {t('profile.educationLevel', { defaultValue: 'Education Level' })}
+              </label>
+              <select
+                name="education_level"
+                value={formData.education_level}
+                onChange={handleChange}
+                className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-body text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-300"
+              >
+                <option value="">{t('profile.selectEducationLevel', { defaultValue: 'Select education level' })}</option>
+                {educationLevelOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-label font-medium text-stone-700">{t('profile.socialCategory')}</label>
               <select
                 name="social_category"
                 value={formData.social_category}
                 onChange={handleChange}
-                className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-body text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-300"
               >
                 <option value="">{t('profile.selectCategory')}</option>
                 <option value="general">{t('profile.general')}</option>
@@ -296,7 +326,7 @@ export default function Profile() {
         <Card className="border border-stone-200">
           <div className="mb-4 flex items-center gap-2">
             <BadgeCheck className="h-5 w-5 text-purple-700" />
-            <h3 className="text-lg font-bold text-stone-900">{t('profile.yourCategories')}</h3>
+            <h3 className="text-h3 font-medium text-stone-900">{t('profile.yourCategories')}</h3>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -305,7 +335,7 @@ export default function Profile() {
               return (
                 <label
                   key={item.key}
-                  className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${
+                  className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-body-sm transition ${
                     checked
                       ? 'border-orange-300 bg-orange-50 text-orange-800'
                       : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'

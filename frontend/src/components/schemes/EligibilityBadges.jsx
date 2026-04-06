@@ -57,7 +57,7 @@ export default function EligibilityBadges({
 
   return (
     <div className="w-full">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+      <h3 className="text-h3 font-medium text-gray-900 mb-4">{title}</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {conditions.map((condition, idx) => {
@@ -77,17 +77,17 @@ export default function EligibilityBadges({
                 <StatusIcon className={`flex-shrink-0 ${status.text}`} size={20} />
                 <div className="flex-1">
                   <p className={`font-medium ${status.text}`}>{condition.name || condition.condition_name}</p>
-                  <p className={`text-sm opacity-75 ${status.text}`}>{condition.description}</p>
+                  <p className={`text-body-sm opacity-75 ${status.text}`}>{condition.description}</p>
                 </div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded ${status.color}`}>
+                <span className={`text-caption font-medium px-2 py-1 rounded ${status.color}`}>
                   {status.label}
                 </span>
               </div>
 
               {/* Tooltip with Details */}
               {hoveredId === idx && (
-                <div className="absolute left-0 top-full mt-2 bg-gray-900 text-white rounded-lg p-3 text-sm shadow-lg z-50 w-64">
-                  <p className="font-semibold mb-2">{condition.name}</p>
+                <div className="absolute left-0 top-full mt-2 bg-gray-900 text-white rounded-lg p-3 text-body-sm shadow-lg z-50 w-64">
+                  <p className="font-medium mb-2">{condition.name}</p>
                   {condition.details && <p className="mb-2">{condition.details}</p>}
                   {condition.user_value && (
                     <p className="border-t border-gray-700 pt-2 mt-2">

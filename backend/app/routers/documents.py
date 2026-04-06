@@ -11,6 +11,7 @@ from app.services.storage_service import storage_service
 from app.services.ocr_service import ocr_service
 from app.schemas.document import DocumentResponse, ExtractionResult
 from app.core.audit import log_audit
+from app.agents.agent_orchestrator import clear_cached_pipeline_result
 from app.config import settings
 from app.services.profile_completeness import sync_profile_aliases, update_profile_completeness
 from datetime import datetime
@@ -23,28 +24,6 @@ logger = logging.getLogger(__name__)
 # Max 50MB per file
 MAX_FILE_SIZE = settings.MAX_UPLOAD_SIZE
 
-DOC_TYPE_ALIASES = {
-    "aadhaar": "aadhaar",
-    "aadhar": "aadhaar",
-    "aadhaar_card": "aadhaar",
-    "aadhaarcard": "aadhaar",
-    "income": "income",
-    "income_certificate": "income",
-    "income certificate": "income",
-    "income_proof": "income",
-    "salary": "income",
-    "salary_certificate": "income",
-    "caste": "caste",
-    "caste_certificate": "caste",
-    "caste certificate": "caste",
-    "community_certificate": "caste",
-    "ration": "ration",
-    "ration_card": "ration",
-    "ration card": "ration",
-    "rationcard": "ration",
-    "other": "other",
-}
-
 DOC_TYPE_ALLOWED_FIELDS = {
     "aadhaar": {
         "full_name",
@@ -56,28 +35,36 @@ DOC_TYPE_ALLOWED_FIELDS = {
         "district",
         "pincode",
     },
-    "income": {
+    "income_certificate": {
         "full_name",
         "annual_income",
         "occupation",
+        "issuing_authority",
         "address",
         "state",
         "district",
         "pincode",
     },
-    "caste": {
+    "caste_certificate": {
         "full_name",
+        "caste_category",
+        "sub_caste",
+        "caste_certificate_number",
+        "caste_issuing_authority",
         "social_category",
         "address",
         "state",
         "district",
         "pincode",
     },
-    "ration": {
+    "ration_card": {
         "full_name",
         "ration_card_number",
         "ration_card_type",
+        "ration_card_category",
+        "bpl_status",
         "is_bpl",
+        "family_size",
         "has_ration_card",
         "address",
         "state",
@@ -100,18 +87,15 @@ DOC_TYPE_ALLOWED_FIELDS = {
 
 
 def _normalize_doc_type(doc_type: str) -> str:
-    if not doc_type:
-        return "other"
-
-    key = doc_type.strip().lower().replace("-", " ").replace("_", " ")
-    key = " ".join(key.split())
-    key = key.replace(" ", "_")
-    return DOC_TYPE_ALIASES.get(key, "other")
+    normalized = ocr_service.normalize_doc_type(doc_type)
+    return normalized or "other"
 
 
 def _filter_extracted_data_for_doc_type(raw_data: dict, doc_type: str) -> dict:
     normalized_doc_type = _normalize_doc_type(doc_type)
-    allowed_fields = DOC_TYPE_ALLOWED_FIELDS.get(normalized_doc_type, DOC_TYPE_ALLOWED_FIELDS["other"])
+    allowed_fields = DOC_TYPE_ALLOWED_FIELDS.get(normalized_doc_type)
+    if not allowed_fields:
+        return dict(raw_data)
     return {key: value for key, value in raw_data.items() if key in allowed_fields}
 
 
@@ -275,7 +259,7 @@ def _normalize_social_category(value: str) -> str:
 
 def _build_profile_patch(extracted_data: dict, doc_type: str) -> dict:
     patch = {}
-    doc_type_norm = (doc_type or "").strip().lower()
+    doc_type_norm = _normalize_doc_type(doc_type)
 
     full_name = (extracted_data.get("full_name") or "").strip()
     if full_name:
@@ -325,7 +309,9 @@ def _build_profile_patch(extracted_data: dict, doc_type: str) -> dict:
         if "student" in lowered_occupation:
             patch["is_student"] = 1
 
-    social_category = _normalize_social_category((extracted_data.get("social_category") or "").strip())
+    social_category = _normalize_social_category(
+        (extracted_data.get("social_category") or extracted_data.get("caste_category") or "").strip()
+    )
     if social_category:
         patch["social_category"] = social_category
 
@@ -333,14 +319,50 @@ def _build_profile_patch(extracted_data: dict, doc_type: str) -> dict:
     if len(aadhaar) == 12 and aadhaar.isdigit():
         patch["aadhaar_last4"] = aadhaar[-4:]
 
-    if doc_type_norm == "ration":
+    if doc_type_norm == "ration_card":
         patch["has_ration_card"] = 1
 
-    ration_card_type = (extracted_data.get("ration_card_type") or "").strip().lower()
+    ration_card_type = (
+        extracted_data.get("ration_card_type")
+        or extracted_data.get("ration_card_category")
+        or ""
+    ).strip().lower()
     if ration_card_type in {"apl", "bpl", "antyodaya", "phh"}:
         patch["ration_card_type"] = ration_card_type
         if ration_card_type in {"bpl", "antyodaya", "phh"}:
             patch["is_bpl"] = 1
+
+    explicit_bpl = str(extracted_data.get("is_bpl") or extracted_data.get("bpl_status") or "").strip().lower()
+    if explicit_bpl in {"1", "true", "yes"}:
+        patch["is_bpl"] = 1
+        patch["bpl_status"] = 1
+
+    if doc_type_norm == "bank_passbook":
+        patch["has_bank_account"] = 1
+        patch["bank_account_linked"] = 1
+
+    if doc_type_norm == "minority_certificate":
+        patch["is_minority"] = 1
+        patch["minority_status"] = 1
+
+    if doc_type_norm == "disability_certificate":
+        patch["has_disability"] = 1
+
+    if doc_type_norm == "kisan_credit_card":
+        patch["kcc_holder"] = 1
+        patch["is_farmer"] = 1
+
+    if doc_type_norm == "crop_insurance_policy":
+        patch["crop_insurance"] = 1
+
+    if doc_type_norm == "pm_kisan_registration":
+        pm_kisan_registered = str(extracted_data.get("pm_kisan_registered") or "").strip().lower()
+        if pm_kisan_registered in {"1", "true", "yes"}:
+            patch["pm_kisan_registered"] = 1
+            patch["is_farmer"] = 1
+
+    if doc_type_norm == "senior_citizen_card":
+        patch["is_senior_citizen"] = 1
 
     return patch
 
@@ -362,7 +384,17 @@ def _apply_profile_patch(profile: Profile, patch: dict):
             continue
 
         if isinstance(value, (int, float)):
-            if field.startswith("is_") or field in {"has_ration_card", "bank_account_linked"}:
+            if field.startswith("is_") or field in {
+                "has_ration_card",
+                "has_bank_account",
+                "bank_account_linked",
+                "bpl_status",
+                "minority_status",
+                "kcc_holder",
+                "crop_insurance",
+                "pm_kisan_registered",
+                "has_disability",
+            }:
                 # For boolean-like flags, allow promotion from 0/None to 1.
                 if int(value) == 1 and int(current or 0) != 1:
                     setattr(profile, field, 1)
@@ -472,6 +504,7 @@ async def process_ocr(doc_id: str, image_bytes: bytes):
         doc.error_message = None
         doc.processed_at = datetime.utcnow().isoformat()
 
+        profile_updated = False
         profile = db.query(Profile).filter(Profile.user_id == doc.user_id).first()
         if profile:
             patch = _build_profile_patch(cleaned_data, doc.doc_type)
@@ -479,8 +512,11 @@ async def process_ocr(doc_id: str, image_bytes: bytes):
                 sync_profile_aliases(profile)
                 profile.updated_at = datetime.utcnow().isoformat()
                 update_profile_completeness(profile)
+                profile_updated = True
 
         db.commit()
+        if profile_updated:
+            clear_cached_pipeline_result(doc.user_id)
     except Exception as e:
         db.rollback()
         failed_doc = db.query(Document).filter(Document.id == doc_id).first()
@@ -575,6 +611,7 @@ async def update_document_extraction(
     doc.verified_at = datetime.utcnow().isoformat()
     doc.processed_at = datetime.utcnow().isoformat()
 
+    profile_updated = False
     profile = db.query(Profile).filter(Profile.user_id == doc.user_id).first()
     if profile:
         patch = _build_profile_patch(cleaned_data, doc.doc_type)
@@ -582,8 +619,11 @@ async def update_document_extraction(
             sync_profile_aliases(profile)
             profile.updated_at = datetime.utcnow().isoformat()
             update_profile_completeness(profile)
+            profile_updated = True
 
     db.commit()
+    if profile_updated:
+        clear_cached_pipeline_result(current_user.id)
     db.refresh(doc)
 
     log_audit(db, "document_extraction_update", "document", doc.id, current_user.id)

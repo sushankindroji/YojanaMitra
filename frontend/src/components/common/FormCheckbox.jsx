@@ -43,7 +43,7 @@ export default function FormCheckbox({
         {label && (
           <label
             htmlFor={name}
-            className={`ml-2 text-sm ${disabled ? 'text-gray-500 cursor-not-allowed' : 'text-gray-700'}`}
+            className={`ml-2 text-body ${disabled ? 'text-gray-500 cursor-not-allowed' : 'text-gray-700'}`}
           >
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
@@ -53,7 +53,7 @@ export default function FormCheckbox({
 
       {/* Error message */}
       {hasError && (
-        <p className="mt-1 text-sm text-red-600 flex items-center gap-1 ml-6">
+        <p className="ml-6 mt-1 flex items-center gap-1 text-caption text-red-600">
           <AlertCircle size={14} />
           {error}
         </p>
@@ -61,7 +61,7 @@ export default function FormCheckbox({
 
       {/* Helper text */}
       {!hasError && helperText && (
-        <p className="mt-1 text-sm text-gray-600 ml-6">
+        <p className="ml-6 mt-1 text-caption text-gray-600">
           {helperText}
         </p>
       )}

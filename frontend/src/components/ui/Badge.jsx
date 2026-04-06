@@ -20,7 +20,7 @@ export default function Badge({ variant = 'neutral', dot = false, className, chi
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-caption font-medium',
         variantStyles[variant],
         className
       )}

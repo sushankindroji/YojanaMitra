@@ -91,13 +91,13 @@ export default function AdminLayout({ children }) {
       >
         <div className="flex h-16 items-center justify-between border-b border-stone-200 px-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-sm font-bold text-orange-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-body-sm font-medium text-orange-700">
               YM
             </div>
             {!collapsed ? (
               <div>
-                <p className="font-bold text-stone-900">YojanaMitra</p>
-                <p className="text-xs text-stone-500">Admin Control</p>
+                <p className="font-medium text-stone-900">YojanaMitra</p>
+                <p className="text-caption text-stone-500">Admin Control</p>
               </div>
             ) : null}
           </div>
@@ -123,9 +123,9 @@ export default function AdminLayout({ children }) {
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
                 title={collapsed ? item.label : ''}
-                className={`relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
+                className={`relative flex items-center gap-3 rounded-xl px-3 py-2 text-body font-medium transition ${
                   isActive
-                    ? 'bg-orange-50 font-semibold text-orange-700 before:absolute before:left-0 before:top-2 before:h-6 before:w-1 before:rounded-r before:bg-orange-600'
+                    ? 'bg-orange-50 font-medium text-orange-700 before:absolute before:left-0 before:top-2 before:h-6 before:w-1 before:rounded-r before:bg-orange-600'
                     : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
                 }`}
               >
@@ -134,7 +134,7 @@ export default function AdminLayout({ children }) {
                   <>
                     <span className="flex-1">{item.label}</span>
                     {item.badge ? (
-                      <span className="ml-auto rounded-full bg-red-600 px-2 py-1 text-xs font-bold text-white">
+                      <span className="ml-auto rounded-full bg-red-600 px-2 py-1 text-caption font-medium text-white">
                         {item.badge}
                       </span>
                     ) : null}
@@ -149,7 +149,7 @@ export default function AdminLayout({ children }) {
           <button
             type="button"
             onClick={() => setCollapsed((value) => !value)}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-stone-600 transition hover:bg-stone-100"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-body text-stone-600 transition hover:bg-stone-100"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -159,7 +159,7 @@ export default function AdminLayout({ children }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-700 transition hover:bg-red-50"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-body text-red-700 transition hover:bg-red-50"
           >
             <LogOut size={18} />
             {!collapsed ? <span>Logout</span> : null}
@@ -180,10 +180,10 @@ export default function AdminLayout({ children }) {
 
           <div className="ml-auto flex items-center gap-4">
             <div className="text-right">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Admin Panel</p>
-              <p className="text-base font-semibold text-stone-900">{currentLabel}</p>
+              <p className="text-micro font-medium uppercase tracking-wider text-stone-500">Admin Panel</p>
+              <p className="text-h3 font-medium text-stone-900">{currentLabel}</p>
             </div>
-            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">ADMIN</span>
+            <span className="rounded-full bg-red-100 px-3 py-1 text-caption font-medium text-red-700">ADMIN</span>
           </div>
         </div>
 

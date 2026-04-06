@@ -56,7 +56,7 @@ class ErrorBoundary extends Component {
               <AlertTriangle className="h-12 w-12 text-red-600" />
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-h2 font-medium text-gray-900 mb-2">
               Oops! Something went wrong
             </h1>
 
@@ -66,7 +66,7 @@ class ErrorBoundary extends Component {
 
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <div className="mb-6 p-4 bg-gray-100 rounded-lg text-left overflow-auto max-h-40">
-                <p className="text-xs font-mono text-gray-800">
+                <p className="text-caption font-mono text-gray-800">
                   <strong>Error:</strong> {this.state.error.toString()}
                 </p>
               </div>
@@ -89,7 +89,7 @@ class ErrorBoundary extends Component {
             </div>
 
             {process.env.NODE_ENV === 'development' && (
-              <p className="text-xs text-gray-500 mt-4">
+              <p className="text-caption text-gray-500 mt-4">
                 Check browser console for more details
               </p>
             )}

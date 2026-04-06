@@ -32,6 +32,10 @@ def set_cached_pipeline_result(user_id: str, payload: Dict[str, Any]) -> None:
     PIPELINE_CACHE[user_id] = payload
 
 
+def clear_cached_pipeline_result(user_id: str) -> None:
+    PIPELINE_CACHE.pop(user_id, None)
+
+
 async def _emit_progress(progress_callback: Optional[Callable[[int, str], None]], pct: int, stage: str) -> None:
     if not progress_callback:
         return

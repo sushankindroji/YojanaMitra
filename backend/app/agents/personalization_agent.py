@@ -111,7 +111,7 @@ class PersonalizationAgent:
             "top_benefit_amount": float(ranked.get("top_benefit_amount", 0) or 0),
             "top_scheme": top_scheme_payload,
             "scheme_insight": {
-                "headline": f"{total_eligible_count} schemes match your profile",
+                "headline": f"{total_eligible_count} schemes are fully or highly matched",
                 "highlight": highlight,
                 "action_label": "View all eligible schemes",
             },
@@ -122,6 +122,8 @@ class PersonalizationAgent:
             },
             "quick_stats": {
                 "eligible": total_eligible_count,
+                "fully_eligible": len(fully_eligible),
+                "highly_eligible": len(highly_eligible),
                 "partially_eligible": len(partially_eligible),
                 "applied": int(applied_count),
                 "one_step_away": len(one_step_away),

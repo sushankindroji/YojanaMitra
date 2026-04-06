@@ -1,9 +1,9 @@
 import clsx from 'clsx'
 
 const sizeStyles = {
-  sm: 'h-8 w-8 text-xs',
-  md: 'h-10 w-10 text-sm',
-  lg: 'h-14 w-14 text-lg',
+  sm: 'h-8 w-8 text-caption',
+  md: 'h-10 w-10 text-body-sm',
+  lg: 'h-14 w-14 text-h3',
 }
 
 const palette = [
@@ -45,7 +45,7 @@ export default function Avatar({ src, name = '', size = 'md', className }) {
     <span
       aria-label={name || 'User avatar'}
       className={clsx(
-        'inline-flex items-center justify-center rounded-full bg-gradient-to-br font-semibold text-white',
+        'inline-flex items-center justify-center rounded-full bg-gradient-to-br font-medium text-white',
         gradient,
         sizeStyles[size],
         className

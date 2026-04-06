@@ -32,8 +32,8 @@ export default function Landing() {
       <header className="mx-auto max-w-7xl px-4 py-5 md:px-8">
         <div className="ds-surface flex items-center justify-between rounded-2xl border border-stone-200 px-4 py-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">YojanaMitra</p>
-            <p className="text-sm text-stone-600">Your scheme, your right</p>
+            <p className="text-micro font-medium uppercase tracking-wider text-orange-700">YojanaMitra</p>
+            <p className="text-body-sm text-stone-600">Your scheme, your right</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -54,18 +54,18 @@ export default function Landing() {
             <div className="absolute -right-14 -top-14 h-52 w-52 rounded-full bg-orange-200/30" />
             <div className="absolute -bottom-16 right-20 h-44 w-44 rounded-full bg-green-200/30" />
 
-            <p className="relative mb-3 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/75 px-3 py-1 text-xs font-semibold text-orange-700">
+            <p className="relative mb-3 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/75 px-3 py-1 text-caption font-medium text-orange-700">
               <Sparkles className="h-3.5 w-3.5" />
               {greeting}
             </p>
 
-            <h1 className="relative text-3xl font-extrabold leading-tight text-stone-900 md:text-5xl">
+            <h1 className="relative text-h1 font-medium leading-tight text-stone-900 md:text-h1">
               {t('landing.heroTitle', {
                 defaultValue: 'Find every government scheme you deserve, in your own language.',
               })}
             </h1>
 
-            <p className="relative mt-4 max-w-2xl text-base text-stone-600 md:text-lg">
+            <p className="relative mt-4 max-w-2xl text-body-lg text-stone-600 md:text-body-lg">
               {t('landing.heroDesc', {
                 defaultValue:
                   'YojanaMitra maps your profile to verified central and state schemes so you can discover, compare, and apply with confidence.',
@@ -88,10 +88,10 @@ export default function Landing() {
           </Card>
 
           <div className="space-y-4">
-            <Card variant="elevated" className="bg-blue-950 text-white">
-              <p className="mb-1 text-sm font-semibold text-blue-200">Trust & Security</p>
-              <h2 className="text-xl font-bold">Built for citizen-first privacy and transparent eligibility checks.</h2>
-              <ul className="mt-4 space-y-2 text-sm text-blue-100">
+            <Card variant="elevated" className="!bg-blue-950 !text-white border-blue-900">
+              <p className="mb-1 text-label font-medium text-blue-100">Trust & Security</p>
+              <h2 className="text-h3 font-medium">Built for citizen-first privacy and transparent eligibility checks.</h2>
+              <ul className="mt-4 space-y-2 text-body-sm text-blue-50">
                 <li className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4" />
                   Encrypted document processing pipeline
@@ -106,8 +106,8 @@ export default function Landing() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-1">
               {quickStats.map((stat) => (
                 <Card key={stat.label} className="p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-stone-500">{stat.label}</p>
-                  <p className="mt-1 text-2xl font-bold text-stone-900">{stat.value}</p>
+                  <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{stat.label}</p>
+                  <p className="mt-1 text-h2 font-medium text-stone-900">{stat.value}</p>
                 </Card>
               ))}
             </div>

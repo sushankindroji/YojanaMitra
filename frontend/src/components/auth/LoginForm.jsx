@@ -53,8 +53,8 @@ export default function LoginForm() {
     <Card variant="elevated" className="mx-auto w-full max-w-md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <h2 className="text-2xl font-bold text-stone-900">{t('auth.signIn', { defaultValue: 'Sign In' })}</h2>
-          <p className="mt-1 text-sm text-stone-600">
+          <h2 className="text-h2 font-medium text-stone-900">{t('auth.signIn', { defaultValue: 'Sign In' })}</h2>
+          <p className="mt-1 text-body-sm text-stone-600">
             {t('auth.loginDescription', { defaultValue: 'Access your personalized scheme dashboard.' })}
           </p>
         </div>

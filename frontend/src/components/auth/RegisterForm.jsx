@@ -87,8 +87,8 @@ export default function RegisterForm() {
     <Card variant="elevated" className="mx-auto w-full max-w-md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <h2 className="text-2xl font-bold text-stone-900">{t('auth.createAccount', { defaultValue: 'Create Account' })}</h2>
-          <p className="mt-1 text-sm text-stone-600">
+          <h2 className="text-h2 font-medium text-stone-900">{t('auth.createAccount', { defaultValue: 'Create Account' })}</h2>
+          <p className="mt-1 text-body-sm text-stone-600">
             {t('auth.registerDescription', { defaultValue: 'Create your citizen profile and start discovering schemes.' })}
           </p>
         </div>
@@ -141,7 +141,7 @@ export default function RegisterForm() {
           required
         />
 
-        <label className="flex items-start gap-2 text-sm text-stone-600">
+        <label className="flex items-start gap-2 text-label text-stone-600">
           <input
             type="checkbox"
             name="agreeTerms"

@@ -33,7 +33,7 @@ const LanguageSelector = () => {
         className="flex items-center gap-2 px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
       >
         <span>{currentLang.flag}</span>
-        <span className="text-sm font-medium">{currentLang.name}</span>
+        <span className="text-body-sm font-medium">{currentLang.name}</span>
         <FiChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 

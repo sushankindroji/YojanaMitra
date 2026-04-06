@@ -8,7 +8,7 @@ from typing import Any, Dict, Tuple
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.agents.agent_orchestrator import run_full_eligibility_pipeline
+from app.agents.agent_orchestrator import clear_cached_pipeline_result, run_full_eligibility_pipeline
 from app.agents.job_store import create_job, get_latest_job, update_job
 from app.database import SessionLocal, get_db
 from app.dependencies import get_current_user
@@ -383,15 +383,38 @@ async def onboarding_status(
         raise HTTPException(status_code=404, detail="Profile not found")
 
     aadhaar_done = int(profile.aadhaar_verified or 0) == 1
+    if not aadhaar_done:
+        verified_aadhaar_doc = (
+            db.query(Document)
+            .filter(
+                Document.user_id == current_user.id,
+                Document.doc_type == "aadhaar",
+                Document.is_verified == 1,
+            )
+            .order_by(Document.uploaded_at.desc())
+            .first()
+        )
+        if verified_aadhaar_doc:
+            aadhaar_done = True
+            profile.aadhaar_verified = 1
+            profile.updated_at = datetime.utcnow().isoformat()
+            db.commit()
+
     completed = int(profile.onboarding_complete or 0) == 1
 
     step = int(profile.onboarding_step or 1)
+    step = max(1, min(4, step))
     if completed:
         step = 4
-    elif not aadhaar_done:
+    elif step == 1 and not aadhaar_done:
         step = 1
+    elif step < 2 and aadhaar_done:
+        step = 2
 
     latest_job = get_latest_job(current_user.id)
+
+    if latest_job and latest_job.get("status") in {"running", "failed"}:
+        step = 4
 
     return {
         "step": step,
@@ -487,6 +510,7 @@ async def confirm_aadhaar(
     profile.updated_at = datetime.utcnow().isoformat()
 
     db.commit()
+    clear_cached_pipeline_result(current_user.id)
 
     return {"profile_updated": True, "next_step": "documents"}
 
@@ -578,6 +602,7 @@ async def confirm_document(
     profile.updated_at = datetime.utcnow().isoformat()
 
     db.commit()
+    clear_cached_pipeline_result(current_user.id)
 
     return {"profile_updated": True}
 
@@ -652,6 +677,7 @@ async def complete_onboarding(
     update_profile_completeness(profile)
 
     db.commit()
+    clear_cached_pipeline_result(current_user.id)
 
     job_id = create_job(current_user.id, stage="pipeline_start")
     background_tasks.add_task(_run_pipeline_job, job_id, current_user.id)

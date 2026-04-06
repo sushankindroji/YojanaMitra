@@ -27,31 +27,159 @@ const DOCUMENT_TYPES = [
   {
     id: 'aadhaar',
     name: 'Aadhaar Card',
-    description: 'Unique 12-digit number',
+    category: 'Identity',
+    description: 'Unique 12-digit identity number',
     icon: FileText,
   },
   {
-    id: 'income',
+    id: 'pan_card',
+    name: 'PAN Card',
+    category: 'Identity',
+    description: 'PAN number and name verification',
+    icon: FileText,
+  },
+  {
+    id: 'voter_id',
+    name: 'Voter ID',
+    category: 'Identity',
+    description: 'Voter ID and address details',
+    icon: FileText,
+  },
+  {
+    id: 'passport',
+    name: 'Passport',
+    category: 'Identity',
+    description: 'Passport number and identity details',
+    icon: FileText,
+  },
+  {
+    id: 'income_certificate',
     name: 'Income Certificate',
+    category: 'Income',
     description: 'Latest tax or salary certificate',
     icon: FileText,
   },
   {
-    id: 'caste',
-    name: 'Caste Certificate',
-    description: 'SC/ST/OBC certificate if applicable',
+    id: 'ration_card',
+    name: 'BPL / Ration Card',
+    category: 'Income',
+    description: 'BPL status, family size, and card details',
     icon: FileText,
   },
   {
-    id: 'ration',
-    name: 'Ration Card',
-    description: 'BPL or APL ration card',
+    id: 'bank_passbook',
+    name: 'Bank Passbook',
+    category: 'Income',
+    description: 'Bank name, account mask, and IFSC',
+    icon: FileText,
+  },
+  {
+    id: 'tenth_marksheet',
+    name: '10th Marksheet',
+    category: 'Education',
+    description: 'Board, year, and percentage',
+    icon: FileText,
+  },
+  {
+    id: 'twelfth_marksheet',
+    name: '12th Marksheet',
+    category: 'Education',
+    description: 'Board, year, and percentage',
+    icon: FileText,
+  },
+  {
+    id: 'degree_certificate',
+    name: 'Degree Certificate',
+    category: 'Education',
+    description: 'Degree, institution, and score',
+    icon: FileText,
+  },
+  {
+    id: 'kisan_credit_card',
+    name: 'Kisan Credit Card',
+    category: 'Agriculture',
+    description: 'KCC number and credit limit',
+    icon: FileText,
+  },
+  {
+    id: 'land_records',
+    name: 'Land Records / Patta',
+    category: 'Agriculture',
+    description: 'Land area, survey number, and type',
+    icon: FileText,
+  },
+  {
+    id: 'pm_kisan_registration',
+    name: 'PM-KISAN Registration',
+    category: 'Agriculture',
+    description: 'Registration status and farmer ID',
+    icon: FileText,
+  },
+  {
+    id: 'disability_certificate',
+    name: 'Disability Certificate',
+    category: 'Special Category',
+    description: 'Type, percentage, and authority',
+    icon: FileText,
+  },
+  {
+    id: 'caste_certificate',
+    name: 'Caste Certificate',
+    category: 'Special Category',
+    description: 'SC/ST/OBC certificate details',
+    icon: FileText,
+  },
+  {
+    id: 'minority_certificate',
+    name: 'Minority Certificate',
+    category: 'Special Category',
+    description: 'Religion and minority status proof',
+    icon: FileText,
+  },
+  {
+    id: 'soil_health_card',
+    name: 'Soil Health Card',
+    category: 'Farmer Specific',
+    description: 'Soil type and recommendations',
+    icon: FileText,
+  },
+  {
+    id: 'crop_insurance_policy',
+    name: 'Crop Insurance Policy',
+    category: 'Farmer Specific',
+    description: 'Policy number and insured amount',
+    icon: FileText,
+  },
+  {
+    id: 'senior_citizen_card',
+    name: 'Senior Citizen Card',
+    category: 'Senior Citizen',
+    description: 'Age confirmation and issuing authority',
     icon: FileText,
   },
 ]
 
 const DOC_REVIEW_FIELD_ORDER = {
   aadhaar: ['full_name', 'dob', 'gender', 'aadhaar_number', 'state', 'district', 'pincode'],
+  pan_card: ['full_name', 'pan_number', 'dob', 'state', 'district', 'pincode'],
+  voter_id: ['full_name', 'voter_id_number', 'address', 'state', 'district', 'pincode'],
+  passport: ['full_name', 'passport_number', 'dob', 'gender', 'state', 'district', 'pincode'],
+  income_certificate: ['full_name', 'annual_income', 'occupation', 'issuing_authority', 'state', 'district', 'pincode'],
+  ration_card: ['full_name', 'ration_card_number', 'ration_card_category', 'ration_card_type', 'bpl_status', 'is_bpl', 'family_size', 'state', 'district', 'pincode'],
+  bank_passbook: ['full_name', 'bank_name', 'account_number_masked', 'ifsc', 'state', 'district', 'pincode'],
+  tenth_marksheet: ['full_name', 'education_board', 'education_year', 'education_percentage', 'state', 'district'],
+  twelfth_marksheet: ['full_name', 'education_board', 'education_year', 'education_percentage', 'state', 'district'],
+  degree_certificate: ['full_name', 'degree_name', 'institution_name', 'education_year', 'education_percentage', 'state', 'district'],
+  kisan_credit_card: ['full_name', 'kcc_number', 'kcc_credit_limit', 'bank_name', 'state', 'district'],
+  land_records: ['full_name', 'land_area_acres', 'land_survey_number', 'land_type', 'state', 'district'],
+  pm_kisan_registration: ['full_name', 'pm_kisan_registered', 'pm_kisan_farmer_id', 'state', 'district'],
+  disability_certificate: ['full_name', 'disability_type', 'disability_percentage', 'disability_issuing_authority', 'state', 'district'],
+  caste_certificate: ['full_name', 'caste_category', 'sub_caste', 'caste_certificate_number', 'caste_issuing_authority', 'state', 'district'],
+  minority_certificate: ['full_name', 'religion', 'minority_status', 'state', 'district'],
+  soil_health_card: ['full_name', 'soil_type', 'state', 'district'],
+  crop_insurance_policy: ['full_name', 'crop_insurance_policy_number', 'crop_insurance_sum_insured', 'insured_crops', 'state', 'district'],
+  senior_citizen_card: ['full_name', 'dob', 'age', 'senior_citizen_issuing_authority', 'state', 'district'],
+  // Backward-compatible aliases for any in-flight states
   income: ['full_name', 'annual_income', 'occupation', 'state', 'district', 'pincode'],
   caste: ['full_name', 'social_category', 'state', 'district', 'pincode'],
   ration: ['full_name', 'ration_card_number', 'ration_card_type', 'is_bpl', 'state', 'district', 'pincode'],
@@ -229,6 +357,8 @@ const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
     return {}
   }
 
+  const normalizedDocType = toText(docType).toLowerCase()
+
   const valueFor = (...keys) => {
     for (const key of keys) {
       if (key in confirmedData) {
@@ -300,11 +430,11 @@ const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
     patch.social_category = socialCategory
   }
 
-  if (docType === 'ration') {
+  if (normalizedDocType === 'ration' || normalizedDocType === 'ration_card') {
     patch.has_ration_card = 1
   }
 
-  const rationCardType = valueFor('ration_card_type').toLowerCase()
+  const rationCardType = valueFor('ration_card_type', 'ration_card_category').toLowerCase()
   if (['apl', 'bpl', 'phh', 'antyodaya'].includes(rationCardType)) {
     patch.ration_card_type = rationCardType
     if (['bpl', 'phh', 'antyodaya'].includes(rationCardType)) {
@@ -312,13 +442,47 @@ const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
     }
   }
 
-  const explicitBpl = toText(confirmedData.is_bpl).toLowerCase()
+  const explicitBpl = toText(confirmedData.is_bpl || confirmedData.bpl_status).toLowerCase()
   if (explicitBpl === '1' || explicitBpl === 'true' || explicitBpl === 'yes') {
     patch.is_bpl = 1
   }
 
-  if (docType === 'caste' && socialCategory) {
+  if ((normalizedDocType === 'caste' || normalizedDocType === 'caste_certificate') && socialCategory) {
     patch.social_category = socialCategory
+  }
+
+  if (normalizedDocType === 'bank_passbook') {
+    patch.has_bank_account = 1
+    patch.bank_account_linked = 1
+  }
+
+  if (normalizedDocType === 'minority_certificate') {
+    patch.is_minority = 1
+  }
+
+  if (normalizedDocType === 'disability_certificate') {
+    patch.has_disability = 1
+  }
+
+  if (normalizedDocType === 'kisan_credit_card') {
+    patch.kcc_holder = 1
+    patch.is_farmer = 1
+  }
+
+  if (normalizedDocType === 'crop_insurance_policy') {
+    patch.crop_insurance = 1
+  }
+
+  if (normalizedDocType === 'pm_kisan_registration') {
+    const pmKisanRegistered = toText(confirmedData.pm_kisan_registered).toLowerCase()
+    if (pmKisanRegistered === '1' || pmKisanRegistered === 'true' || pmKisanRegistered === 'yes') {
+      patch.pm_kisan_registered = 1
+      patch.is_farmer = 1
+    }
+  }
+
+  if (normalizedDocType === 'senior_citizen_card') {
+    patch.is_senior_citizen = 1
   }
 
   return patch
@@ -566,10 +730,10 @@ export default function UploadDocuments() {
 
       <div className="mx-auto w-full max-w-4xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-stone-900">
+          <h2 className="text-h3 font-medium text-stone-900">
             {tr('uploadDocuments.title', 'Upload Your Documents')}
           </h2>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Step {step} of 5</p>
+          <p className="text-caption font-medium uppercase tracking-wide text-stone-500">Step {step} of 5</p>
         </div>
 
         {/* Progress Stepper */}
@@ -577,7 +741,7 @@ export default function UploadDocuments() {
           {[1, 2, 3, 4, 5].map((s) => (
             <div key={s} className="flex items-center">
               <div
-                className={`h-9 w-9 rounded-full flex items-center justify-center font-bold text-xs transition ${
+                className={`h-9 w-9 rounded-full flex items-center justify-center font-medium text-caption transition ${
                   step >= s
                     ? 'bg-orange-600 text-white'
                     : 'bg-stone-300 text-stone-600'
@@ -597,7 +761,7 @@ export default function UploadDocuments() {
         </div>
 
         {/* Step Labels */}
-        <div className="mb-5 grid grid-cols-5 gap-2 text-[11px] font-semibold text-center">
+        <div className="mb-5 grid grid-cols-5 gap-2 text-caption font-medium text-center">
           <div className={step === 1 ? 'text-orange-700' : 'text-stone-500'}>
             {tr('uploadDocuments.selectType', 'Select')}
           </div>
@@ -620,7 +784,7 @@ export default function UploadDocuments() {
           {/* Step 1: Select Document Type */}
           {step === 1 && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-800">
+              <h2 className="text-h2 font-medium text-gray-800">
                 {tr('uploadDocuments.selectDocType', 'What would you like to upload?')}
               </h2>
 
@@ -634,14 +798,17 @@ export default function UploadDocuments() {
                       className="rounded-xl border-2 border-stone-200 p-5 text-left transition hover:border-orange-300 hover:bg-orange-50"
                     >
                       <Icon size={28} className="mb-3 text-orange-700" />
-                      <h3 className="font-bold text-stone-900">{doc.name}</h3>
-                      <p className="mt-1 text-sm text-stone-600">{doc.description}</p>
+                      {doc.category ? (
+                        <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{doc.category}</p>
+                      ) : null}
+                      <h3 className="font-medium text-stone-900">{doc.name}</h3>
+                      <p className="mt-1 text-body-sm text-stone-600">{doc.description}</p>
                     </button>
                   )
                 })}
               </div>
 
-              <p className="text-center text-sm text-stone-600">
+              <p className="text-center text-body-sm text-stone-600">
                 {tr(
                   'uploadDocuments.optionalNote',
                   'You can upload these documents later if needed'
@@ -654,7 +821,7 @@ export default function UploadDocuments() {
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                <h2 className="text-h2 font-medium text-gray-800 mb-2">
                   {tr('uploadDocuments.uploadDoc', 'Upload Your Document')}
                 </h2>
                 <p className="text-gray-600">
@@ -666,7 +833,7 @@ export default function UploadDocuments() {
               <div className="flex gap-2 border-b">
                 <button
                   onClick={() => setUseCamera(false)}
-                  className={`px-4 py-2 font-semibold border-b-2 transition ${
+                  className={`px-4 py-2 font-medium border-b-2 transition ${
                     !useCamera
                       ? 'border-orange-600 text-orange-700'
                       : 'border-transparent text-stone-600'
@@ -677,7 +844,7 @@ export default function UploadDocuments() {
                 </button>
                 <button
                   onClick={() => setUseCamera(true)}
-                  className={`px-4 py-2 font-semibold border-b-2 transition ${
+                  className={`px-4 py-2 font-medium border-b-2 transition ${
                     useCamera
                       ? 'border-orange-600 text-orange-700'
                       : 'border-transparent text-stone-600'
@@ -717,7 +884,7 @@ export default function UploadDocuments() {
               <div className="inline-block">
                 <Loader size={48} className="mb-4 animate-spin text-orange-700" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-h2 font-medium text-gray-900 mb-2">
                 {tr('uploadDocuments.extractingData', 'Extracting Data')}
               </h2>
               <p className="text-gray-600">
@@ -726,7 +893,7 @@ export default function UploadDocuments() {
                   'Please wait while we analyze your document...'
                 )}
               </p>
-              <p className="text-sm text-gray-500 mt-4">
+              <p className="text-body-sm text-gray-500 mt-4">
                 {tr('uploadDocuments.timeEstimate', 'This usually takes 30-60 seconds')}
               </p>
             </div>
@@ -747,7 +914,7 @@ export default function UploadDocuments() {
           {step === 5 && (
             <div className="text-center py-12">
               <CheckCircle size={64} className="text-green-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-h2 font-medium text-gray-900 mb-2">
                 {tr('uploadDocuments.success', 'Document Uploaded Successfully!')}
               </h2>
               <p className="text-gray-600 mb-4">
@@ -758,7 +925,7 @@ export default function UploadDocuments() {
               </p>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
-                <p className="text-sm text-blue-800">
+                <p className="text-body-sm text-blue-800">
                   <strong>{tr('uploadDocuments.documentsUploaded', 'Documents uploaded:')}</strong>{' '}
                   {uploadedCount} / {DOCUMENT_TYPES.length}
                 </p>

@@ -81,7 +81,7 @@ export default function Modal({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-xl font-bold text-stone-900">{title}</h2>
+          <h2 className="text-h3 font-medium text-stone-900">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -92,7 +92,7 @@ export default function Modal({
           </button>
         </div>
 
-        <div className="text-sm text-stone-700">{children}</div>
+        <div className="text-body text-stone-700">{children}</div>
 
         {actions ? <div className="mt-5 flex flex-wrap justify-end gap-2">{actions}</div> : null}
       </div>

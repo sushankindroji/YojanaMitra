@@ -85,12 +85,12 @@ export default function Navbar() {
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 cursor-pointer"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-medium text-body-sm">
               Y
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">YojanaMitra</h1>
-              <p className="text-xs text-gray-600">Government Schemes Made Easy</p>
+              <h1 className="text-body font-medium text-gray-900">YojanaMitra</h1>
+              <p className="text-caption text-gray-600">Government Schemes Made Easy</p>
             </div>
           </div>
 
@@ -100,7 +100,7 @@ export default function Navbar() {
               <button
                 key={link.path}
                 onClick={() => navigate(link.path)}
-                className={`px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-2 ${
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-body font-medium transition-colors ${
                   isActive(link.path)
                     ? 'bg-blue-100 text-blue-600'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -126,10 +126,10 @@ export default function Navbar() {
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium text-body-sm">
                   {user.full_name?.charAt(0) || 'U'}
                 </div>
-                <span className="hidden sm:inline text-sm font-medium text-gray-700">
+                <span className="hidden sm:inline text-body-sm font-medium text-gray-700">
                   {user.full_name || 'User'}
                 </span>
               </button>
@@ -138,8 +138,8 @@ export default function Navbar() {
               {isProfileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
                   <div className="px-4 py-2 border-b border-gray-200">
-                    <p className="text-sm font-semibold text-gray-900">{user.full_name || user.name || user.email || 'User'}</p>
-                    <p className="text-xs text-gray-600">{user.email}</p>
+                    <p className="text-body-sm font-medium text-gray-900">{user.full_name || user.name || user.email || 'User'}</p>
+                    <p className="text-caption text-gray-600">{user.email}</p>
                   </div>
 
                   <button
@@ -147,7 +147,7 @@ export default function Navbar() {
                       navigate('/profile')
                       setIsProfileMenuOpen(false)
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-body-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                   >
                     <User size={16} />
                     My Profile
@@ -158,7 +158,7 @@ export default function Navbar() {
                       navigate('/settings')
                       setIsProfileMenuOpen(false)
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-body-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                   >
                     <Settings size={16} />
                     Settings
@@ -168,7 +168,7 @@ export default function Navbar() {
 
                   <button
                     onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium"
+                    className="w-full px-4 py-2 text-left text-body-sm text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium"
                   >
                     <LogOut size={16} />
                     Logout
@@ -197,7 +197,7 @@ export default function Navbar() {
                   navigate(link.path)
                   setIsMobileMenuOpen(false)
                 }}
-                className={`w-full text-left px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-left text-body font-medium transition-colors ${
                   isActive(link.path)
                     ? 'bg-blue-100 text-blue-600 font-medium'
                     : 'text-gray-600 hover:bg-gray-100'

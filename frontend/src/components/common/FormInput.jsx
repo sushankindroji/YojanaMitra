@@ -35,7 +35,7 @@ export default function FormInput({
       {label && (
         <label
           htmlFor={name}
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="mb-2 block text-label font-medium text-gray-700"
         >
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
@@ -64,7 +64,7 @@ export default function FormInput({
           minLength={minLength}
           required={required}
           className={`
-            w-full px-4 py-2 border rounded-lg transition-all
+            w-full border px-4 py-2 text-body rounded-lg transition-all
             ${Icon ? 'pl-10' : 'pl-4'}
             ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'}
             ${hasError 
@@ -95,7 +95,7 @@ export default function FormInput({
 
       {/* Error message */}
       {hasError && (
-        <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+        <p className="mt-1 flex items-center gap-1 text-caption text-red-600">
           <AlertCircle size={14} />
           {error}
         </p>
@@ -103,14 +103,14 @@ export default function FormInput({
 
       {/* Helper text */}
       {!hasError && helperText && (
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-caption text-gray-600">
           {helperText}
         </p>
       )}
 
       {/* Success message */}
       {isSuccess && successMessage && (
-        <p className="mt-1 text-sm text-green-600 flex items-center gap-1">
+        <p className="mt-1 flex items-center gap-1 text-caption text-green-600">
           <Check size={14} />
           {successMessage}
         </p>

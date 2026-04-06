@@ -9,9 +9,9 @@ const variantStyles = {
 }
 
 const sizeStyles = {
-  sm: 'h-8 px-3 text-xs',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-12 px-5 text-base',
+  sm: 'h-8 px-3 text-body-sm',
+  md: 'h-10 px-4 text-body',
+  lg: 'h-12 px-5 text-body',
 }
 
 export default function Button({
@@ -28,7 +28,7 @@ export default function Button({
   return (
     <button
       className={clsx(
-        'inline-flex min-w-[6rem] items-center justify-center gap-2 rounded-full font-semibold transition-all duration-150',
+        'inline-flex min-w-[6rem] items-center justify-center gap-2 rounded-full font-medium transition-all duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         'disabled:cursor-not-allowed disabled:opacity-70',
         variantStyles[variant],
@@ -39,7 +39,7 @@ export default function Button({
       {...props}
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-      <span className={clsx(loading && 'opacity-90')}>{children}</span>
+      <span className={clsx('inline-flex items-center gap-2', loading && 'opacity-90')}>{children}</span>
     </button>
   )
 }

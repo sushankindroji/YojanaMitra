@@ -11,7 +11,7 @@ export default function Tooltip({ content, children, position = 'top' }) {
       {children}
       <span
         role="tooltip"
-        className={`pointer-events-none absolute z-40 hidden whitespace-nowrap rounded-md bg-stone-900 px-2 py-1 text-xs text-white shadow-lg group-hover:block group-focus-within:block ${positionClasses[position]}`}
+        className={`pointer-events-none absolute z-40 hidden whitespace-nowrap rounded-md bg-stone-900 px-2 py-1 text-caption text-white shadow-lg group-hover:block group-focus-within:block ${positionClasses[position]}`}
       >
         {content}
         <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-stone-900" aria-hidden="true" />

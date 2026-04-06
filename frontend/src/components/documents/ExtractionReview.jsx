@@ -175,10 +175,10 @@ export default function ExtractionReview({
     <div className="w-full max-w-2xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">
+        <h2 className="text-h2 font-medium text-gray-800">
           {tr('documents.reviewExtracted', 'Review Extracted Data')}
         </h2>
-        <p className="text-gray-600 text-sm mt-1">
+        <p className="text-gray-600 text-body-sm mt-1">
           {tr(
             'documents.reviewMessage',
             'Review the information extracted from your document. You can edit any field if needed.'
@@ -205,11 +205,11 @@ export default function ExtractionReview({
             >
               {/* Field Header */}
               <div className="flex items-center justify-between mb-2">
-                <label className="font-semibold text-gray-700 capitalize">
+                <label className="font-medium text-gray-700 capitalize">
                   {field.replace(/_/g, ' ')}
                 </label>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-1 rounded ${badge.color}`}>
+                  <span className={`text-caption px-2 py-1 rounded ${badge.color}`}>
                     {badge.icon} {confidence}% - {badge.label}
                   </span>
                   {!isEditing && (
@@ -238,14 +238,14 @@ export default function ExtractionReview({
                   <div className="flex gap-2">
                     <button
                       onClick={() => setEditingField(null)}
-                      className="flex items-center gap-1 px-3 py-1 bg-primary text-white rounded text-sm hover:bg-opacity-90 transition"
+                      className="flex items-center gap-1 px-3 py-1 bg-primary text-white rounded text-body-sm hover:bg-opacity-90 transition"
                     >
                       <Save size={14} />
                       {tr('common.save', 'Save')}
                     </button>
                     <button
                       onClick={() => setEditingField(null)}
-                      className="flex items-center gap-1 px-3 py-1 bg-gray-300 text-gray-800 rounded text-sm hover:bg-gray-400 transition"
+                      className="flex items-center gap-1 px-3 py-1 bg-gray-300 text-gray-800 rounded text-body-sm hover:bg-gray-400 transition"
                     >
                       <X size={14} />
                       {tr('common.cancel', 'Cancel')}
@@ -256,7 +256,7 @@ export default function ExtractionReview({
 
               {/* Error Message */}
               {hasError && (
-                <p className="text-red-600 text-sm mt-2">
+                <p className="text-red-600 text-body-sm mt-2">
                   <AlertCircle size={14} className="inline mr-1" />
                   {hasError}
                 </p>
@@ -267,7 +267,7 @@ export default function ExtractionReview({
       </div>
 
       {errors._global && (
-        <p className="text-red-600 text-sm mb-4">
+        <p className="text-red-600 text-body-sm mb-4">
           <AlertCircle size={14} className="inline mr-1" />
           {errors._global}
         </p>
@@ -275,10 +275,10 @@ export default function ExtractionReview({
 
       {/* Quality Summary */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 className="font-semibold text-blue-900 mb-2">
+        <h3 className="font-medium text-blue-900 mb-2">
           {tr('documents.extractionQuality', 'Extraction Quality')}
         </h3>
-        <div className="space-y-1 text-sm text-blue-800">
+        <div className="space-y-1 text-body-sm text-blue-800">
           <p>
             • Average confidence:{' '}
             <strong>
@@ -304,10 +304,10 @@ export default function ExtractionReview({
       {/* Manual Field Addition (Optional) */}
       <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
         <details className="cursor-pointer">
-          <summary className="font-semibold text-gray-700 hover:text-gray-900">
+          <summary className="font-medium text-gray-700 hover:text-gray-900">
             {tr('documents.addMoreFields', '+ Add Missing Fields')}
           </summary>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-body-sm text-gray-600 mt-2">
             {tr(
               'documents.addFieldsNote',
               'If the OCR missed any fields, you can manually add them here.'

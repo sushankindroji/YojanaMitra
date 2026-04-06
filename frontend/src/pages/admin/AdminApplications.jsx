@@ -176,7 +176,7 @@ export default function AdminApplications() {
             </select>
           </div>
 
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-4 text-body-sm text-gray-600">
             Showing {filteredApplications.length} of {applications.length} applications
           </div>
       </Card>
@@ -198,25 +198,25 @@ export default function AdminApplications() {
               <table className="w-full">
                 <thead className="border-b border-stone-200 bg-stone-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Applicant
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Scheme
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Submitted
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Docs
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
                       Notes
                     </th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold text-stone-900">
+                    <th className="px-6 py-3 text-center text-label font-medium tracking-wide text-stone-900">
                       Actions
                     </th>
                   </tr>
@@ -234,30 +234,30 @@ export default function AdminApplications() {
                           </div>
                           <div>
                           <div className="font-medium text-stone-900">{app.user_name}</div>
-                          <div className="text-xs text-stone-500">{app.user_email}</div>
+                          <div className="text-caption text-stone-500">{app.user_email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                       <div className="font-medium text-stone-900">{app.scheme_name}</div>
-                      <div className="text-xs text-stone-500">
+                      <div className="text-caption text-stone-500">
                           {app.scheme_ministry}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          className={`inline-block px-3 py-1 rounded-full text-caption font-medium ${getStatusColor(
                             app.status
                           )}`}
                         >
                           {app.status?.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-stone-600">
+                      <td className="px-6 py-4 text-body-sm text-stone-600">
                         {new Date(app.submission_date).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
-                      <span className="inline-block rounded bg-stone-100 px-2 py-1 text-xs font-medium text-stone-700">
+                      <span className="inline-block rounded bg-stone-100 px-2 py-1 text-caption font-medium text-stone-700">
                           {app.documents_count || 0} docs
                         </span>
                       </td>
@@ -324,10 +324,10 @@ export default function AdminApplications() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="sticky top-0 flex items-center justify-between border-b border-stone-200 bg-white p-6">
-              <h3 className="text-2xl font-bold text-stone-900">Application Details</h3>
+              <h3 className="text-h3 font-medium text-stone-900">Application Details</h3>
                 <button
                   onClick={() => setSelectedApp(null)}
-                className="text-2xl text-stone-500 hover:text-stone-700"
+                className="text-h3 text-stone-500 hover:text-stone-700"
                 >
                   ✕
                 </button>
@@ -336,19 +336,19 @@ export default function AdminApplications() {
             <div className="space-y-6 p-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                  <p className="text-sm text-stone-600">Applicant Name</p>
+                  <p className="text-label text-stone-600">Applicant Name</p>
                   <p className="font-medium text-stone-900">{selectedApp.user_name}</p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Email</p>
+                  <p className="text-label text-stone-600">Email</p>
                   <p className="font-medium text-stone-900">{selectedApp.user_email}</p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Scheme</p>
+                  <p className="text-label text-stone-600">Scheme</p>
                   <p className="font-medium text-stone-900">{selectedApp.scheme_name}</p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Status</p>
+                  <p className="text-label text-stone-600">Status</p>
                     <p
                       className={`font-medium inline-block px-2 py-1 rounded ${getStatusColor(
                         selectedApp.status
@@ -358,13 +358,13 @@ export default function AdminApplications() {
                     </p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Submitted Date</p>
+                  <p className="text-label text-stone-600">Submitted Date</p>
                   <p className="font-medium text-stone-900">
                       {new Date(selectedApp.submission_date).toLocaleDateString()}
                     </p>
                   </div>
                   <div>
-                  <p className="text-sm text-stone-600">Documents</p>
+                  <p className="text-label text-stone-600">Documents</p>
                   <p className="font-medium text-stone-900">
                       {selectedApp.documents_count || 0} attached
                     </p>
@@ -373,7 +373,7 @@ export default function AdminApplications() {
 
                 {selectedApp.notes && (
                   <div>
-                  <p className="mb-2 text-sm text-stone-600">Applicant Notes</p>
+                  <p className="mb-2 text-label text-stone-600">Applicant Notes</p>
                   <p className="rounded bg-stone-50 p-3 text-stone-900">
                       {selectedApp.notes}
                     </p>
@@ -382,7 +382,7 @@ export default function AdminApplications() {
 
                 {selectedApp.admin_notes && (
                   <div>
-                  <p className="mb-2 text-sm text-stone-600">Admin Notes</p>
+                  <p className="mb-2 text-label text-stone-600">Admin Notes</p>
                   <p className="rounded bg-blue-50 p-3 text-stone-900">
                       {selectedApp.admin_notes}
                     </p>
@@ -396,7 +396,7 @@ export default function AdminApplications() {
                         onClick={() => {
                           handleApproveApplication(selectedApp.id)
                         }}
-                        className="rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-200"
+                        className="rounded-lg bg-green-100 px-4 py-2 text-body-sm font-medium text-green-700 hover:bg-green-200"
                       >
                         Approve
                       </button>
@@ -407,7 +407,7 @@ export default function AdminApplications() {
                             'Insufficient documents'
                           )
                         }}
-                        className="rounded-lg bg-red-100 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-200"
+                        className="rounded-lg bg-red-100 px-4 py-2 text-body-sm font-medium text-red-700 hover:bg-red-200"
                       >
                         Reject
                       </button>
@@ -415,7 +415,7 @@ export default function AdminApplications() {
                   )}
                   <button
                     onClick={() => setSelectedApp(null)}
-                    className="ml-auto rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+                    className="ml-auto rounded-lg bg-stone-100 px-4 py-2 text-body-sm font-medium text-stone-700 hover:bg-stone-200"
                   >
                     Close
                   </button>

@@ -134,7 +134,7 @@ export default function Applications() {
           {statusCards.map((item) => (
             <Card key={item.key} className="border border-stone-200 bg-white">
               <Badge variant={item.tone}>{item.label}</Badge>
-              <p className="mt-2 text-2xl font-bold text-stone-900">{stats[item.key] || 0}</p>
+              <p className="mt-2 text-h2 font-medium text-stone-900">{stats[item.key] || 0}</p>
             </Card>
           ))}
         </div>
@@ -153,7 +153,7 @@ export default function Applications() {
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition ${
+                className={`rounded-full px-3 py-1.5 text-caption font-medium uppercase tracking-[0.08em] transition ${
                   filter === status
                     ? 'bg-stone-900 text-white'
                     : 'border border-stone-300 text-stone-700 hover:bg-stone-100'
@@ -175,7 +175,7 @@ export default function Applications() {
           ) : filtered.length === 0 ? (
             <div className="p-10 text-center">
               <AlertCircle className="mx-auto h-10 w-10 text-stone-400" />
-              <p className="mt-3 text-sm text-stone-600">
+              <p className="mt-3 text-body-sm text-stone-600">
                 {applications.length === 0
                   ? 'No applications yet. Check eligibility and save schemes!'
                   : `No ${filter} applications`}
@@ -192,12 +192,12 @@ export default function Applications() {
               <table className="w-full">
                 <thead className="border-b border-stone-200 bg-stone-50">
                   <tr>
-                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Scheme Name</th>
-                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Status</th>
-                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Ministry</th>
-                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Benefit</th>
-                    <th className="px-5 py-3 text-left text-sm font-semibold text-stone-900">Saved Date</th>
-                    <th className="px-5 py-3 text-center text-sm font-semibold text-stone-900">Actions</th>
+                    <th className="px-5 py-3 text-left text-label font-medium tracking-wide text-stone-900">Scheme Name</th>
+                    <th className="px-5 py-3 text-left text-label font-medium tracking-wide text-stone-900">Status</th>
+                    <th className="px-5 py-3 text-left text-label font-medium tracking-wide text-stone-900">Ministry</th>
+                    <th className="px-5 py-3 text-left text-label font-medium tracking-wide text-stone-900">Benefit</th>
+                    <th className="px-5 py-3 text-left text-label font-medium tracking-wide text-stone-900">Saved Date</th>
+                    <th className="px-5 py-3 text-center text-label font-medium tracking-wide text-stone-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -205,23 +205,23 @@ export default function Applications() {
                     <tr key={app.id} className="border-b border-stone-100 transition hover:bg-stone-50">
                       <td className="px-5 py-4">
                         <div className="font-medium text-stone-900">{app.scheme_name}</div>
-                        <div className="text-xs text-stone-500">{app.id.substring(0, 8)}</div>
+                        <div className="text-caption text-stone-500">{app.id.substring(0, 8)}</div>
                       </td>
                       <td className="px-5 py-4">
                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${statusColors[app.status]}`}>
                           {statusIcons[app.status]}
-                          <span className="text-sm font-medium">
+                          <span className="text-body-sm font-medium">
                             {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
                           </span>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-sm text-stone-600">
+                      <td className="px-5 py-4 text-body-sm text-stone-600">
                         {app.scheme_ministry || 'N/A'}
                       </td>
-                      <td className="px-5 py-4 text-sm font-medium text-stone-900">
+                      <td className="px-5 py-4 text-body-sm font-medium text-stone-900">
                         {app.scheme_benefit_amount ? `Rs ${(app.scheme_benefit_amount / 100000).toFixed(1)}L+` : 'N/A'}
                       </td>
-                      <td className="px-5 py-4 text-sm text-stone-600">
+                      <td className="px-5 py-4 text-body-sm text-stone-600">
                         {new Date(app.saved_at).toLocaleDateString()}
                       </td>
                       <td className="px-5 py-4">
@@ -229,7 +229,7 @@ export default function Applications() {
                           <select
                             value={app.status}
                             onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                            className="h-8 rounded-md border border-stone-300 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            className="h-8 rounded-md border border-stone-300 px-2 text-caption focus:outline-none focus:ring-2 focus:ring-orange-300"
                           >
                             <option value="saved">Saved</option>
                             <option value="started">Started</option>
@@ -256,8 +256,8 @@ export default function Applications() {
       </Card>
 
       <Card className="border border-blue-200 bg-blue-50">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-blue-900">Application Status Guide</h3>
-        <div className="mt-3 grid gap-2 text-sm text-blue-900 md:grid-cols-2">
+        <h3 className="text-micro font-medium uppercase tracking-wider text-blue-900">Application Status Guide</h3>
+        <div className="mt-3 grid gap-2 text-body-sm text-blue-900 md:grid-cols-2">
           <p><strong>Saved:</strong> You bookmarked a scheme for later.</p>
           <p><strong>Started:</strong> Application form filling has begun.</p>
           <p><strong>Submitted:</strong> Form submitted to the scheme authority.</p>

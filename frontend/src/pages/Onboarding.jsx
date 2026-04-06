@@ -345,9 +345,9 @@ export default function OnboardingPage() {
         <div className="mb-6 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">YojanaMitra Onboarding</p>
-              <h1 className="mt-1 text-2xl font-bold text-stone-900">Document-first profile setup</h1>
-              <p className="mt-1 text-sm text-stone-600">{STEP_TITLES[step]}</p>
+              <p className="text-micro font-medium uppercase tracking-wider text-stone-500">YojanaMitra Onboarding</p>
+              <h1 className="mt-1 text-h2 font-medium text-stone-900">Document-first profile setup</h1>
+              <p className="mt-1 text-body-sm text-stone-600">{STEP_TITLES[step]}</p>
             </div>
             <div className="w-full max-w-sm">
               <div className="h-2 rounded-full bg-stone-200">
@@ -363,18 +363,18 @@ export default function OnboardingPage() {
         {step === 1 ? (
           <Card className="space-y-6 border border-stone-200">
             <div>
-              <h2 className="text-xl font-bold text-stone-900">Upload your Aadhaar card to get started</h2>
-              <p className="mt-1 text-sm text-stone-600">
+              <h2 className="text-h3 font-medium text-stone-900">Upload your Aadhaar card to get started</h2>
+              <p className="mt-1 text-body-sm text-stone-600">
                 Aadhaar is mandatory. We use it to auto-fill your profile and avoid manual forms.
               </p>
             </div>
 
             <div className="rounded-xl border border-dashed border-orange-300 bg-orange-50 p-4">
-              <label className="block text-sm font-medium text-stone-800">Aadhaar file (JPG, PNG, PDF)</label>
+              <label className="block text-label font-medium text-stone-800">Aadhaar file (JPG, PNG, PDF)</label>
               <input
                 type="file"
                 accept=".jpg,.jpeg,.png,.pdf"
-                className="mt-2 block w-full text-sm"
+                className="mt-2 block w-full text-body-sm"
                 onChange={(event) => setAadhaarFile(event.target.files?.[0] || null)}
               />
               <Button className="mt-4" onClick={uploadAadhaar} loading={busy}>
@@ -385,14 +385,14 @@ export default function OnboardingPage() {
 
             {Object.keys(aadhaarData).length > 0 ? (
               <div className="rounded-xl border border-stone-200 p-4">
-                <h3 className="mb-3 text-base font-semibold text-stone-900">We found this information. Is this correct?</h3>
+                <h3 className="mb-3 text-h3 font-medium text-stone-900">We found this information. Is this correct?</h3>
                 <div className="grid gap-3 md:grid-cols-2">
                   {Object.entries(aadhaarData).map(([key, value]) => (
                     <label key={key} className="block">
-                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500">
+                      <span className="mb-1 block text-caption font-medium uppercase tracking-wide text-stone-500">
                         {key.replace(/_/g, ' ')}
                         {aadhaarConfidence[key] !== undefined ? (
-                          <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">
+                          <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-caption text-stone-600">
                             {Math.round(Number(aadhaarConfidence[key]) * 100)}%
                           </span>
                         ) : null}
@@ -405,7 +405,7 @@ export default function OnboardingPage() {
                             [key]: event.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                       />
                     </label>
                   ))}
@@ -419,7 +419,7 @@ export default function OnboardingPage() {
             ) : null}
 
             {aadhaarConfirmed ? (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-body-sm text-green-800">
                 Aadhaar confirmed. Continue to optional documents.
               </div>
             ) : null}
@@ -430,8 +430,8 @@ export default function OnboardingPage() {
           <Card className="space-y-5 border border-stone-200">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-xl font-bold text-stone-900">Upload any additional documents you have</h2>
-                <p className="mt-1 text-sm text-stone-600">
+                <h2 className="text-h3 font-medium text-stone-900">Upload any additional documents you have</h2>
+                <p className="mt-1 text-body-sm text-stone-600">
                   All documents in this step are optional. Upload what you have, then skip remaining.
                 </p>
               </div>
@@ -461,23 +461,23 @@ export default function OnboardingPage() {
                           : 'border-stone-200 bg-white hover:border-stone-300'
                     }`}
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{doc.category}</p>
-                    <p className="mt-1 text-sm font-semibold text-stone-900">{doc.label}</p>
-                    <p className="mt-1 text-xs text-stone-600">{doc.hint}</p>
+                    <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{doc.category}</p>
+                    <p className="mt-1 text-h4 font-medium text-stone-900">{doc.label}</p>
+                    <p className="mt-1 text-caption text-stone-600">{doc.hint}</p>
                   </button>
                 )
               })}
             </div>
 
             <div className="rounded-xl border border-stone-200 p-4">
-              <p className="text-sm font-semibold text-stone-900">
+              <p className="text-body-sm font-medium text-stone-900">
                 {selectedDocMeta ? `Selected: ${selectedDocMeta.label}` : 'Select a document type above'}
               </p>
 
               <input
                 type="file"
                 accept=".jpg,.jpeg,.png,.pdf"
-                className="mt-3 block w-full text-sm"
+                className="mt-3 block w-full text-body-sm"
                 onChange={(event) => setOptionalDocFile(event.target.files?.[0] || null)}
               />
 
@@ -494,14 +494,14 @@ export default function OnboardingPage() {
 
             {Object.keys(optionalDocData).length > 0 ? (
               <div className="rounded-xl border border-stone-200 p-4">
-                <h3 className="mb-3 text-base font-semibold text-stone-900">Confirm extracted document fields</h3>
+                <h3 className="mb-3 text-h3 font-medium text-stone-900">Confirm extracted document fields</h3>
                 <div className="grid gap-3 md:grid-cols-2">
                   {Object.entries(optionalDocData).map(([key, value]) => (
                     <label key={key} className="block">
-                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500">
+                      <span className="mb-1 block text-caption font-medium uppercase tracking-wide text-stone-500">
                         {key.replace(/_/g, ' ')}
                         {optionalDocConfidence[key] !== undefined ? (
-                          <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">
+                          <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-caption text-stone-600">
                             {Math.round(Number(optionalDocConfidence[key]) * 100)}%
                           </span>
                         ) : null}
@@ -514,7 +514,7 @@ export default function OnboardingPage() {
                             [key]: event.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                       />
                     </label>
                   ))}
@@ -527,7 +527,7 @@ export default function OnboardingPage() {
               </div>
             ) : null}
 
-            <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
+            <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-body-sm text-stone-700">
               Uploaded documents: {uploadedDocTypes.length}
             </div>
           </Card>
@@ -536,31 +536,31 @@ export default function OnboardingPage() {
         {step === 3 ? (
           <Card className="space-y-5 border border-stone-200">
             <div>
-              <h2 className="text-xl font-bold text-stone-900">Quick additional questions</h2>
-              <p className="mt-1 text-sm text-stone-600">Only details that documents usually cannot provide.</p>
+              <h2 className="text-h3 font-medium text-stone-900">Quick additional questions</h2>
+              <p className="mt-1 text-body-sm text-stone-600">Only details that documents usually cannot provide.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-stone-700">Mobile number</span>
+                <span className="mb-1 block text-label font-medium text-stone-700">Mobile number</span>
                 <input
                   value={quickData.mobile_number}
                   onChange={(event) =>
                     setQuickData((prev) => ({ ...prev, mobile_number: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                   placeholder="10-digit mobile number"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-stone-700">Occupation type</span>
+                <span className="mb-1 block text-label font-medium text-stone-700">Occupation type</span>
                 <select
                   value={quickData.occupation}
                   onChange={(event) =>
                     setQuickData((prev) => ({ ...prev, occupation: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                 >
                   <option value="">Select occupation</option>
                   {OCCUPATION_OPTIONS.map((occupation) => (
@@ -572,13 +572,13 @@ export default function OnboardingPage() {
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-stone-700">Do you own agricultural land?</span>
+                <span className="mb-1 block text-label font-medium text-stone-700">Do you own agricultural land?</span>
                 <select
                   value={quickData.owns_agricultural_land}
                   onChange={(event) =>
                     setQuickData((prev) => ({ ...prev, owns_agricultural_land: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                 >
                   {YES_NO_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -589,7 +589,7 @@ export default function OnboardingPage() {
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-stone-700">Land area (acres)</span>
+                <span className="mb-1 block text-label font-medium text-stone-700">Land area (acres)</span>
                 <input
                   type="number"
                   min="0"
@@ -599,18 +599,18 @@ export default function OnboardingPage() {
                   onChange={(event) =>
                     setQuickData((prev) => ({ ...prev, land_area_acres: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm disabled:bg-stone-100"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm disabled:bg-stone-100"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-stone-700">Are you the head of household?</span>
+                <span className="mb-1 block text-label font-medium text-stone-700">Are you the head of household?</span>
                 <select
                   value={quickData.is_household_head}
                   onChange={(event) =>
                     setQuickData((prev) => ({ ...prev, is_household_head: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                 >
                   {YES_NO_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -621,7 +621,7 @@ export default function OnboardingPage() {
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-stone-700">Number of family members</span>
+                <span className="mb-1 block text-label font-medium text-stone-700">Number of family members</span>
                 <input
                   type="number"
                   min="1"
@@ -629,18 +629,18 @@ export default function OnboardingPage() {
                   onChange={(event) =>
                     setQuickData((prev) => ({ ...prev, family_size: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-stone-700">Is the household woman-headed?</span>
+                <span className="mb-1 block text-label font-medium text-stone-700">Is the household woman-headed?</span>
                 <select
                   value={quickData.is_woman_headed_household}
                   onChange={(event) =>
                     setQuickData((prev) => ({ ...prev, is_woman_headed_household: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                 >
                   {YES_NO_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -651,13 +651,13 @@ export default function OnboardingPage() {
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-stone-700">Bank account linked to Aadhaar?</span>
+                <span className="mb-1 block text-label font-medium text-stone-700">Bank account linked to Aadhaar?</span>
                 <select
                   value={quickData.has_bank_account}
                   onChange={(event) =>
                     setQuickData((prev) => ({ ...prev, has_bank_account: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
                 >
                   {YES_NO_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -686,37 +686,37 @@ export default function OnboardingPage() {
             </div>
 
             <div>
-              <h2 className="text-2xl font-bold text-stone-900">Building your scheme profile...</h2>
-              <p className="mt-2 text-sm text-stone-600">
+              <h2 className="text-h2 font-medium text-stone-900">Building your scheme profile...</h2>
+              <p className="mt-2 text-body-sm text-stone-600">
                 Running the eligibility agent pipeline across all schemes. This may take a few seconds.
               </p>
             </div>
 
             <div className="mx-auto max-w-xl rounded-xl border border-stone-200 p-4">
-              <p className="text-sm text-stone-700">Status: {jobStatus}</p>
+              <p className="text-body-sm text-stone-700">Status: {jobStatus}</p>
               <div className="mt-2 h-2 rounded-full bg-stone-200">
                 <div
                   className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-green-600 transition-all"
                   style={{ width: `${Math.max(5, Math.min(100, jobProgress || 5))}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs text-stone-500">{Math.round(jobProgress || 0)}% complete</p>
+              <p className="mt-2 text-caption text-stone-500">{Math.round(jobProgress || 0)}% complete</p>
             </div>
 
             {jobStatus === 'failed' ? (
               <div className="space-y-3">
-                <p className="text-sm text-red-700">Eligibility pipeline failed. Please retry.</p>
+                <p className="text-body-sm text-red-700">Eligibility pipeline failed. Please retry.</p>
                 <Button onClick={retryPipeline} loading={busy}>
                   Retry pipeline
                 </Button>
               </div>
             ) : null}
 
-            <p className="text-xs text-stone-500">Do not close this tab until your dashboard is ready.</p>
+            <p className="text-caption text-stone-500">Do not close this tab until your dashboard is ready.</p>
           </Card>
         ) : null}
 
-        <div className="mt-4 text-xs text-stone-500">
+        <div className="mt-4 text-caption text-stone-500">
           Need help? You can continue later; your progress is saved securely.
         </div>
       </div>

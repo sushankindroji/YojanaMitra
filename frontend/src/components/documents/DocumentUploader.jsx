@@ -215,13 +215,13 @@ export default function DocumentUploader({
             size={48}
             className={`mx-auto mb-4 ${isDragging ? 'text-primary' : 'text-gray-400'}`}
           />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          <h3 className="text-h3 font-medium text-gray-800 mb-2">
             {tr('documents.uploadHeader', 'Drag and drop your document')}
           </h3>
-          <p className="text-gray-500 text-sm mb-4">
+          <p className="text-gray-500 text-body-sm mb-4">
             {tr('documents.uploadSubtext', 'Or click to select from your device')}
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-caption text-gray-400">
             {tr('documents.supportedFormats', `Supported: ${acceptedFormats.join(', ')}`)}
           </p>
         </div>
@@ -244,10 +244,10 @@ export default function DocumentUploader({
       {isUploading && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-body-sm font-medium text-gray-700">
               {tr('common.uploading', 'Uploading...')}
             </p>
-            <span className="text-sm text-gray-500">{Math.round(uploadProgress)}%</span>
+            <span className="text-body-sm text-gray-500">{Math.round(uploadProgress)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
@@ -255,7 +255,7 @@ export default function DocumentUploader({
               style={{ width: `${uploadProgress}%` }}
             />
           </div>
-          <p className="text-xs text-gray-500 text-center">
+          <p className="text-caption text-gray-500 text-center">
             {tr(
               'documents.processingMessage',
               'Document is being uploaded and processed. This may take a minute...'

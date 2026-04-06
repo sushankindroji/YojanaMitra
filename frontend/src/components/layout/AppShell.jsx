@@ -98,7 +98,7 @@ export default function AppShell() {
   return (
     <div className="min-h-screen md:flex">
       <aside
-        className={`hidden border-r border-stone-200 bg-white/85 backdrop-blur md:block ${
+        className={`hidden border-r border-stone-200 bg-white/85 backdrop-blur md:sticky md:top-0 md:block md:h-screen md:flex-shrink-0 md:overflow-y-auto ${
           collapsed ? 'w-16' : 'w-60'
         } transition-[width] duration-300`}
       >
@@ -109,8 +109,8 @@ export default function AppShell() {
             className="flex items-center gap-2 rounded-lg px-2 py-1 text-left"
             aria-label="Go to dashboard"
           >
-            <span className="rounded-md bg-orange-100 px-2 py-1 text-xs font-bold text-orange-700">YM</span>
-            {!collapsed ? <span className="text-sm font-semibold text-stone-800">YojanaMitra</span> : null}
+            <span className="rounded-md bg-orange-100 px-2 py-1 text-caption font-medium text-orange-700">YM</span>
+            {!collapsed ? <span className="text-body font-medium text-stone-800">YojanaMitra</span> : null}
           </button>
 
           <button
@@ -131,9 +131,9 @@ export default function AppShell() {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `relative mb-1 flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
+                  `relative mb-1 flex items-center gap-3 rounded-xl px-3 py-2 text-body font-medium transition ${
                     isActive
-                      ? 'bg-orange-50 font-semibold text-orange-700 before:absolute before:left-0 before:top-2 before:h-6 before:w-1 before:rounded-r before:bg-orange-500'
+                      ? 'bg-orange-50 font-medium text-orange-700 before:absolute before:left-0 before:top-2 before:h-6 before:w-1 before:rounded-r before:bg-orange-500'
                       : 'text-stone-600 hover:bg-stone-100 hover:text-stone-800'
                   }`
                 }
@@ -146,11 +146,11 @@ export default function AppShell() {
         </nav>
       </aside>
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/85 backdrop-blur">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
             <div>
-              <nav className="text-xs text-stone-500" aria-label="Breadcrumb">
+              <nav className="text-body-sm text-stone-500" aria-label="Breadcrumb">
                 {breadcrumb.map((item, index) => (
                   <span key={`${item.to}-${index}`}>
                     <button
@@ -164,7 +164,7 @@ export default function AppShell() {
                   </span>
                 ))}
               </nav>
-              <p className="mt-1 text-sm font-semibold text-stone-800">{breadcrumb[breadcrumb.length - 1]?.label || 'Home'}</p>
+              <p className="mt-1 text-h3 font-medium text-stone-800">{breadcrumb[breadcrumb.length - 1]?.label || 'Home'}</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -192,15 +192,15 @@ export default function AppShell() {
 
                 {menuOpen ? (
                   <div className="absolute right-0 mt-2 w-56 rounded-xl border border-stone-200 bg-white p-2 shadow-lg">
-                    <p className="px-2 py-1 text-sm font-semibold text-stone-800">{user?.full_name || 'Citizen User'}</p>
-                    <p className="px-2 pb-2 text-xs text-stone-500">{user?.email || ''}</p>
+                    <p className="px-2 py-1 text-body-sm font-medium text-stone-800">{user?.full_name || 'Citizen User'}</p>
+                    <p className="px-2 pb-2 text-caption text-stone-500">{user?.email || ''}</p>
                     <button
                       type="button"
                       onClick={() => {
                         setMenuOpen(false)
                         navigate('/profile')
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-stone-700 hover:bg-stone-100"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-body text-stone-700 hover:bg-stone-100"
                     >
                       <UserCircle className="h-4 w-4" />
                       Profile
@@ -208,7 +208,7 @@ export default function AppShell() {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-red-700 hover:bg-red-50"
+                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-body text-red-700 hover:bg-red-50"
                     >
                       <LogOut className="h-4 w-4" />
                       Logout
@@ -237,7 +237,7 @@ export default function AppShell() {
               <li key={tab.to}>
                 <NavLink
                   to={tab.to}
-                  className={`flex flex-col items-center justify-center rounded-lg px-1 py-2 text-[11px] ${
+                  className={`flex flex-col items-center justify-center rounded-lg px-1 py-2 text-body-sm font-medium ${
                     active ? 'bg-orange-50 text-orange-700' : 'text-stone-600'
                   }`}
                 >
