@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, Lock, Mail, User } from 'lucide-react'
+import { CheckCircle, Lock, Mail } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { useAuthStore } from '../../store/authStore'
 import authService from '../../services/authService'
@@ -16,7 +16,6 @@ export default function RegisterForm() {
   const setTokens = useAuthStore((state) => state.setTokens)
 
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -34,7 +33,7 @@ export default function RegisterForm() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.email || !formData.password || !formData.confirmPassword) {
       toast.error(t('validation.required', { defaultValue: 'Please fill in all required fields' }))
       return
     }
@@ -44,8 +43,8 @@ export default function RegisterForm() {
       return
     }
 
-    if (formData.password.length < 6) {
-      toast.error(t('validation.passwordMinLength', { defaultValue: 'Password must be at least 6 characters' }))
+    if (formData.password.length < 8) {
+      toast.error(t('validation.passwordMinLength', { defaultValue: 'Password must be at least 8 characters' }))
       return
     }
 
@@ -58,7 +57,6 @@ export default function RegisterForm() {
 
     try {
       const response = await authService.register({
-        name: formData.name,
         email: formData.email,
         password: formData.password,
         preferred_lang: 'en',
@@ -96,17 +94,6 @@ export default function RegisterForm() {
         </div>
 
         <Input
-          label={t('auth.fullName', { defaultValue: 'Full Name' })}
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          placeholder={t('auth.namePlaceholder', { defaultValue: 'Enter your full name' })}
-          leadingIcon={User}
-          autoComplete="name"
-          required
-        />
-
-        <Input
           label={t('auth.email', { defaultValue: 'Email' })}
           name="email"
           type="email"
@@ -128,7 +115,7 @@ export default function RegisterForm() {
             placeholder={t('auth.passwordPlaceholder', { defaultValue: 'Choose a secure password' })}
             leadingIcon={Lock}
             autoComplete="new-password"
-            minLength={6}
+            minLength={8}
             maxLength={72}
             required
           />

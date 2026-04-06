@@ -15,6 +15,7 @@ from app.schemas.auth import (
 from app.schemas.profile import ProfileUpdate, ProfileResponse, ProfileCompleteness
 from app.schemas.document import DocumentUpload, DocumentResponse, ExtractionResult
 from app.schemas.scheme import SchemeCreate, SchemeUpdate, SchemeResponse, EligibilityResult
+from app.schemas.onboarding import AadhaarConfirmRequest, DocumentConfirmRequest, OnboardingCompleteRequest
 
 __all__ = [
     "UserRegister",
@@ -32,6 +33,9 @@ __all__ = [
     "DocumentUpload",
     "DocumentResponse",
     "ExtractionResult",
+    "AadhaarConfirmRequest",
+    "DocumentConfirmRequest",
+    "OnboardingCompleteRequest",
     "SchemeCreate",
     "SchemeUpdate",
     "SchemeResponse",

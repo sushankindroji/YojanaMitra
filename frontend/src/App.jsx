@@ -8,6 +8,7 @@ import { useAuthStore } from './store/authStore'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import ProtectedAdminRoute from './components/common/ProtectedAdminRoute'
+import OnboardingRouteGuard from './components/common/OnboardingRouteGuard'
 import AdminLayout from './components/admin/AdminLayout'
 import AppShell from './components/layout/AppShell'
 
@@ -80,7 +81,9 @@ function App() {
             path="/onboarding"
             element={
               <ProtectedRoute>
-                <Onboarding />
+                <OnboardingRouteGuard requireComplete={false}>
+                  <Onboarding />
+                </OnboardingRouteGuard>
               </ProtectedRoute>
             }
           />
@@ -90,7 +93,9 @@ function App() {
             path="/apply/:schemeId"
             element={
               <ProtectedRoute>
-                <Apply />
+                <OnboardingRouteGuard requireComplete>
+                  <Apply />
+                </OnboardingRouteGuard>
               </ProtectedRoute>
             }
           />
@@ -109,7 +114,9 @@ function App() {
           <Route
             element={
               <ProtectedRoute>
-                <AppShell />
+                <OnboardingRouteGuard requireComplete>
+                  <AppShell />
+                </OnboardingRouteGuard>
               </ProtectedRoute>
             }
           >

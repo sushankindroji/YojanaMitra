@@ -8,10 +8,10 @@ from typing import Optional
 # Auth Schemas
 class UserRegister(BaseModel):
     """User registration schema."""
-    email: Optional[EmailStr] = None
+    email: EmailStr
     phone: Optional[str] = None
     password: str = Field(..., min_length=8, max_length=72, description="Max 72 characters (bcrypt limitation)")
-    name: str = Field(..., min_length=2)
+    name: Optional[str] = Field(default=None, min_length=2)
     preferred_lang: str = "en"
 
 
@@ -43,6 +43,7 @@ class TokenResponse(BaseModel):
     email: Optional[str]
     phone: Optional[str]
     role: str = "user"  # Add role to avoid extra API calls
+    onboarding_incomplete: bool = True
 
 
 class RefreshTokenRequest(BaseModel):
@@ -74,10 +75,12 @@ class UserResponse(BaseModel):
     id: str
     email: Optional[str]
     phone: Optional[str]
+    full_name: Optional[str] = None
     preferred_lang: str
     role: str
     is_verified: bool
     is_active: bool
+    onboarding_incomplete: bool
     created_at: str
     last_login: Optional[str]
 

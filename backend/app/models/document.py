@@ -24,6 +24,8 @@ class Document(Base):
     extraction_status = Column(String, default="pending")  # pending, processing, completed, failed
     extracted_data = Column(String, nullable=True)  # JSON string
     confidence_score = Column(Float, nullable=True)  # 0-100
+    is_verified = Column(Integer, default=0)
+    verified_at = Column(String, nullable=True)
     
     # Retry
     retry_count = Column(Integer, default=0)

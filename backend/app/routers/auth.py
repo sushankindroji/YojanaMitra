@@ -59,6 +59,7 @@ async def register(request: Request, user_data: UserRegister, db: Session = Depe
         user_id=user.id,
         email=user.email,
         phone=user.phone,
+        onboarding_incomplete=bool(user.onboarding_incomplete),
     )
 
 
@@ -90,6 +91,7 @@ async def login(request: Request, credentials: UserLogin, db: Session = Depends(
             email=user.email,
             phone=user.phone,
             role=user.role,  # Include role to avoid extra API calls
+            onboarding_incomplete=bool(user.onboarding_incomplete),
         )
     except HTTPException:
         raise
@@ -128,13 +130,27 @@ async def refresh_token(
         email=user.email,
         phone=user.phone,
         role=user.role,  # Include role in refresh response too
+        onboarding_incomplete=bool(user.onboarding_incomplete),
     )
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user info."""
-    return UserResponse.from_orm(current_user)
+    profile = getattr(current_user, "profile", None)
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        phone=current_user.phone,
+        full_name=getattr(profile, "full_name", None),
+        preferred_lang=current_user.preferred_lang,
+        role=current_user.role,
+        is_verified=bool(current_user.is_verified),
+        is_active=bool(current_user.is_active),
+        onboarding_incomplete=bool(current_user.onboarding_incomplete),
+        created_at=current_user.created_at,
+        last_login=current_user.last_login,
+    )
 
 
 @router.post("/logout")
@@ -197,4 +213,5 @@ async def verify_otp(
         user_id=user.id,
         email=user.email,
         phone=user.phone,
+        onboarding_incomplete=bool(user.onboarding_incomplete),
     )

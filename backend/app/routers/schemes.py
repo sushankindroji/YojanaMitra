@@ -128,17 +128,16 @@ async def check_user_eligibility(
     db: Session = Depends(get_db),
 ):
     """Run eligibility check against all schemes and return ranked results."""
-    from app.agents.eligibility_agent import EligibilityAgent
-    
-    # Run eligibility agent
-    agent = EligibilityAgent(db)
-    results = await agent.check_all_schemes(current_user.id)
+    from app.agents.agent_orchestrator import run_full_eligibility_pipeline
+
+    payload = await run_full_eligibility_pipeline(current_user.id, db)
+    results = payload.get("raw_results", [])
     
     return {
         "status": "completed",
         "total_checked": len(results),
-        "eligible_count": sum(1 for r in results if r.is_eligible),
-        "partially_eligible_count": sum(1 for r in results if r.is_partially_eligible),
+        "eligible_count": sum(1 for r in results if r.get("is_eligible")),
+        "partially_eligible_count": sum(1 for r in results if r.get("is_partially_eligible")),
     }
 
 
@@ -148,16 +147,16 @@ async def check_all_schemes(
     db: Session = Depends(get_db),
 ):
     """Run eligibility check against all schemes."""
-    from app.agents.eligibility_agent import EligibilityAgent
+    from app.agents.agent_orchestrator import run_full_eligibility_pipeline
 
-    agent = EligibilityAgent(db)
-    results = await agent.check_all_schemes(current_user.id)
+    payload = await run_full_eligibility_pipeline(current_user.id, db)
+    results = payload.get("raw_results", [])
 
     return {
         "user_id": current_user.id,
         "total_checked": len(results),
-        "eligible_count": sum(1 for r in results if r.is_eligible),
-        "partial_count": sum(1 for r in results if r.is_partially_eligible),
+        "eligible_count": sum(1 for r in results if r.get("is_eligible")),
+        "partial_count": sum(1 for r in results if r.get("is_partially_eligible")),
     }
 
 

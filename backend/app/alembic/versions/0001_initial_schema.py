@@ -19,7 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # Import metadata lazily so model registration happens at migration runtime.
     from app.database import Base
-    from app.models import *  # noqa: F401,F403
+    import app.models  # noqa: F401
 
     bind = op.get_bind()
     Base.metadata.create_all(bind=bind)
@@ -27,7 +27,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     from app.database import Base
-    from app.models import *  # noqa: F401,F403
+    import app.models  # noqa: F401
 
     bind = op.get_bind()
     Base.metadata.drop_all(bind=bind)

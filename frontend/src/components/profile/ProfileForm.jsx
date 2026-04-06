@@ -163,7 +163,7 @@ const normalizeDateForInput = (value) => {
     return raw
   }
 
-  const dmy = raw.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/)
+  const dmy = raw.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/)
   if (dmy) {
     return `${dmy[3]}-${dmy[2]}-${dmy[1]}`
   }

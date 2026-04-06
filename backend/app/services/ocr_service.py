@@ -1,503 +1,885 @@
-"""
-OCR Service combining Gemini Vision and Tesseract.
-"""
-import os
-import json
+"""OCR service with document-specific extraction for Indian certificates."""
+from __future__ import annotations
+
+import io
 import re
-from app.services.gemini_service import gemini_service, extraction_service
-from app.config import settings
+from datetime import datetime
+from typing import Dict, List, Tuple
 
 try:
     import pytesseract
-    from PIL import Image
-    import io
+    from PIL import Image, ImageFilter, ImageOps
+
     TESSERACT_AVAILABLE = True
-except:
+except Exception:
     TESSERACT_AVAILABLE = False
+
+try:
+    import pdfplumber
+
+    PDFPLUMBER_AVAILABLE = True
+except Exception:
+    PDFPLUMBER_AVAILABLE = False
+
+from app.config import settings
+
+
+INDIAN_STATES = [
+    "Andhra Pradesh",
+    "Arunachal Pradesh",
+    "Assam",
+    "Bihar",
+    "Chhattisgarh",
+    "Goa",
+    "Gujarat",
+    "Haryana",
+    "Himachal Pradesh",
+    "Jharkhand",
+    "Karnataka",
+    "Kerala",
+    "Madhya Pradesh",
+    "Maharashtra",
+    "Manipur",
+    "Meghalaya",
+    "Mizoram",
+    "Nagaland",
+    "Odisha",
+    "Punjab",
+    "Rajasthan",
+    "Sikkim",
+    "Tamil Nadu",
+    "Telangana",
+    "Tripura",
+    "Uttar Pradesh",
+    "Uttarakhand",
+    "West Bengal",
+    "Delhi",
+]
+
+
+DOC_TYPE_ALIASES = {
+    "aadhaar": "aadhaar",
+    "aadhar": "aadhaar",
+    "aadhaar_card": "aadhaar",
+    "pan": "pan_card",
+    "pan_card": "pan_card",
+    "voter": "voter_id",
+    "voter_id": "voter_id",
+    "passport": "passport",
+    "income": "income_certificate",
+    "income_certificate": "income_certificate",
+    "bpl": "ration_card",
+    "ration": "ration_card",
+    "ration_card": "ration_card",
+    "bank_passbook": "bank_passbook",
+    "passbook": "bank_passbook",
+    "tenth": "tenth_marksheet",
+    "10th": "tenth_marksheet",
+    "10th_marksheet": "tenth_marksheet",
+    "twelfth": "twelfth_marksheet",
+    "12th": "twelfth_marksheet",
+    "12th_marksheet": "twelfth_marksheet",
+    "degree": "degree_certificate",
+    "degree_certificate": "degree_certificate",
+    "kcc": "kisan_credit_card",
+    "kisan_credit_card": "kisan_credit_card",
+    "land": "land_records",
+    "land_records": "land_records",
+    "patta": "land_records",
+    "pm_kisan": "pm_kisan_registration",
+    "pm_kisan_registration": "pm_kisan_registration",
+    "disability": "disability_certificate",
+    "disability_certificate": "disability_certificate",
+    "caste": "caste_certificate",
+    "caste_certificate": "caste_certificate",
+    "minority": "minority_certificate",
+    "minority_certificate": "minority_certificate",
+    "soil": "soil_health_card",
+    "soil_health_card": "soil_health_card",
+    "crop_insurance": "crop_insurance_policy",
+    "crop_insurance_policy": "crop_insurance_policy",
+    "senior_citizen": "senior_citizen_card",
+    "senior_citizen_card": "senior_citizen_card",
+}
 
 
 class OCRService:
-    """Combined OCR service."""
+    """Local OCR + regex extraction service."""
 
-    DOC_TYPE_FIELD_SCHEMA = {
-        "aadhaar": {
-            "full_name": "string or null",
-            "dob": "YYYY-MM-DD or null",
-            "gender": "male|female|other or null",
-            "aadhaar_number": "12-digit string or null",
-            "address": "string or null",
-            "state": "string or null",
-            "district": "string or null",
-            "pincode": "6-digit string or null",
-        },
-        "income": {
-            "full_name": "string or null",
-            "annual_income": "number in rupees or null",
-            "occupation": "string or null",
-            "address": "string or null",
-            "state": "string or null",
-            "district": "string or null",
-            "pincode": "6-digit string or null",
-        },
-        "caste": {
-            "full_name": "string or null",
-            "social_category": "general|obc|sc|st|ews or null",
-            "address": "string or null",
-            "state": "string or null",
-            "district": "string or null",
-            "pincode": "6-digit string or null",
-        },
-        "ration": {
-            "full_name": "string or null",
-            "ration_card_number": "string or null",
-            "ration_card_type": "apl|bpl|phh|antyodaya or null",
-            "is_bpl": "1 or 0 or null",
-            "has_ration_card": "1 or null",
-            "address": "string or null",
-            "state": "string or null",
-            "district": "string or null",
-            "pincode": "6-digit string or null",
-        },
-        "other": {
-            "full_name": "string or null",
-            "dob": "YYYY-MM-DD or null",
-            "gender": "male|female|other or null",
-            "annual_income": "number in rupees or null",
-            "social_category": "general|obc|sc|st|ews or null",
-            "occupation": "string or null",
-            "address": "string or null",
-            "state": "string or null",
-            "district": "string or null",
-            "pincode": "6-digit string or null",
-        },
-    }
-
-    @classmethod
-    def _build_extraction_prompt(cls, doc_type: str) -> str:
-        schema = cls.DOC_TYPE_FIELD_SCHEMA.get(doc_type, cls.DOC_TYPE_FIELD_SCHEMA["other"])
-        template_json = json.dumps({key: None for key in schema.keys()}, indent=2)
-        guidance_text = "\n".join([f"- {key}: {rule}" for key, rule in schema.items()])
-        return f"""
-        You are processing an Indian government document of type: {doc_type}.
-        Extract structured values and return ONLY valid JSON.
-
-        Use this exact JSON shape (same keys, null when absent):
-        {template_json}
-
-        Field guidance:
-        {guidance_text}
-
-        Rules:
-        - Do NOT include keys outside this schema.
-        - Do NOT infer values that are not explicitly present in the document.
-        - If a value is uncertain, set it to null.
-        - Return ONLY valid JSON with no explanation and no markdown.
-        """
+    def __init__(self):
+        self.tesseract_available = TESSERACT_AVAILABLE
+        self.pdf_available = PDFPLUMBER_AVAILABLE
 
     @staticmethod
-    def _build_text_ocr_prompt(doc_type: str) -> str:
-        return f"""
-        You are processing an Indian government document of type: {doc_type}.
-        Extract all visible text exactly as printed.
-
-        Rules:
-        - Preserve line breaks where possible.
-        - Do not summarize or paraphrase.
-        - Return plain text only (no JSON, no markdown, no commentary).
-        """
+    def normalize_doc_type(doc_type: str) -> str:
+        key = (doc_type or "").strip().lower().replace("-", "_").replace(" ", "_")
+        return DOC_TYPE_ALIASES.get(key, key or "other")
 
     @staticmethod
-    def _parse_income_value(value):
-        if value is None:
-            return None
+    def _to_iso_date(raw: str) -> str:
+        value = (raw or "").strip()
+        if not value:
+            return ""
 
-        numeric_match = re.search(r"\d[\d,\s]*(?:\.\d+)?", str(value))
-        if not numeric_match:
-            return None
-
-        numeric_text = numeric_match.group(0).replace(",", "").replace(" ", "")
-        if not numeric_text:
-            return None
-
-        try:
-            parsed = float(numeric_text)
-        except Exception:
-            return None
-
-        digits_only = re.sub(r"\D", "", numeric_text)
-        if len(digits_only) >= 5:
+        formats = [
+            "%d/%m/%Y",
+            "%d-%m-%Y",
+            "%d.%m.%Y",
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+            "%d %m %Y",
+        ]
+        for fmt in formats:
             try:
-                prefix_year = int(digits_only[:4])
-            except Exception:
-                prefix_year = 0
-            suffix = digits_only[4:]
-            if 1900 <= prefix_year <= 2100 and suffix and set(suffix) == {"0"}:
-                return None
-
-        rounded = int(parsed)
-        if 1900 <= parsed <= 2100 and abs(parsed - rounded) < 0.0001:
-            return None
-        if parsed <= 0:
-            return None
-        return parsed
+                return datetime.strptime(value, fmt).strftime("%Y-%m-%d")
+            except ValueError:
+                continue
+        return ""
 
     @staticmethod
-    def _is_meaningful_value(value) -> bool:
-        if value is None:
-            return False
+    def _calculate_age(iso_dob: str) -> int | None:
+        if not iso_dob:
+            return None
+        try:
+            dob = datetime.strptime(iso_dob, "%Y-%m-%d")
+        except ValueError:
+            return None
 
-        if isinstance(value, str):
-            stripped = value.strip()
-            if not stripped:
-                return False
-
-            lowered = stripped.lower()
-            if lowered in {"error", "none", "null", "n/a", "na", "unknown"}:
-                return False
-            if lowered.startswith("error:"):
-                return False
-            return True
-
-        return True
-
-    @classmethod
-    def _normalize_full_name(cls, value) -> str:
-        candidate = extraction_service._normalize_name_candidate(str(value or ""))
-        return candidate or ""
-
-    @classmethod
-    def _sanitize_extracted_data(cls, extracted_data: dict, doc_type: str) -> dict:
-        filtered = extraction_service.filter_fields_for_doc_type(extracted_data or {}, doc_type)
-        cleaned = {}
-
-        for key, value in filtered.items():
-            if not cls._is_meaningful_value(value):
-                continue
-
-            if key == "full_name":
-                normalized_name = cls._normalize_full_name(value)
-                if normalized_name:
-                    cleaned[key] = normalized_name
-                continue
-
-            if key == "annual_income":
-                parsed_income = cls._parse_income_value(value)
-                if parsed_income is not None:
-                    cleaned[key] = str(int(parsed_income) if float(parsed_income).is_integer() else parsed_income)
-                continue
-
-            if key == "pincode":
-                digits = "".join(ch for ch in str(value) if ch.isdigit())
-                if len(digits) == 6:
-                    cleaned[key] = digits
-                continue
-
-            if isinstance(value, str):
-                stripped = value.strip()
-                if stripped:
-                    cleaned[key] = stripped
-                continue
-
-            cleaned[key] = value
-
-        return cleaned
-
-    @classmethod
-    def _clean_regex_result(cls, regex_result: dict, doc_type: str) -> dict:
-        return cls._sanitize_extracted_data(regex_result, doc_type)
+        today = datetime.utcnow()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        return age if 0 <= age <= 120 else None
 
     @staticmethod
-    def _summarize_engine_error(error_text: str, engine_name: str) -> str:
-        if not error_text:
-            return ""
+    def _extract_state(text: str) -> Tuple[str, float]:
+        lowered = (text or "").lower()
+        for state in INDIAN_STATES:
+            if state.lower() in lowered:
+                return state, 0.9
+        return "", 0.0
 
-        lowered = error_text.lower()
-        if "429" in lowered or "quota exceeded" in lowered:
-            return f"{engine_name} quota exceeded"
-        if "not configured" in lowered:
-            return f"{engine_name} not configured"
-        if "404" in lowered or "not found" in lowered:
-            return f"{engine_name} model unavailable"
+    @staticmethod
+    def _extract_pincode(text: str) -> Tuple[str, float]:
+        labeled = re.search(r"(?:pin|pincode|postal\s*code)\s*[:\-]?\s*([0-9]{6})", text, re.IGNORECASE)
+        if labeled:
+            return labeled.group(1), 0.95
 
-        first_line = error_text.strip().splitlines()[0]
-        return f"{engine_name} error: {first_line[:180]}"
+        generic = re.findall(r"\b([0-9]{6})\b", text)
+        if generic:
+            return generic[-1], 0.75
+        return "", 0.0
 
-    @classmethod
-    def _count_meaningful_fields(cls, extracted_data: dict, doc_type: str) -> int:
-        schema = cls.DOC_TYPE_FIELD_SCHEMA.get(doc_type, cls.DOC_TYPE_FIELD_SCHEMA["other"])
-        return sum(1 for key in schema.keys() if cls._is_meaningful_value(extracted_data.get(key)))
+    @staticmethod
+    def _extract_name(text: str) -> Tuple[str, float]:
+        patterns = [
+            r"(?:name|name of (?:applicant|cardholder|holder|beneficiary))\s*[:\-]\s*([A-Za-z][A-Za-z .]{2,80})",
+            r"(?:applicant)\s*[:\-]\s*([A-Za-z][A-Za-z .]{2,80})",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                name = re.sub(r"\s+", " ", match.group(1)).strip(" .")
+                if 2 <= len(name.split()) <= 6:
+                    return name.title(), 0.88
 
-    @classmethod
-    def _should_enrich_with_tesseract(cls, extracted_data: dict, doc_type: str) -> bool:
-        if not extracted_data:
-            return True
-
-        field_count = cls._count_meaningful_fields(extracted_data, doc_type)
-
-        if doc_type == "income":
-            has_income = cls._parse_income_value(extracted_data.get("annual_income")) is not None
-            return (not has_income) or field_count < 3
-
-        if doc_type == "caste":
-            has_category = cls._is_meaningful_value(extracted_data.get("social_category"))
-            return (not has_category) or field_count < 2
-
-        if doc_type == "ration":
-            has_ration_core = any(
-                cls._is_meaningful_value(extracted_data.get(key))
-                for key in ["ration_card_number", "ration_card_type", "is_bpl", "has_ration_card"]
-            )
-            return (not has_ration_core) or field_count < 3
-
-        if doc_type == "aadhaar":
-            has_aadhaar_core = any(
-                cls._is_meaningful_value(extracted_data.get(key))
-                for key in ["aadhaar_number", "dob", "full_name"]
-            )
-            return (not has_aadhaar_core) or field_count < 3
-
-        return field_count < 2
-
-    @classmethod
-    def _merge_extracted_data(cls, primary: dict, secondary: dict, doc_type: str) -> dict:
-        schema = cls.DOC_TYPE_FIELD_SCHEMA.get(doc_type, cls.DOC_TYPE_FIELD_SCHEMA["other"])
-        merged = {}
-
-        for key in schema.keys():
-            primary_value = (primary or {}).get(key)
-            secondary_value = (secondary or {}).get(key)
-
-            if key == "full_name":
-                primary_name = cls._normalize_full_name(primary_value)
-                secondary_name = cls._normalize_full_name(secondary_value)
-
-                if secondary_name and (not primary_name or len(secondary_name) >= len(primary_name)):
-                    merged[key] = secondary_name
-                elif primary_name:
-                    merged[key] = primary_name
+        for line in [ln.strip() for ln in (text or "").splitlines() if ln.strip()][:10]:
+            if re.search(r"\d", line):
                 continue
-
-            if key == "annual_income":
-                primary_income = cls._parse_income_value(primary_value)
-                secondary_income = cls._parse_income_value(secondary_value)
-                if secondary_income is not None and (primary_income is None or secondary_income > primary_income):
-                    merged[key] = str(int(secondary_income) if float(secondary_income).is_integer() else secondary_income)
+            cleaned = re.sub(r"[^A-Za-z ]", " ", line)
+            cleaned = re.sub(r"\s+", " ", cleaned).strip()
+            if 2 <= len(cleaned.split()) <= 5 and len(cleaned) <= 60:
+                blocked = {"government", "india", "certificate", "aadhaar", "ration", "income"}
+                if any(token in cleaned.lower() for token in blocked):
                     continue
+                return cleaned.title(), 0.62
 
-            if cls._is_meaningful_value(primary_value):
-                merged[key] = primary_value
+        return "", 0.0
+
+    @staticmethod
+    def _extract_district(text: str) -> Tuple[str, float]:
+        match = re.search(r"(?:district|dist\.?)[\s:\-]+([A-Za-z][A-Za-z .]{2,40})", text, re.IGNORECASE)
+        if match:
+            district = re.sub(r"\s+", " ", match.group(1)).strip(" .")
+            return district.title(), 0.85
+        return "", 0.0
+
+    @staticmethod
+    def _extract_address(text: str) -> Tuple[str, float]:
+        lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
+        for idx, line in enumerate(lines):
+            match = re.search(r"(?:address|addr)\s*[:\-]?\s*(.*)", line, re.IGNORECASE)
+            if not match:
                 continue
 
-            if cls._is_meaningful_value(secondary_value):
-                merged[key] = secondary_value
+            parts = [match.group(1).strip(" ,.-")] if match.group(1).strip() else []
+            for nxt in range(idx + 1, min(idx + 4, len(lines))):
+                fragment = lines[nxt].strip(" ,.-")
+                if re.search(r"(district|state|pin|dob|gender|certificate|income)", fragment, re.IGNORECASE):
+                    break
+                parts.append(fragment)
 
-        return {key: value for key, value in merged.items() if cls._is_meaningful_value(value)}
-
-    @classmethod
-    def _has_minimum_doc_specific_data(cls, extracted_data: dict, doc_type: str) -> bool:
-        """Require at least one doc-specific signal field to avoid irrelevant output."""
-        if not extracted_data:
-            return False
-
-        if doc_type == "aadhaar":
-            return any(
-                cls._is_meaningful_value(extracted_data.get(key))
-                for key in ["aadhaar_number", "dob", "full_name"]
-            )
-        if doc_type == "income":
-            has_income = cls._parse_income_value(extracted_data.get("annual_income")) is not None
-            has_name = cls._is_meaningful_value(extracted_data.get("full_name"))
-            geo_count = sum(
-                1
-                for key in ["district", "state", "pincode"]
-                if cls._is_meaningful_value(extracted_data.get(key))
-            )
-            return has_income or has_name or geo_count >= 2
-        if doc_type == "caste":
-            return cls._is_meaningful_value(extracted_data.get("social_category"))
-        if doc_type == "ration":
-            return any(
-                cls._is_meaningful_value(extracted_data.get(key))
-                for key in ["ration_card_number", "ration_card_type", "is_bpl", "has_ration_card"]
-            )
-
-        return bool(extracted_data)
+            candidate = ", ".join([p for p in parts if p])
+            if len(candidate) >= 8:
+                return candidate, 0.8
+        return "", 0.0
 
     @staticmethod
-    async def ocr_via_gemini(image_bytes: bytes) -> str:
-        """Extract text from image using Gemini."""
-        if not gemini_service:
-            return ""
-
-        result = await gemini_service.extract_text_from_image(image_bytes)
-        if not isinstance(result, dict) or "error" in result:
-            return ""
-        return str(result.get("text") or "")
+    def _extract_ifsc(text: str) -> Tuple[str, float]:
+        match = re.search(r"\b([A-Z]{4}0[A-Z0-9]{6})\b", text, re.IGNORECASE)
+        if not match:
+            return "", 0.0
+        return match.group(1).upper(), 0.95
 
     @staticmethod
-    def ocr_via_tesseract(image_bytes: bytes) -> str:
-        """Extract text from image using Tesseract (local)."""
-        if not TESSERACT_AVAILABLE:
+    def _extract_amount(text: str, labels: List[str] | None = None) -> Tuple[str, float]:
+        labels = labels or []
+        for label in labels:
+            pattern = rf"(?:{label})[^0-9\n\r]{{0,24}}([0-9][0-9, ]{{2,}}(?:\.\d{{1,2}})?)"
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                amount = re.sub(r"[^0-9.]", "", match.group(1))
+                if amount:
+                    return amount, 0.92
+
+        generic = re.search(r"(?:inr|rs\.?|₹)\s*([0-9][0-9, ]{2,}(?:\.\d{1,2})?)", text, re.IGNORECASE)
+        if generic:
+            amount = re.sub(r"[^0-9.]", "", generic.group(1))
+            if amount:
+                return amount, 0.72
+        return "", 0.0
+
+    def _ocr_text_from_pdf(self, file_bytes: bytes) -> str:
+        if not self.pdf_available:
+            return ""
+        pages: List[str] = []
+        try:
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text() or ""
+                    if page_text.strip():
+                        pages.append(page_text)
+        except Exception:
+            return ""
+        return "\n".join(pages).strip()
+
+    def _preprocess_image(self, image: Image.Image) -> Image.Image:
+        image = image.convert("L")
+        image = ImageOps.autocontrast(image)
+        image = image.filter(ImageFilter.MedianFilter(size=3))
+        return image
+
+    def _ocr_text_from_image(self, file_bytes: bytes) -> str:
+        if not self.tesseract_available:
             return ""
 
         try:
-            import io
-            from PIL import Image
-
-            if settings.TESSERACT_PATH and os.path.exists(settings.TESSERACT_PATH):
+            if settings.TESSERACT_PATH:
                 pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_PATH
 
-            image = Image.open(io.BytesIO(image_bytes))
+            image = Image.open(io.BytesIO(file_bytes))
+            image = self._preprocess_image(image)
+
             try:
-                return pytesseract.image_to_string(image, lang='eng+hin+tel+tam+mar+ben+kan')
+                return pytesseract.image_to_string(image, lang="eng+hin").strip()
             except Exception:
-                # Fallback to English-only when additional language data is unavailable.
-                return pytesseract.image_to_string(image, lang='eng')
-        except Exception as e:
-            return f"Error: {str(e)}"
+                return pytesseract.image_to_string(image, lang="eng").strip()
+        except Exception:
+            return ""
+
+    def extract_text(self, file_bytes: bytes) -> str:
+        if file_bytes.startswith(b"%PDF"):
+            text = self._ocr_text_from_pdf(file_bytes)
+            if text:
+                return text
+
+        return self._ocr_text_from_image(file_bytes)
 
     @staticmethod
-    async def extract_structured_data(image_bytes: bytes, doc_type: str) -> dict:
-        """Extract structured data from document."""
-        normalized_doc_type = extraction_service.normalize_doc_type(doc_type)
-        prompt = OCRService._build_extraction_prompt(normalized_doc_type)
+    def _filter_output(data: Dict[str, object], confidence: Dict[str, float]) -> Tuple[Dict[str, object], Dict[str, float]]:
+        cleaned_data: Dict[str, object] = {}
+        cleaned_confidence: Dict[str, float] = {}
 
-        if not gemini_service and not TESSERACT_AVAILABLE:
+        for key, value in (data or {}).items():
+            if value is None:
+                continue
+            if isinstance(value, str) and not value.strip():
+                continue
+            cleaned_data[key] = value
+            cleaned_confidence[key] = round(float(confidence.get(key, 0.5)), 2)
+
+        return cleaned_data, cleaned_confidence
+
+    def _extract_aadhaar_from_text(self, text: str) -> Tuple[Dict[str, object], Dict[str, float]]:
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        name, name_conf = self._extract_name(text)
+        if name:
+            data["full_name"] = name
+            conf["full_name"] = name_conf
+
+        dob_match = re.search(r"(?:dob|date\s*of\s*birth|yob)\s*[:\-]?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4}|[0-9]{4})", text, re.IGNORECASE)
+        if dob_match:
+            raw_dob = dob_match.group(1)
+            if re.fullmatch(r"[0-9]{4}", raw_dob):
+                data["dob"] = f"{raw_dob}-01-01"
+                conf["dob"] = 0.58
+            else:
+                iso_dob = self._to_iso_date(raw_dob)
+                if iso_dob:
+                    data["dob"] = iso_dob
+                    conf["dob"] = 0.9
+
+        if data.get("dob"):
+            age = self._calculate_age(str(data["dob"]))
+            if age is not None:
+                data["age"] = age
+                conf["age"] = 0.88
+
+        gender_match = re.search(r"\b(male|female|other|transgender)\b", text, re.IGNORECASE)
+        if gender_match:
+            normalized = gender_match.group(1).lower()
+            if normalized == "transgender":
+                normalized = "other"
+            data["gender"] = normalized
+            conf["gender"] = 0.93
+
+        aadhaar_match = re.search(r"\b([0-9]{4}\s?[0-9]{4}\s?[0-9]{4})\b", text)
+        if aadhaar_match:
+            data["aadhaar_number"] = re.sub(r"\s+", "", aadhaar_match.group(1))
+            conf["aadhaar_number"] = 0.96
+
+        address, address_conf = self._extract_address(text)
+        if address:
+            data["address"] = address
+            conf["address"] = address_conf
+
+        district, district_conf = self._extract_district(text)
+        if district:
+            data["district"] = district
+            conf["district"] = district_conf
+
+        state, state_conf = self._extract_state(text)
+        if state:
+            data["state"] = state
+            conf["state"] = state_conf
+
+        pincode, pin_conf = self._extract_pincode(text)
+        if pincode:
+            data["pincode"] = pincode
+            conf["pincode"] = pin_conf
+
+        return self._filter_output(data, conf)
+
+    def extract_aadhaar(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        return self._extract_aadhaar_from_text(self.extract_text(file_bytes))
+
+    def extract_pan_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        pan_match = re.search(r"\b([A-Z]{5}[0-9]{4}[A-Z])\b", text, re.IGNORECASE)
+        if pan_match:
+            data["pan_number"] = pan_match.group(1).upper()
+            conf["pan_number"] = 0.97
+
+        name, name_conf = self._extract_name(text)
+        if name:
+            data["full_name"] = name
+            conf["full_name"] = name_conf
+
+        return self._filter_output(data, conf)
+
+    def extract_voter_id(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        voter_match = re.search(r"\b([A-Z]{3}[0-9]{7})\b", text, re.IGNORECASE)
+        if voter_match:
+            data["voter_id_number"] = voter_match.group(1).upper()
+            conf["voter_id_number"] = 0.92
+
+        address, address_conf = self._extract_address(text)
+        if address:
+            data["address"] = address
+            conf["address"] = address_conf
+
+        state, state_conf = self._extract_state(text)
+        if state:
+            data["state"] = state
+            conf["state"] = state_conf
+
+        district, district_conf = self._extract_district(text)
+        if district:
+            data["district"] = district
+            conf["district"] = district_conf
+
+        return self._filter_output(data, conf)
+
+    def extract_passport(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        passport_match = re.search(r"\b([A-PR-WYa-pr-wy][0-9]{7})\b", text)
+        if passport_match:
+            data["passport_number"] = passport_match.group(1).upper()
+            conf["passport_number"] = 0.95
+
+        if re.search(r"\bindian\b", text, re.IGNORECASE):
+            data["nationality"] = "Indian"
+            conf["nationality"] = 0.85
+
+        return self._filter_output(data, conf)
+
+    def extract_income_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        annual_income, income_conf = self._extract_amount(
+            text,
+            labels=["annual\\s+income", "family\\s+income", "income\\s+per\\s+annum", "total\\s+income"],
+        )
+        if annual_income:
+            data["annual_income"] = annual_income
+            conf["annual_income"] = income_conf
+
+        authority = re.search(
+            r"(?:issuing\s+authority|issued\s+by|tahsildar|tehsildar|revenue\s+officer)\s*[:\-]?\s*([A-Za-z ,.-]{3,80})",
+            text,
+            re.IGNORECASE,
+        )
+        if authority:
+            data["issuing_authority"] = authority.group(1).strip(" .,")
+            conf["issuing_authority"] = 0.78
+
+        name, name_conf = self._extract_name(text)
+        if name:
+            data["full_name"] = name
+            conf["full_name"] = name_conf
+
+        return self._filter_output(data, conf)
+
+    def extract_ration_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {"has_ration_card": 1}
+        conf: Dict[str, float] = {"has_ration_card": 0.95}
+
+        number_match = re.search(
+            r"(?:ration\s*card\s*(?:no|number)?|card\s*no)\s*[:\-]?\s*([A-Z0-9\-/]{6,30})",
+            text,
+            re.IGNORECASE,
+        )
+        if number_match:
+            data["ration_card_number"] = number_match.group(1).upper()
+            conf["ration_card_number"] = 0.9
+
+        category_match = re.search(r"\b(APL|BPL|AAY|PHH|ANTYODAYA)\b", text, re.IGNORECASE)
+        if category_match:
+            category = category_match.group(1).upper()
+            if category == "ANTYODAYA":
+                category = "AAY"
+            data["ration_card_category"] = category
+            conf["ration_card_category"] = 0.92
+
+            if category in {"BPL", "AAY", "PHH"}:
+                data["bpl_status"] = 1
+                conf["bpl_status"] = 0.9
+            else:
+                data["bpl_status"] = 0
+                conf["bpl_status"] = 0.8
+
+        family_size_match = re.search(r"(?:family\s*(?:size|members?)|total\s*members?)\s*[:\-]?\s*([0-9]{1,2})", text, re.IGNORECASE)
+        if family_size_match:
+            data["family_size"] = int(family_size_match.group(1))
+            conf["family_size"] = 0.82
+
+        return self._filter_output(data, conf)
+
+    def extract_bank_passbook(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        bank_name_match = re.search(r"(?:bank\s*name|branch)\s*[:\-]?\s*([A-Za-z .,&-]{3,80})", text, re.IGNORECASE)
+        if bank_name_match:
+            data["bank_name"] = bank_name_match.group(1).strip(" .,")
+            conf["bank_name"] = 0.76
+
+        account_match = re.search(r"(?:account\s*(?:number|no)?)\s*[:\-]?\s*([0-9]{9,18})", text, re.IGNORECASE)
+        if account_match:
+            account_number = account_match.group(1)
+            data["account_number_masked"] = f"XXXXXX{account_number[-4:]}"
+            conf["account_number_masked"] = 0.92
+
+        ifsc, ifsc_conf = self._extract_ifsc(text)
+        if ifsc:
+            data["ifsc"] = ifsc
+            conf["ifsc"] = ifsc_conf
+
+        data["has_bank_account"] = 1
+        conf["has_bank_account"] = 0.9
+
+        return self._filter_output(data, conf)
+
+    def _extract_education_common(self, text: str) -> Tuple[Dict[str, object], Dict[str, float]]:
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        board_match = re.search(r"(?:board|university)\s*[:\-]?\s*([A-Za-z .,&-]{3,80})", text, re.IGNORECASE)
+        if board_match:
+            data["education_board"] = board_match.group(1).strip(" .,")
+            conf["education_board"] = 0.8
+
+        year_match = re.search(r"\b(19[5-9][0-9]|20[0-4][0-9])\b", text)
+        if year_match:
+            data["education_year"] = int(year_match.group(1))
+            conf["education_year"] = 0.82
+
+        percent_match = re.search(r"([0-9]{2}(?:\.[0-9]{1,2})?)\s*(?:%|percent|percentage)", text, re.IGNORECASE)
+        if percent_match:
+            data["education_percentage"] = float(percent_match.group(1))
+            conf["education_percentage"] = 0.86
+
+        return data, conf
+
+    def extract_education_cert(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        return self.extract_degree_certificate(file_bytes)
+
+    def extract_tenth_marksheet(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data, conf = self._extract_education_common(text)
+        data["education_level"] = "10th"
+        conf["education_level"] = 0.95
+        return self._filter_output(data, conf)
+
+    def extract_twelfth_marksheet(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data, conf = self._extract_education_common(text)
+        data["education_level"] = "12th"
+        conf["education_level"] = 0.95
+        return self._filter_output(data, conf)
+
+    def extract_degree_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data, conf = self._extract_education_common(text)
+
+        degree_match = re.search(r"\b(B\.?A|B\.?Sc|B\.?Com|B\.?Tech|M\.?A|M\.?Sc|M\.?Com|M\.?Tech|Ph\.?D|Diploma|Degree)\b", text, re.IGNORECASE)
+        if degree_match:
+            data["degree_name"] = degree_match.group(1).replace(".", "").upper()
+            conf["degree_name"] = 0.84
+            data["education_level"] = "graduate"
+            conf["education_level"] = 0.78
+
+        inst_match = re.search(r"(?:college|institution|university)\s*[:\-]?\s*([A-Za-z .,&-]{4,100})", text, re.IGNORECASE)
+        if inst_match:
+            data["institution_name"] = inst_match.group(1).strip(" .,")
+            conf["institution_name"] = 0.75
+
+        return self._filter_output(data, conf)
+
+    def extract_land_records(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        survey_match = re.search(r"(?:survey\s*(?:no|number)|khasra\s*(?:no|number))\s*[:\-]?\s*([A-Za-z0-9\-/]{2,30})", text, re.IGNORECASE)
+        if survey_match:
+            data["land_survey_number"] = survey_match.group(1).upper()
+            conf["land_survey_number"] = 0.88
+
+        area_match = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*(acres?|acre|hectares?|ha)\b", text, re.IGNORECASE)
+        if area_match:
+            area = float(area_match.group(1))
+            unit = area_match.group(2).lower()
+            if unit.startswith("hect") or unit == "ha":
+                area = round(area * 2.471, 3)
+            data["land_area_acres"] = area
+            conf["land_area_acres"] = 0.88
+
+        type_match = re.search(r"(?:land\s*type|classification)\s*[:\-]?\s*([A-Za-z ]{3,40})", text, re.IGNORECASE)
+        if type_match:
+            data["land_type"] = type_match.group(1).strip().title()
+            conf["land_type"] = 0.7
+
+        return self._filter_output(data, conf)
+
+    def extract_kisan_credit_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {"kcc_holder": 1}
+        conf: Dict[str, float] = {"kcc_holder": 0.94}
+
+        number_match = re.search(r"(?:kcc\s*(?:no|number)?|card\s*(?:no|number)?)\s*[:\-]?\s*([A-Z0-9\-/]{6,30})", text, re.IGNORECASE)
+        if number_match:
+            data["kcc_number"] = number_match.group(1).upper()
+            conf["kcc_number"] = 0.9
+
+        bank_match = re.search(r"(?:bank\s*name|bank)\s*[:\-]?\s*([A-Za-z .,&-]{3,80})", text, re.IGNORECASE)
+        if bank_match:
+            data["bank_name"] = bank_match.group(1).strip(" .,")
+            conf["bank_name"] = 0.75
+
+        credit_limit, limit_conf = self._extract_amount(text, labels=["credit\\s+limit", "limit"])
+        if credit_limit:
+            data["kcc_credit_limit"] = float(credit_limit)
+            conf["kcc_credit_limit"] = limit_conf
+
+        return self._filter_output(data, conf)
+
+    def extract_pm_kisan_registration(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        if re.search(r"\b(active|registered|approved|success)\b", text, re.IGNORECASE):
+            data["pm_kisan_registered"] = 1
+            conf["pm_kisan_registered"] = 0.84
+
+        farmer_id_match = re.search(r"(?:farmer\s*id|registration\s*(?:id|number)|beneficiary\s*id)\s*[:\-]?\s*([A-Z0-9\-/]{6,30})", text, re.IGNORECASE)
+        if farmer_id_match:
+            data["pm_kisan_farmer_id"] = farmer_id_match.group(1).upper()
+            conf["pm_kisan_farmer_id"] = 0.88
+
+        return self._filter_output(data, conf)
+
+    def extract_disability_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {"has_disability": 1}
+        conf: Dict[str, float] = {"has_disability": 0.95}
+
+        pct_match = re.search(r"([0-9]{1,3})\s*%", text)
+        if pct_match:
+            pct = int(pct_match.group(1))
+            if 1 <= pct <= 100:
+                data["disability_percentage"] = pct
+                conf["disability_percentage"] = 0.9
+
+        type_match = re.search(r"(?:type\s*of\s*disability|disability\s*type)\s*[:\-]?\s*([A-Za-z ]{3,50})", text, re.IGNORECASE)
+        if type_match:
+            data["disability_type"] = type_match.group(1).strip().title()
+            conf["disability_type"] = 0.78
+
+        authority_match = re.search(r"(?:issued\s*by|issuing\s*authority)\s*[:\-]?\s*([A-Za-z .,&-]{3,80})", text, re.IGNORECASE)
+        if authority_match:
+            data["disability_issuing_authority"] = authority_match.group(1).strip(" .,")
+            conf["disability_issuing_authority"] = 0.76
+
+        return self._filter_output(data, conf)
+
+    def extract_caste_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        if re.search(r"\bSC\b|scheduled\s+caste", text, re.IGNORECASE):
+            data["caste_category"] = "SC"
+            conf["caste_category"] = 0.92
+        elif re.search(r"\bST\b|scheduled\s+tribe", text, re.IGNORECASE):
+            data["caste_category"] = "ST"
+            conf["caste_category"] = 0.92
+        elif re.search(r"\bOBC\b|other\s+backward", text, re.IGNORECASE):
+            data["caste_category"] = "OBC"
+            conf["caste_category"] = 0.9
+        elif re.search(r"\bEWS\b|economically\s+weaker", text, re.IGNORECASE):
+            data["caste_category"] = "EWS"
+            conf["caste_category"] = 0.86
+        elif re.search(r"\bGENERAL\b|unreserved", text, re.IGNORECASE):
+            data["caste_category"] = "General"
+            conf["caste_category"] = 0.84
+
+        sub_match = re.search(r"(?:sub\s*caste|caste)\s*[:\-]?\s*([A-Za-z ]{3,60})", text, re.IGNORECASE)
+        if sub_match:
+            data["sub_caste"] = sub_match.group(1).strip().title()
+            conf["sub_caste"] = 0.7
+
+        cert_match = re.search(r"(?:certificate\s*(?:no|number)|cert\.?\s*no)\s*[:\-]?\s*([A-Z0-9\-/]{4,40})", text, re.IGNORECASE)
+        if cert_match:
+            data["caste_certificate_number"] = cert_match.group(1).upper()
+            conf["caste_certificate_number"] = 0.88
+
+        authority_match = re.search(r"(?:issuing\s*authority|issued\s*by)\s*[:\-]?\s*([A-Za-z .,&-]{3,80})", text, re.IGNORECASE)
+        if authority_match:
+            data["caste_issuing_authority"] = authority_match.group(1).strip(" .,")
+            conf["caste_issuing_authority"] = 0.74
+
+        return self._filter_output(data, conf)
+
+    def extract_minority_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {"minority_status": 1}
+        conf: Dict[str, float] = {"minority_status": 0.85}
+
+        religion_match = re.search(r"(?:religion|community)\s*[:\-]?\s*([A-Za-z ]{3,40})", text, re.IGNORECASE)
+        if religion_match:
+            data["religion"] = religion_match.group(1).strip().title()
+            conf["religion"] = 0.78
+
+        return self._filter_output(data, conf)
+
+    def extract_soil_health_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        soil_match = re.search(r"(?:soil\s*type|soil)\s*[:\-]?\s*([A-Za-z ]{3,50})", text, re.IGNORECASE)
+        if soil_match:
+            data["soil_type"] = soil_match.group(1).strip().title()
+            conf["soil_type"] = 0.8
+
+        rec_match = re.search(r"(?:recommendation|recommended\s*crop|advice)\s*[:\-]?\s*([A-Za-z0-9 ,.-]{5,160})", text, re.IGNORECASE)
+        if rec_match:
+            data["soil_recommendation"] = rec_match.group(1).strip(" .,")
+            conf["soil_recommendation"] = 0.7
+
+        return self._filter_output(data, conf)
+
+    def extract_crop_insurance_policy(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {"crop_insurance": 1}
+        conf: Dict[str, float] = {"crop_insurance": 0.9}
+
+        policy_match = re.search(r"(?:policy\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9\-/]{5,40})", text, re.IGNORECASE)
+        if policy_match:
+            data["crop_insurance_policy_number"] = policy_match.group(1).upper()
+            conf["crop_insurance_policy_number"] = 0.9
+
+        sum_insured, sum_conf = self._extract_amount(text, labels=["sum\\s+insured", "insured\\s+amount"])
+        if sum_insured:
+            data["crop_insurance_sum_insured"] = float(sum_insured)
+            conf["crop_insurance_sum_insured"] = sum_conf
+
+        crops_match = re.search(r"(?:insured\s*crops?|crop\s*name)\s*[:\-]?\s*([A-Za-z, /-]{3,120})", text, re.IGNORECASE)
+        if crops_match:
+            data["insured_crops"] = crops_match.group(1).strip(" .,")
+            conf["insured_crops"] = 0.74
+
+        return self._filter_output(data, conf)
+
+    def extract_senior_citizen_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes)
+        data: Dict[str, object] = {"is_senior_citizen": 1}
+        conf: Dict[str, float] = {"is_senior_citizen": 0.9}
+
+        dob_match = re.search(r"(?:dob|date\s*of\s*birth)\s*[:\-]?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})", text, re.IGNORECASE)
+        if dob_match:
+            iso_dob = self._to_iso_date(dob_match.group(1))
+            if iso_dob:
+                data["dob"] = iso_dob
+                conf["dob"] = 0.84
+                age = self._calculate_age(iso_dob)
+                if age is not None:
+                    data["age"] = age
+                    conf["age"] = 0.84
+
+        authority_match = re.search(r"(?:issued\s*by|issuing\s*authority)\s*[:\-]?\s*([A-Za-z .,&-]{3,80})", text, re.IGNORECASE)
+        if authority_match:
+            data["senior_citizen_issuing_authority"] = authority_match.group(1).strip(" .,")
+            conf["senior_citizen_issuing_authority"] = 0.76
+
+        return self._filter_output(data, conf)
+
+    def _extract_for_doc_type(self, doc_type: str, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float], str]:
+        normalized = self.normalize_doc_type(doc_type)
+
+        if normalized == "aadhaar":
+            data, confidence_scores = self.extract_aadhaar(file_bytes)
+        elif normalized == "pan_card":
+            data, confidence_scores = self.extract_pan_card(file_bytes)
+        elif normalized == "voter_id":
+            data, confidence_scores = self.extract_voter_id(file_bytes)
+        elif normalized == "passport":
+            data, confidence_scores = self.extract_passport(file_bytes)
+        elif normalized == "income_certificate":
+            data, confidence_scores = self.extract_income_certificate(file_bytes)
+        elif normalized == "ration_card":
+            data, confidence_scores = self.extract_ration_card(file_bytes)
+        elif normalized == "bank_passbook":
+            data, confidence_scores = self.extract_bank_passbook(file_bytes)
+        elif normalized == "tenth_marksheet":
+            data, confidence_scores = self.extract_tenth_marksheet(file_bytes)
+        elif normalized == "twelfth_marksheet":
+            data, confidence_scores = self.extract_twelfth_marksheet(file_bytes)
+        elif normalized == "degree_certificate":
+            data, confidence_scores = self.extract_degree_certificate(file_bytes)
+        elif normalized == "kisan_credit_card":
+            data, confidence_scores = self.extract_kisan_credit_card(file_bytes)
+        elif normalized == "land_records":
+            data, confidence_scores = self.extract_land_records(file_bytes)
+        elif normalized == "pm_kisan_registration":
+            data, confidence_scores = self.extract_pm_kisan_registration(file_bytes)
+        elif normalized == "disability_certificate":
+            data, confidence_scores = self.extract_disability_certificate(file_bytes)
+        elif normalized == "caste_certificate":
+            data, confidence_scores = self.extract_caste_certificate(file_bytes)
+        elif normalized == "minority_certificate":
+            data, confidence_scores = self.extract_minority_certificate(file_bytes)
+        elif normalized == "soil_health_card":
+            data, confidence_scores = self.extract_soil_health_card(file_bytes)
+        elif normalized == "crop_insurance_policy":
+            data, confidence_scores = self.extract_crop_insurance_policy(file_bytes)
+        elif normalized == "senior_citizen_card":
+            data, confidence_scores = self.extract_senior_citizen_card(file_bytes)
+        else:
+            text = self.extract_text(file_bytes)
+            data, confidence_scores = self._extract_aadhaar_from_text(text)
+
+        return data, confidence_scores, normalized
+
+    def extract_document(self, file_bytes: bytes, doc_type: str) -> Dict[str, object]:
+        if not self.tesseract_available and not self.pdf_available:
             return {
                 "status": "failed",
-                "method": "none",
                 "data": {},
-                "confidence": 0.0,
-                "error": "No OCR engine is configured",
+                "confidence_scores": {},
+                "low_confidence_fields": [],
+                "error": "OCR engine unavailable: install pytesseract/Pillow and pdfplumber",
+                "doc_type": self.normalize_doc_type(doc_type),
             }
 
-        gemini_error = ""
-        gemini_result = {}
-        gemini_has_data = False
-        gemini_text_error = ""
-        gemini_regex_result = {}
-
-        if gemini_service:
-            gemini_payload = await gemini_service.extract_from_image(image_bytes, prompt)
-            if isinstance(gemini_payload, dict) and "error" not in gemini_payload:
-                gemini_result = OCRService._sanitize_extracted_data(gemini_payload, normalized_doc_type)
-                gemini_has_data = bool(gemini_result)
-            elif isinstance(gemini_payload, dict) and "error" in gemini_payload:
-                gemini_error = str(gemini_payload.get("error") or "")
-
-            should_run_gemini_regex = (
-                not gemini_has_data
-                or OCRService._should_enrich_with_tesseract(gemini_result, normalized_doc_type)
-            )
-            if should_run_gemini_regex:
-                text_prompt = OCRService._build_text_ocr_prompt(normalized_doc_type)
-                gemini_text_payload = await gemini_service.extract_text_from_image(image_bytes, text_prompt)
-                if isinstance(gemini_text_payload, dict) and "error" not in gemini_text_payload:
-                    gemini_text = str(gemini_text_payload.get("text") or "").strip()
-                    if gemini_text and not gemini_text.lower().startswith("error:"):
-                        regex_payload = extraction_service.extract_fields(gemini_text, normalized_doc_type)
-                        gemini_regex_result = OCRService._clean_regex_result(regex_payload, normalized_doc_type)
-                elif isinstance(gemini_text_payload, dict):
-                    gemini_text_error = str(gemini_text_payload.get("error") or "")
-
-        method = "gemini" if gemini_has_data else "none"
-        tesseract_error = ""
-        regex_result = {}
-
-        final_data = gemini_result if gemini_has_data else {}
-        if gemini_regex_result:
-            final_data = OCRService._merge_extracted_data(final_data, gemini_regex_result, normalized_doc_type)
-            final_data = OCRService._sanitize_extracted_data(final_data, normalized_doc_type)
-            method = "gemini+regex"
-
-        should_run_tesseract = TESSERACT_AVAILABLE and (
-            not final_data
-            or OCRService._should_enrich_with_tesseract(final_data, normalized_doc_type)
-        )
-        if should_run_tesseract:
-            text = OCRService.ocr_via_tesseract(image_bytes)
-            normalized_text = text.strip() if text else ""
-
-            if normalized_text and not normalized_text.lower().startswith("error:"):
-                regex_payload = extraction_service.extract_fields(normalized_text, normalized_doc_type)
-                regex_result = OCRService._clean_regex_result(regex_payload, normalized_doc_type)
-                if regex_result:
-                    method = "gemini+regex+tesseract+regex" if final_data else "tesseract+regex"
-            else:
-                tesseract_error = normalized_text or "OCR extraction failed"
-
-        if regex_result:
-            final_data = OCRService._merge_extracted_data(final_data, regex_result, normalized_doc_type)
-            final_data = OCRService._sanitize_extracted_data(final_data, normalized_doc_type)
-
-        if final_data and OCRService._has_minimum_doc_specific_data(final_data, normalized_doc_type):
-            if method == "gemini+regex+tesseract+regex":
-                confidence = 0.84
-            elif method == "gemini+regex":
-                confidence = 0.8
-            elif method == "gemini+tesseract+regex":
-                confidence = 0.82
-            elif method == "tesseract+regex":
-                confidence = 0.6
-            else:
-                confidence = 0.9
-
+        data, confidence_scores, normalized = self._extract_for_doc_type(doc_type, file_bytes)
+        if not data:
             return {
-                "status": "completed",
-                "method": method,
-                "data": final_data,
-                "confidence": confidence,
+                "status": "failed",
+                "data": {},
+                "confidence_scores": {},
+                "low_confidence_fields": [],
+                "error": f"Could not extract required fields from {normalized}",
+                "doc_type": normalized,
             }
 
-        if final_data and normalized_doc_type == "other":
-            if method == "gemini+regex+tesseract+regex":
-                confidence = 0.78
-            elif method == "gemini+regex":
-                confidence = 0.74
-            elif method == "gemini+tesseract+regex":
-                confidence = 0.75
-            elif method == "gemini":
-                confidence = 0.7
-            else:
-                confidence = 0.55
-            return {
-                "status": "completed",
-                "method": method,
-                "data": final_data,
-                "confidence": confidence,
-            }
-
-        errors = []
-        if gemini_error:
-            summarized = OCRService._summarize_engine_error(gemini_error, "Gemini")
-            if summarized:
-                errors.append(summarized)
-        if gemini_text_error:
-            summarized = OCRService._summarize_engine_error(gemini_text_error, "Gemini OCR text")
-            if summarized:
-                errors.append(summarized)
-        if tesseract_error:
-            summarized = OCRService._summarize_engine_error(tesseract_error, "Tesseract")
-            if summarized:
-                errors.append(summarized)
-
-        default_error = f"Could not extract required {normalized_doc_type} fields"
-        if normalized_doc_type == "income":
-            default_error = (
-                "Could not extract sufficient income details. "
-                "Please upload a clearer full income certificate showing applicant name and annual income."
-            )
-
-        error_message = default_error
-        if errors:
-            error_message = f"{default_error} ({'; '.join(errors)})"
+        low_confidence = [field for field, score in confidence_scores.items() if float(score) < 0.6]
+        overall_confidence = round(sum(confidence_scores.values()) / max(len(confidence_scores), 1), 2)
 
         return {
-            "status": "failed",
-            "method": method if method != "none" else "gemini",
-            "data": {},
-            "confidence": 0.0,
-            "error": error_message,
+            "status": "completed",
+            "data": data,
+            "confidence_scores": confidence_scores,
+            "low_confidence_fields": low_confidence,
+            "overall_confidence": overall_confidence,
+            "doc_type": normalized,
+        }
+
+    async def extract_structured_data(self, image_bytes: bytes, doc_type: str) -> Dict[str, object]:
+        """Backward-compatible wrapper used by existing document upload router."""
+        result = self.extract_document(image_bytes, doc_type)
+        if result["status"] != "completed":
+            return {
+                "status": "failed",
+                "method": "local_ocr_regex",
+                "data": {},
+                "confidence": 0.0,
+                "error": result.get("error", "OCR extraction failed"),
+            }
+
+        return {
+            "status": "completed",
+            "method": "local_ocr_regex",
+            "data": result["data"],
+            "confidence": result.get("overall_confidence", 0.0),
+            "confidence_scores": result.get("confidence_scores", {}),
+            "low_confidence_fields": result.get("low_confidence_fields", []),
         }
 
 

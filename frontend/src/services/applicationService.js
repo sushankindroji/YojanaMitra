@@ -3,7 +3,7 @@
  */
 import api from './api'
 
-export const applicationService = {
+const applicationService = {
   // Save an application for a scheme
   saveApplication: (schemeId, notes = '') =>
     api.post('/applications/save-scheme', {
@@ -36,3 +36,6 @@ export const applicationService = {
   getApplicationStats: () =>
     api.get('/applications/stats/summary'),
 }
+
+export default applicationService
+export { applicationService }

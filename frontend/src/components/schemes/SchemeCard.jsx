@@ -10,7 +10,7 @@ import {
   ExternalLink,
   ShieldAlert,
 } from 'lucide-react'
-import { applicationService } from '../../services/applicationService'
+import applicationService from '../../services/applicationService'
 import { useApplicationStore } from '../../store/applicationStore'
 import { toast } from 'react-toastify'
 import Badge from '../ui/Badge'

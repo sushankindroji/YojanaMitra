@@ -165,7 +165,7 @@ const normalizeDobToIso = (value) => {
     return raw
   }
 
-  const dmy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/)
+  const dmy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
   if (dmy) {
     const dd = dmy[1].padStart(2, '0')
     const mm = dmy[2].padStart(2, '0')
@@ -173,7 +173,7 @@ const normalizeDobToIso = (value) => {
     return `${yyyy}-${mm}-${dd}`
   }
 
-  const ymd = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/)
+  const ymd = raw.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/)
   if (ymd) {
     const yyyy = ymd[1]
     const mm = ymd[2].padStart(2, '0')

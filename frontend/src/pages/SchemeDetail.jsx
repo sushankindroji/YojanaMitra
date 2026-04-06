@@ -26,7 +26,7 @@ import {
 import EligibilityBadges from '../components/schemes/EligibilityBadges'
 import EligibilitySummary from '../components/schemes/EligibilitySummary'
 import schemeService from '../services/schemeService'
-import { applicationService } from '../services/applicationService'
+import applicationService from '../services/applicationService'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'

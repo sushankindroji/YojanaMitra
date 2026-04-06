@@ -12,6 +12,7 @@ from app.services.ocr_service import ocr_service
 from app.schemas.document import DocumentResponse, ExtractionResult
 from app.core.audit import log_audit
 from app.config import settings
+from app.services.profile_completeness import sync_profile_aliases, update_profile_completeness
 from datetime import datetime
 import json
 import uuid
@@ -272,33 +273,6 @@ def _normalize_social_category(value: str) -> str:
     return ""
 
 
-def _calculate_profile_completeness(profile: Profile) -> int:
-    essential = [
-        profile.full_name,
-        profile.dob,
-        profile.age,
-        profile.gender,
-        profile.state,
-        profile.district,
-        profile.annual_income,
-        profile.occupation,
-    ]
-    optional = [
-        profile.is_farmer,
-        profile.is_student,
-        profile.is_senior_citizen,
-        profile.has_disability,
-        profile.is_minority,
-    ]
-
-    total_fields = len(essential) + (len(optional) * 0.5)
-    filled_fields = sum(1 for field in essential if field) + sum(0.5 for field in optional if field)
-
-    if total_fields == 0:
-        return 0
-    return int((filled_fields / total_fields) * 100)
-
-
 def _build_profile_patch(extracted_data: dict, doc_type: str) -> dict:
     patch = {}
     doc_type_norm = (doc_type or "").strip().lower()
@@ -502,8 +476,9 @@ async def process_ocr(doc_id: str, image_bytes: bytes):
         if profile:
             patch = _build_profile_patch(cleaned_data, doc.doc_type)
             if _apply_profile_patch(profile, patch):
+                sync_profile_aliases(profile)
                 profile.updated_at = datetime.utcnow().isoformat()
-                profile.profile_complete_pct = _calculate_profile_completeness(profile)
+                update_profile_completeness(profile)
 
         db.commit()
     except Exception as e:
@@ -596,14 +571,17 @@ async def update_document_extraction(
     doc.extracted_data = json.dumps(cleaned_data)
     doc.extraction_status = "completed"
     doc.error_message = None
+    doc.is_verified = 1
+    doc.verified_at = datetime.utcnow().isoformat()
     doc.processed_at = datetime.utcnow().isoformat()
 
     profile = db.query(Profile).filter(Profile.user_id == doc.user_id).first()
     if profile:
         patch = _build_profile_patch(cleaned_data, doc.doc_type)
         if _apply_profile_patch(profile, patch):
+            sync_profile_aliases(profile)
             profile.updated_at = datetime.utcnow().isoformat()
-            profile.profile_complete_pct = _calculate_profile_completeness(profile)
+            update_profile_completeness(profile)
 
     db.commit()
     db.refresh(doc)

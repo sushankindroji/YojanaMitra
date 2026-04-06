@@ -21,6 +21,7 @@ class User(Base):
     role = Column(String, default="user")  # user, admin, official
     is_verified = Column(Integer, default=0)  # 0/1 for boolean
     is_active = Column(Integer, default=1)
+    onboarding_incomplete = Column(Integer, default=1)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     last_login = Column(String, nullable=True)
 

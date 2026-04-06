@@ -9,6 +9,7 @@ from app.dependencies import get_current_user
 from app.models import User, Profile
 from app.schemas.profile import ProfileUpdate, ProfileResponse, ProfileCompleteness
 from app.core.audit import log_audit
+from app.services.profile_completeness import calculate_profile_completeness, sync_profile_aliases, update_profile_completeness
 from datetime import datetime
 
 router = APIRouter()
@@ -24,6 +25,7 @@ async def get_profile(
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+    sync_profile_aliases(profile)
     return profile
 
 
@@ -44,10 +46,11 @@ async def update_profile(
         for field, value in update_data.items():
             setattr(profile, field, value)
 
+        sync_profile_aliases(profile)
         profile.updated_at = datetime.utcnow().isoformat()
 
         # Recalculate completeness
-        profile.profile_complete_pct = calculate_profile_completeness(profile)
+        update_profile_completeness(profile)
 
         db.commit()
         db.refresh(profile)
@@ -73,29 +76,21 @@ async def get_profile_completeness(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    completeness_pct = profile.profile_complete_pct or 0
-
-    essential_fields = [
-        ("Full Name", profile.full_name),
-        ("Date of Birth", profile.dob),
-        ("Gender", profile.gender),
-        ("State", profile.state),
-        ("Annual Income", profile.annual_income),
-    ]
-
-    missing_fields = [label for label, value in essential_fields if not value]
-    filled_essential = len(essential_fields) - len(missing_fields)
-    total_essential = len(essential_fields)
+    sync_profile_aliases(profile)
+    completeness_pct, missing_fields, filled_count, total_count = calculate_profile_completeness(profile)
+    profile.profile_complete_pct = completeness_pct
+    profile.updated_at = datetime.utcnow().isoformat()
+    db.commit()
 
     return ProfileCompleteness(
         total_percentage=completeness_pct,
-        filled_fields=filled_essential,
-        total_fields=total_essential,
+        filled_fields=filled_count,
+        total_fields=total_count,
         missing_fields=missing_fields,
         priority_actions=[
-            "Complete basic information",
-            "Upload government documents",
-            "Verify email/phone",
+            "Upload Aadhaar and confirm extracted details",
+            "Answer quick household and banking questions",
+            "Upload optional certificates to unlock more schemes",
         ],
     )
 
@@ -119,6 +114,7 @@ async def update_optional_questions(
             profile.is_student = int(responses["is_student"])
         if "is_bpl" in responses:
             profile.is_bpl = int(responses["is_bpl"])
+            profile.bpl_status = int(responses["is_bpl"])
         if "has_disability" in responses:
             profile.has_disability = int(responses["has_disability"])
         if "is_senior_citizen" in responses:
@@ -127,9 +123,25 @@ async def update_optional_questions(
             profile.is_minority = int(responses["is_minority"])
         if "is_woman_headed" in responses:
             profile.is_woman_headed = int(responses["is_woman_headed"])
+            profile.is_woman_headed_household = int(responses["is_woman_headed"])
+
+        if "mobile_number" in responses:
+            profile.mobile_number = str(responses["mobile_number"] or "").strip() or None
+        if "is_household_head" in responses:
+            profile.is_household_head = int(responses["is_household_head"])
+        if "family_size" in responses:
+            try:
+                profile.family_size = int(responses["family_size"])
+            except Exception:
+                pass
+        if "has_bank_account" in responses:
+            profile.has_bank_account = int(responses["has_bank_account"])
+            profile.bank_account_linked = int(responses["has_bank_account"])
+
+        sync_profile_aliases(profile)
 
         profile.updated_at = datetime.utcnow().isoformat()
-        profile.profile_complete_pct = calculate_profile_completeness(profile)
+        update_profile_completeness(profile)
 
         db.commit()
         db.refresh(profile)
@@ -145,39 +157,3 @@ async def update_optional_questions(
         raise HTTPException(status_code=500, detail="Failed to update optional profile questions")
 
 
-def calculate_profile_completeness(profile: Profile) -> int:
-    """Calculate profile completeness percentage."""
-    total_fields = 0
-    filled_fields = 0
-
-    # Essential fields (weight: 1x)
-    essential = [
-        profile.full_name,
-        profile.dob,
-        profile.age,
-        profile.gender,
-        profile.state,
-        profile.district,
-        profile.annual_income,
-        profile.occupation,
-    ]
-
-    total_fields += len(essential)
-    filled_fields += sum(1 for f in essential if f)
-
-    # Optional fields (weight: 0.5x)
-    optional = [
-        profile.is_farmer,
-        profile.is_student,
-        profile.is_senior_citizen,
-        profile.has_disability,
-        profile.is_minority,
-    ]
-
-    total_fields += len(optional) * 0.5
-    filled_fields += sum(0.5 for f in optional if f)
-
-    if total_fields == 0:
-        return 0
-
-    return int((filled_fields / total_fields) * 100)

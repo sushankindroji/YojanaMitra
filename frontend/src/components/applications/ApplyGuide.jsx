@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 
 import schemeService from '../../services/schemeService'
-import { applicationService } from '../../services/applicationService'
+import applicationService from '../../services/applicationService'
 import profileService from '../../services/profileService'
 import EligibilityBadges from '../schemes/EligibilityBadges'
 import LoadingSpinner from '../common/LoadingSpinner'

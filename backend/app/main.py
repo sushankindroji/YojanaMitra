@@ -17,7 +17,7 @@ from app.core.logging import get_logger, api_logger
 from app.services.cache_service import cache_service
 
 # Import routers
-from app.routers import auth, documents, profile, schemes, applications, admin, eligibility
+from app.routers import auth, documents, profile, schemes, applications, admin, eligibility, onboarding
 
 # Import all models to register them with Base
 from app.models import (
@@ -195,6 +195,7 @@ async def health_check():
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(documents.router, prefix="/api/v1/documents", tags=["Documents"])
+app.include_router(onboarding.router, prefix="/api/v1", tags=["Onboarding"])
 app.include_router(profile.router, prefix="/api/v1/profile", tags=["Profile"])
 app.include_router(schemes.router, prefix="/api/v1/schemes", tags=["Schemes"])
 app.include_router(eligibility.router, prefix="/api/v1", tags=["Eligibility"])

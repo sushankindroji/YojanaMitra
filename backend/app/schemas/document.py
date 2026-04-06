@@ -19,6 +19,7 @@ class DocumentResponse(BaseModel):
     extraction_status: str
     extracted_data: Optional[str]
     confidence_score: Optional[float]
+    is_verified: Optional[bool] = False
     retry_count: Optional[int]
     error_message: Optional[str]
     uploaded_at: str

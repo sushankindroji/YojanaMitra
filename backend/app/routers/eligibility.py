@@ -1,273 +1,255 @@
-"""
-Eligibility Router
-API endpoints for scheme eligibility checking across 4500+ schemes
-"""
+"""Eligibility router with multi-agent pipeline and backward-compatible endpoints."""
+from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Any, Dict, List
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from app.dependencies import get_db, get_current_user
-from app.services.eligibility_service import get_eligibility_matcher
+
+from app.agents.agent_orchestrator import get_cached_pipeline_result, run_full_eligibility_pipeline
+from app.agents.job_store import create_job, get_job, update_job
+from app.database import SessionLocal, get_db
+from app.dependencies import get_current_user
 from app.models import User
-from pydantic import BaseModel
+
 
 router = APIRouter(prefix="/eligibility", tags=["eligibility"])
 
 
-# Request/Response Models
-class EligibilityCheckRequest(BaseModel):
-    """Request to check user eligibility"""
-    refresh: bool = False  # Force recalculation
-
-
-class SchemeEligibilityResponse(BaseModel):
-    """Response for a single scheme eligibility result"""
-    scheme_id: str
-    scheme_code: str
-    scheme_name: str
-    sector: str
-    state: str
-    eligibility_score: float
-    is_eligible: int
-    description: str
-    benefit_type: str
-
-
-class EligibilityListResponse(BaseModel):
-    """Paginated list of eligible schemes"""
-    total_schemes: int
-    eligible_count: int
-    schemes: list[SchemeEligibilityResponse]
-
-
-class EligibilitySummaryResponse(BaseModel):
-    """Summary of user's eligibility across all schemes"""
-    total_schemes_checked: int
-    eligible_schemes: int
-    partially_eligible: int
-    not_eligible: int
-    average_eligibility_score: float
-    top_sectors: list[dict]
-
-
-# Endpoints
-
-@router.post("/check")
-async def check_all_schemes(
-    request: EligibilityCheckRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> EligibilityListResponse:
-    """
-    Check user eligibility against all 4500+ schemes.
-    
-    Returns list of matching schemes sorted by eligibility score.
-    """
+async def _run_pipeline_job(job_id: str, user_id: str) -> None:
+    db = SessionLocal()
     try:
-        matcher = get_eligibility_matcher(db)
-        
-        # Check eligibility for all schemes
-        results = matcher.check_user_eligibility(current_user.id)
-        
-        # Save results if new or refresh requested
-        if request.refresh or len(results) == 0:
-            matcher.save_eligibility_results(current_user.id, results)
-        
-        # Filter to eligible only for this response
-        eligible_schemes = [r for r in results if r['is_eligible']]
-        
-        return EligibilityListResponse(
-            total_schemes=len(results),
-            eligible_count=len(eligible_schemes),
-            schemes=eligible_schemes[:100]  # Top 100 results
-        )
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Eligibility check failed: {str(e)}")
+        def progress_callback(progress_pct: int, stage: str) -> None:
+            update_job(job_id, status="running", progress_pct=progress_pct, stage=stage)
+
+        await run_full_eligibility_pipeline(user_id=user_id, db=db, progress_callback=progress_callback)
+        update_job(job_id, status="complete", progress_pct=100, stage="complete")
+    except Exception as exc:
+        db.rollback()
+        update_job(job_id, status="failed", error=str(exc), stage="failed")
+    finally:
+        db.close()
 
 
-@router.get("/schemes", response_model=EligibilityListResponse)
-async def get_eligible_schemes(
-    limit: int = Query(50, ge=1, le=500),
-    sector: str = Query(None),
-    state: str = Query(None),
-    min_score: float = Query(0.3, ge=0.0, le=1.0),
+async def _ensure_pipeline_result(user_id: str, db: Session, force: bool = False) -> Dict[str, Any]:
+    cached = get_cached_pipeline_result(user_id)
+    if cached and not force:
+        return cached
+    return await run_full_eligibility_pipeline(user_id=user_id, db=db)
+
+
+def _filter_results(
+    results: List[Dict[str, Any]],
+    min_score: float = 0.0,
+    sector: str | None = None,
+    state: str | None = None,
+) -> List[Dict[str, Any]]:
+    filtered = [r for r in results if float(r.get("match_score", 0) or 0) >= float(min_score)]
+
+    if sector:
+        sector_norm = sector.strip().lower()
+        filtered = [r for r in filtered if sector_norm in str(r.get("sector") or "").lower()]
+
+    if state:
+        state_norm = state.strip().lower()
+        filtered = [
+            r for r in filtered
+            if state_norm in {str(r.get("state") or "").lower(), "central"}
+        ]
+
+    filtered.sort(key=lambda item: float(item.get("match_score", 0) or 0), reverse=True)
+    return filtered
+
+
+def _to_compat_result(result: Dict[str, Any]) -> Dict[str, Any]:
+    payload = dict(result)
+    match_score = float(payload.get("match_score", 0) or 0)
+    payload.setdefault("eligibility_score", match_score)
+    payload.setdefault("eligibility_percentage", round(match_score * 100, 2))
+    payload.setdefault("scheme_id", payload.get("scheme_id") or payload.get("id"))
+    return payload
+
+
+@router.post("/run")
+async def run_eligibility_job(
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> EligibilityListResponse:
-    """
-    Get user's eligible schemes with optional filters.
-    
-    Filters:
-    - sector: Filter by scheme sector (Agriculture, Healthcare, etc.)
-    - state: Filter by state (Central, Andhra Pradesh, etc.)
-    - min_score: Minimum eligibility score (0.0-1.0)
-    """
-    try:
-        matcher = get_eligibility_matcher(db)
-        results = matcher.check_user_eligibility(current_user.id)
-        
-        # Apply filters
-        filtered = results
-        
-        if sector:
-            filtered = [r for r in filtered if sector.lower() in r['sector'].lower()]
-        
-        if state:
-            filtered = [r for r in filtered if r['state'] == state or r['state'] == 'Central']
-        
-        filtered = [r for r in filtered if r['eligibility_score'] >= min_score]
-        
-        # Sort and limit
-        filtered.sort(key=lambda x: x['eligibility_score'], reverse=True)
-        filtered = filtered[:limit]
-        
-        return EligibilityListResponse(
-            total_schemes=len(results),
-            eligible_count=len([r for r in results if r['is_eligible']]),
-            schemes=filtered
-        )
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get schemes: {str(e)}")
+):
+    job_id = create_job(current_user.id, stage="pipeline_start")
+    background_tasks.add_task(_run_pipeline_job, job_id, current_user.id)
+    return {"job_id": job_id, "status": "running"}
 
 
-@router.get("/top", response_model=list[SchemeEligibilityResponse])
-async def get_top_schemes(
-    limit: int = Query(10, ge=1, le=50),
+@router.get("/status/{job_id}")
+async def eligibility_job_status(
+    job_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> list:
-    """
-    Get top N eligible schemes for the user.
-    Returns highest-scoring eligible schemes.
-    """
-    try:
-        matcher = get_eligibility_matcher(db)
-        results = matcher.check_user_eligibility(current_user.id)
-        
-        # Get eligible only
-        eligible = [r for r in results if r['is_eligible']]
-        eligible.sort(key=lambda x: x['eligibility_score'], reverse=True)
-        
-        return eligible[:limit]
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get top schemes: {str(e)}")
+):
+    job = get_job(job_id)
+    if not job or job.get("user_id") != current_user.id:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    return {
+        "status": job.get("status", "running"),
+        "progress_pct": int(job.get("progress_pct", 0) or 0),
+        "stage": job.get("stage"),
+        "error": job.get("error"),
+    }
 
 
-@router.get("/summary", response_model=EligibilitySummaryResponse)
-async def get_eligibility_summary(
+@router.get("/results")
+async def get_last_results(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> dict:
-    """
-    Get summary of user's eligibility across all schemes.
-    Includes total counts, averages, and top sectors.
-    """
-    try:
-        matcher = get_eligibility_matcher(db)
-        summary = matcher.get_eligibility_summary(current_user.id)
-        
-        if summary['total_schemes_checked'] == 0:
-            # Run eligibility check first
-            results = matcher.check_user_eligibility(current_user.id)
-            if results:
-                matcher.save_eligibility_results(current_user.id, results)
-                summary = matcher.get_eligibility_summary(current_user.id)
-        
-        return summary
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get summary: {str(e)}")
+    db: Session = Depends(get_db),
+):
+    payload = await _ensure_pipeline_result(current_user.id, db)
+    return {
+        "validation": payload.get("validation", {}),
+        "ranked_results": payload.get("ranked_results", {}),
+        "computed_at": payload.get("computed_at"),
+    }
+
+
+@router.get("/dashboard")
+async def get_dashboard_payload(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    payload = await _ensure_pipeline_result(current_user.id, db)
+    return payload.get("dashboard", {})
+
+
+@router.get("/top/{n}")
+async def get_top_n(
+    n: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if n < 1 or n > 100:
+        raise HTTPException(status_code=400, detail="n must be between 1 and 100")
+
+    payload = await _ensure_pipeline_result(current_user.id, db)
+    top_items = payload.get("ranked_results", {}).get("top_10", [])
+    if n > len(top_items):
+        top_items = payload.get("ranked_results", {}).get("top_50", [])
+    return [_to_compat_result(item) for item in top_items[:n]]
 
 
 @router.get("/scheme/{scheme_code}")
-async def get_scheme_eligibility(
+async def get_single_scheme_result(
     scheme_code: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> dict:
-    """
-    Get eligibility details for a specific scheme.
-    """
-    try:
-        from app.models import Scheme, EligibilityResult
-        
-        # Find scheme
-        scheme = db.query(Scheme).filter(Scheme.scheme_code == scheme_code).first()
-        if not scheme:
-            raise HTTPException(status_code=404, detail="Scheme not found")
-        
-        # Get eligibility result
-        result = db.query(EligibilityResult).filter(
-            EligibilityResult.user_id == current_user.id,
-            EligibilityResult.scheme_id == scheme.id
-        ).first()
-        
-        if not result:
-            # Calculate on demand
-            matcher = get_eligibility_matcher(db)
-            score = matcher._calculate_eligibility_score(current_user.profile, scheme)
-            
-            return {
-                'scheme_code': scheme_code,
-                'scheme_name': scheme.name_en,
-                'sector': scheme.sector,
-                'state': scheme.state,
-                'eligibility_score': round(score, 2),
-                'is_eligible': 1 if score >= 0.8 else 0,
-                'description': scheme.description_en,
-                'benefit_type': scheme.benefit_type
-            }
-        
-        return {
-            'scheme_code': scheme_code,
-            'scheme_name': scheme.name_en,
-            'sector': scheme.sector,
-            'state': scheme.state,
-            'eligibility_score': result.eligibility_score,
-            'is_eligible': result.is_eligible,
-            'is_partially_eligible': result.is_partially_eligible,
-            'explanation': result.explanation_en,
-            'missing_documents': result.missing_docs
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get scheme eligibility: {str(e)}")
+    db: Session = Depends(get_db),
+):
+    payload = await _ensure_pipeline_result(current_user.id, db)
+
+    raw_results = payload.get("raw_results", [])
+    for result in raw_results:
+        if str(result.get("scheme_code")) == scheme_code:
+            return result
+
+    ranked = payload.get("ranked_results", {})
+    for bucket in ["top_50", "fully_eligible", "highly_eligible", "partially_eligible", "one_step_away"]:
+        for item in ranked.get(bucket, []):
+            if str(item.get("scheme_code")) == scheme_code:
+                return item
+
+    raise HTTPException(status_code=404, detail="Scheme not found in latest eligibility results")
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible endpoints currently used by existing frontend
+# ---------------------------------------------------------------------------
+
+@router.post("/check")
+async def check_all_schemes(
+    request: Dict[str, Any] | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    refresh = bool(request.get("refresh", False)) if isinstance(request, dict) else False
+    payload = await _ensure_pipeline_result(current_user.id, db, force=refresh)
+
+    raw_results = payload.get("raw_results", [])
+    eligible_only = [item for item in raw_results if item.get("is_eligible")]
+
+    eligible_only.sort(key=lambda item: float(item.get("match_score", 0) or 0), reverse=True)
+
+    return {
+        "total_schemes": len(raw_results),
+        "eligible_count": len(eligible_only),
+        "schemes": [_to_compat_result(item) for item in eligible_only[:100]],
+    }
+
+
+@router.get("/schemes")
+async def get_eligible_schemes(
+    limit: int = Query(50, ge=1, le=500),
+    sector: str | None = Query(None),
+    state: str | None = Query(None),
+    min_score: float = Query(0.3, ge=0.0, le=1.0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    payload = await _ensure_pipeline_result(current_user.id, db)
+    raw_results = payload.get("raw_results", [])
+
+    filtered = _filter_results(raw_results, min_score=min_score, sector=sector, state=state)
+
+    return {
+        "total_schemes": len(raw_results),
+        "eligible_count": len([item for item in raw_results if item.get("is_eligible")]),
+        "schemes": [_to_compat_result(item) for item in filtered[:limit]],
+    }
+
+
+@router.get("/top")
+async def get_top_schemes(
+    limit: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    payload = await _ensure_pipeline_result(current_user.id, db)
+    ranked = payload.get("ranked_results", {})
+    top = ranked.get("top_10", [])
+    if limit > len(top):
+        top = ranked.get("top_50", [])
+    return [_to_compat_result(item) for item in top[:limit]]
+
+
+@router.get("/summary")
+async def get_eligibility_summary(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    payload = await _ensure_pipeline_result(current_user.id, db)
+    ranked = payload.get("ranked_results", {})
+    raw = payload.get("raw_results", [])
+
+    return {
+        "total_schemes_checked": len(raw),
+        "eligible_schemes": len(ranked.get("fully_eligible", [])),
+        "partially_eligible": len(ranked.get("partially_eligible", [])),
+        "not_eligible": len([item for item in raw if not item.get("is_eligible") and not item.get("is_partially_eligible")]),
+        "average_eligibility_score": round(
+            sum(float(item.get("match_score", 0) or 0) for item in raw) / max(len(raw), 1),
+            4,
+        ),
+        "top_sectors": ranked.get("sectors_matched", []),
+    }
 
 
 @router.post("/recalculate")
 async def recalculate_eligibility(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> dict:
-    """
-    Force recalculation of eligibility for all schemes.
-    Useful after profile updates.
-    """
-    try:
-        from app.models import EligibilityResult
-        
-        matcher = get_eligibility_matcher(db)
-        
-        # Clear old results
-        db.query(EligibilityResult).filter(
-            EligibilityResult.user_id == current_user.id
-        ).delete()
-        db.commit()
-        
-        # Recalculate
-        results = matcher.check_user_eligibility(current_user.id)
-        saved = matcher.save_eligibility_results(current_user.id, results)
-        
-        return {
-            'status': 'success',
-            'schemes_checked': len(results),
-            'eligible_schemes': len([r for r in results if r['is_eligible']]),
-            'results_saved': saved
-        }
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Recalculation failed: {str(e)}")
+    db: Session = Depends(get_db),
+):
+    payload = await _ensure_pipeline_result(current_user.id, db, force=True)
+    raw = payload.get("raw_results", [])
+
+    return {
+        "status": "success",
+        "schemes_checked": len(raw),
+        "eligible_schemes": len([item for item in raw if item.get("is_eligible")]),
+        "results_saved": len(raw),
+    }

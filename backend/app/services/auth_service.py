@@ -36,6 +36,7 @@ class AuthService:
                 role="user",
                 is_verified=0,
                 is_active=1,
+                onboarding_incomplete=1,
                 created_at=datetime.utcnow().isoformat(),
             )
             # Auto-create empty profile
@@ -44,6 +45,8 @@ class AuthService:
                 id=str(uuid.uuid4()),
                 user_id=user.id,
                 full_name=name,
+                onboarding_complete=0,
+                onboarding_step=1,
                 created_at=datetime.utcnow().isoformat(),
             )
             db.add(user)
