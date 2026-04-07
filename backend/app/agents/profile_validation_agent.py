@@ -56,8 +56,6 @@ class ProfileValidationAgent:
 
         if not aadhaar_verified:
             missing_critical_fields.append("aadhaar_document")
-        if not income_cert_verified:
-            missing_critical_fields.append("income_certificate")
 
         verified_docs_count = len(verified_docs)
 
@@ -72,9 +70,6 @@ class ProfileValidationAgent:
 
         confidence += min(verified_docs_count * 6, 25)
         confidence += int((filled_critical / max(len(self.CRITICAL_FIELDS), 1)) * 30)
-
-        if not aadhaar_verified and not income_cert_verified:
-            confidence = min(confidence, 25)
 
         confidence = min(confidence, 100)
 

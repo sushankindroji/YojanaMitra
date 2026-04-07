@@ -9,7 +9,7 @@ import Card from '../components/ui/Card'
 
 const STEP_TITLES = {
   1: 'Step 1: Aadhaar Upload',
-  2: 'Step 2: Income Proof & Additional Documents',
+  2: 'Step 2: Additional Documents',
   3: 'Step 3: Quick Questions',
   4: 'Step 4: Building Your Scheme Profile',
 }
@@ -299,12 +299,7 @@ export default function OnboardingPage() {
   }
 
   const continueToQuestions = () => {
-    if (!incomeDone) {
-      if (!manualIncomeFallback.enabled) {
-        toast.error('Income certificate is required. Upload it or use manual fallback below.')
-        return
-      }
-
+    if (manualIncomeFallback.enabled) {
       if (!manualIncomeFallback.declaredAnnualIncome) {
         toast.error('Enter your declared annual income for manual fallback.')
         return
@@ -473,9 +468,9 @@ export default function OnboardingPage() {
           <Card className="space-y-5 border border-stone-200">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-h3 font-medium text-stone-900">Upload income proof and any additional documents you have</h2>
+                <h2 className="text-h3 font-medium text-stone-900">Upload any additional documents you have</h2>
                 <p className="mt-1 text-body-sm text-stone-600">
-                  Income Certificate is required unless you provide manual income fallback details.
+                  Income proof is recommended for better scheme matching, but onboarding can continue without it.
                 </p>
               </div>
               <Button variant="ghost" onClick={continueToQuestions}>
@@ -485,8 +480,8 @@ export default function OnboardingPage() {
 
             <div className={incomeDone ? 'rounded-lg border border-green-200 bg-green-50 p-3 text-body-sm text-green-800' : 'rounded-lg border border-amber-200 bg-amber-50 p-3 text-body-sm text-amber-900'}>
               {incomeDone
-                ? 'Income requirement completed.'
-                : 'Mandatory: Upload Income Certificate or provide manual income fallback before continuing.'}
+                ? 'Income proof recorded.'
+                : 'Optional but recommended: upload Income Certificate or provide manual income fallback.'}
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

@@ -31,7 +31,7 @@ ALLOWED_CONTENT_TYPES = {
 
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
-MANDATORY_INCOME_DOC_TYPES = {"income_certificate", "income_declaration_manual"}
+INCOME_EVIDENCE_DOC_TYPES = {"income_certificate", "income_declaration_manual"}
 
 
 def _has_verified_document(db: Session, user_id: str, doc_types: set[str]) -> bool:
@@ -406,7 +406,7 @@ async def onboarding_status(
         profile.updated_at = datetime.utcnow().isoformat()
         db.commit()
 
-    income_done = _has_verified_document(db, current_user.id, MANDATORY_INCOME_DOC_TYPES)
+    income_done = _has_verified_document(db, current_user.id, INCOME_EVIDENCE_DOC_TYPES)
     if not income_done and _parse_float(profile.annual_income) is not None:
         # Backward compatibility for users who already provided trusted income details.
         income_done = True
@@ -419,10 +419,8 @@ async def onboarding_status(
         step = 4
     elif not aadhaar_done:
         step = 1
-    elif not income_done:
+    elif step < 2:
         step = 2
-    elif step < 3:
-        step = 3
 
     latest_job = get_latest_job(current_user.id)
 
@@ -656,15 +654,9 @@ async def complete_onboarding(
     )
     income_fallback_reason = str(additional_data.get("income_fallback_reason") or "").strip()
 
-    income_done = _has_verified_document(db, current_user.id, MANDATORY_INCOME_DOC_TYPES)
+    income_done = _has_verified_document(db, current_user.id, INCOME_EVIDENCE_DOC_TYPES)
 
-    if not income_done:
-        if not manual_income_fallback:
-            raise HTTPException(
-                status_code=400,
-                detail="Income certificate is required. Upload income certificate or use manual fallback",
-            )
-
+    if manual_income_fallback:
         if declared_annual_income is None:
             raise HTTPException(status_code=400, detail="Declared annual income is required for manual fallback")
 
@@ -718,9 +710,6 @@ async def complete_onboarding(
 
     if not income_done and _parse_float(profile.annual_income) is not None:
         income_done = True
-
-    if not income_done:
-        raise HTTPException(status_code=400, detail="Income proof is required before completing onboarding")
 
     mobile_number = str(additional_data.get("mobile_number") or "").strip()
     if mobile_number:

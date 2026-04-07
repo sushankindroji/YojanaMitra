@@ -542,12 +542,9 @@ class EligibilityMatchingAgent:
 
         mandatory_missing_docs: List[str] = []
         aadhaar_verified = int(getattr(profile, "aadhaar_verified", 0) or 0) == 1
-        annual_income_known = getattr(profile, "annual_income", None) is not None
 
         if not aadhaar_verified:
             mandatory_missing_docs.append("aadhaar")
-        if not annual_income_known:
-            mandatory_missing_docs.append("income_certificate")
 
         total = len(matched_conditions) + len(failed_conditions) + len(unknown_conditions)
         if total == 0:
@@ -556,7 +553,7 @@ class EligibilityMatchingAgent:
             match_score = (len(matched_conditions) + 0.25 * len(unknown_conditions)) / total
 
         if mandatory_missing_docs:
-            match_score = min(match_score, 0.35 if len(mandatory_missing_docs) == 1 else 0.2)
+            match_score = min(match_score, 0.35)
 
         match_score = round(float(min(max(match_score, 0.0), 1.0)), 4)
 
