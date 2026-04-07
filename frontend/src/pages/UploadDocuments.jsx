@@ -1,22 +1,19 @@
-// frontend/src/pages/UploadDocuments.jsx
-/**
- * UploadDocuments - Complete document upload workflow
- * Workflow:
- * Step 1: Select document type
- * Step 2: Upload via drag-drop or camera
- * Step 3: Show processing status
- * Step 4: Review extracted data
- * Step 5: Success confirmation
- */
-
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
-import { Camera, CheckCircle, FileText, Image as ImageIcon, Loader } from 'lucide-react'
-import DocumentUploader from '../components/documents/DocumentUploader'
-import CameraCapture from '../components/documents/CameraCapture'
-import ExtractionReview from '../components/documents/ExtractionReview'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Eye,
+  FileImage,
+  FileText,
+  Loader2,
+  Pencil,
+  RefreshCcw,
+  Trash2,
+  UploadCloud,
+} from 'lucide-react'
 import documentService from '../services/documentService'
 import profileService from '../services/profileService'
 import Button from '../components/ui/Button'
@@ -24,165 +21,62 @@ import Card from '../components/ui/Card'
 import PageHeader from '../components/ui/PageHeader'
 
 const DOCUMENT_TYPES = [
-  {
-    id: 'aadhaar',
-    name: 'Aadhaar Card',
-    category: 'Identity',
-    description: 'Unique 12-digit identity number',
-    icon: FileText,
-  },
-  {
-    id: 'pan_card',
-    name: 'PAN Card',
-    category: 'Identity',
-    description: 'PAN number and name verification',
-    icon: FileText,
-  },
-  {
-    id: 'voter_id',
-    name: 'Voter ID',
-    category: 'Identity',
-    description: 'Voter ID and address details',
-    icon: FileText,
-  },
-  {
-    id: 'passport',
-    name: 'Passport',
-    category: 'Identity',
-    description: 'Passport number and identity details',
-    icon: FileText,
-  },
-  {
-    id: 'income_certificate',
-    name: 'Income Certificate',
-    category: 'Income',
-    description: 'Latest tax or salary certificate',
-    icon: FileText,
-  },
-  {
-    id: 'ration_card',
-    name: 'BPL / Ration Card',
-    category: 'Income',
-    description: 'BPL status, family size, and card details',
-    icon: FileText,
-  },
-  {
-    id: 'bank_passbook',
-    name: 'Bank Passbook',
-    category: 'Income',
-    description: 'Bank name, account mask, and IFSC',
-    icon: FileText,
-  },
-  {
-    id: 'tenth_marksheet',
-    name: '10th Marksheet',
-    category: 'Education',
-    description: 'Board, year, and percentage',
-    icon: FileText,
-  },
-  {
-    id: 'twelfth_marksheet',
-    name: '12th Marksheet',
-    category: 'Education',
-    description: 'Board, year, and percentage',
-    icon: FileText,
-  },
-  {
-    id: 'degree_certificate',
-    name: 'Degree Certificate',
-    category: 'Education',
-    description: 'Degree, institution, and score',
-    icon: FileText,
-  },
-  {
-    id: 'kisan_credit_card',
-    name: 'Kisan Credit Card',
-    category: 'Agriculture',
-    description: 'KCC number and credit limit',
-    icon: FileText,
-  },
-  {
-    id: 'land_records',
-    name: 'Land Records / Patta',
-    category: 'Agriculture',
-    description: 'Land area, survey number, and type',
-    icon: FileText,
-  },
-  {
-    id: 'pm_kisan_registration',
-    name: 'PM-KISAN Registration',
-    category: 'Agriculture',
-    description: 'Registration status and farmer ID',
-    icon: FileText,
-  },
-  {
-    id: 'disability_certificate',
-    name: 'Disability Certificate',
-    category: 'Special Category',
-    description: 'Type, percentage, and authority',
-    icon: FileText,
-  },
-  {
-    id: 'caste_certificate',
-    name: 'Caste Certificate',
-    category: 'Special Category',
-    description: 'SC/ST/OBC certificate details',
-    icon: FileText,
-  },
-  {
-    id: 'minority_certificate',
-    name: 'Minority Certificate',
-    category: 'Special Category',
-    description: 'Religion and minority status proof',
-    icon: FileText,
-  },
-  {
-    id: 'soil_health_card',
-    name: 'Soil Health Card',
-    category: 'Farmer Specific',
-    description: 'Soil type and recommendations',
-    icon: FileText,
-  },
-  {
-    id: 'crop_insurance_policy',
-    name: 'Crop Insurance Policy',
-    category: 'Farmer Specific',
-    description: 'Policy number and insured amount',
-    icon: FileText,
-  },
-  {
-    id: 'senior_citizen_card',
-    name: 'Senior Citizen Card',
-    category: 'Senior Citizen',
-    description: 'Age confirmation and issuing authority',
-    icon: FileText,
-  },
+  { id: 'aadhaar', name: 'Aadhaar Card', category: 'Identity', description: 'Unique 12-digit identity number' },
+  { id: 'pan_card', name: 'PAN Card', category: 'Identity', description: 'PAN number and name verification' },
+  { id: 'voter_id', name: 'Voter ID', category: 'Identity', description: 'Voter ID and address details' },
+  { id: 'passport', name: 'Passport', category: 'Identity', description: 'Passport number and identity details' },
+  { id: 'income_certificate', name: 'Income Certificate', category: 'Income', description: 'Annual income and authority details' },
+  { id: 'ration_card', name: 'BPL / Ration Card', category: 'Income', description: 'BPL status, family size, and card details' },
+  { id: 'bank_passbook', name: 'Bank Passbook', category: 'Income', description: 'Bank name, account mask, and IFSC' },
+  { id: 'tenth_marksheet', name: '10th Marksheet', category: 'Education', description: 'Board, year, and percentage' },
+  { id: 'twelfth_marksheet', name: '12th Marksheet', category: 'Education', description: 'Board, year, and percentage' },
+  { id: 'degree_certificate', name: 'Degree Certificate', category: 'Education', description: 'Degree, institution, and score' },
+  { id: 'kisan_credit_card', name: 'Kisan Credit Card', category: 'Agriculture', description: 'KCC number and credit limit' },
+  { id: 'land_records', name: 'Land Records / Patta', category: 'Agriculture', description: 'Land area, survey number, and type' },
+  { id: 'pm_kisan_registration', name: 'PM-KISAN Registration', category: 'Agriculture', description: 'Registration status and farmer ID' },
+  { id: 'soil_health_card', name: 'Soil Health Card', category: 'Agriculture', description: 'Soil type and recommendations' },
+  { id: 'crop_insurance_policy', name: 'Crop Insurance Policy', category: 'Agriculture', description: 'Policy number and insured amount' },
+  { id: 'disability_certificate', name: 'Disability Certificate', category: 'Special Category', description: 'Type, percentage, and authority' },
+  { id: 'caste_certificate', name: 'Caste Certificate', category: 'Special Category', description: 'SC/ST/OBC certificate details' },
+  { id: 'minority_certificate', name: 'Minority Certificate', category: 'Special Category', description: 'Religion and minority status proof' },
+  { id: 'senior_citizen_card', name: 'Senior Citizen Card', category: 'Special Category', description: 'Age confirmation and issuing authority' },
 ]
 
 const DOC_REVIEW_FIELD_ORDER = {
   aadhaar: ['full_name', 'dob', 'gender', 'aadhaar_number', 'state', 'district', 'pincode'],
-  pan_card: ['full_name', 'pan_number', 'dob', 'state', 'district', 'pincode'],
+  pan_card: ['full_name', 'pan_number', 'state', 'district', 'pincode'],
   voter_id: ['full_name', 'voter_id_number', 'address', 'state', 'district', 'pincode'],
   passport: ['full_name', 'passport_number', 'dob', 'gender', 'state', 'district', 'pincode'],
-  income_certificate: ['full_name', 'annual_income', 'occupation', 'issuing_authority', 'state', 'district', 'pincode'],
-  ration_card: ['full_name', 'ration_card_number', 'ration_card_category', 'ration_card_type', 'bpl_status', 'is_bpl', 'family_size', 'state', 'district', 'pincode'],
-  bank_passbook: ['full_name', 'bank_name', 'account_number_masked', 'ifsc', 'state', 'district', 'pincode'],
-  tenth_marksheet: ['full_name', 'education_board', 'education_year', 'education_percentage', 'state', 'district'],
-  twelfth_marksheet: ['full_name', 'education_board', 'education_year', 'education_percentage', 'state', 'district'],
-  degree_certificate: ['full_name', 'degree_name', 'institution_name', 'education_year', 'education_percentage', 'state', 'district'],
-  kisan_credit_card: ['full_name', 'kcc_number', 'kcc_credit_limit', 'bank_name', 'state', 'district'],
-  land_records: ['full_name', 'land_area_acres', 'land_survey_number', 'land_type', 'state', 'district'],
-  pm_kisan_registration: ['full_name', 'pm_kisan_registered', 'pm_kisan_farmer_id', 'state', 'district'],
+  income_certificate: ['full_name', 'annual_income', 'financial_year', 'issuing_authority', 'certificate_number', 'date_of_issue', 'state', 'district', 'pincode'],
+  ration_card: ['full_name', 'ration_card_number', 'ration_card_category', 'bpl_status', 'family_size', 'state', 'district', 'pincode'],
+  caste_certificate: ['full_name', 'caste_category', 'sub_caste', 'caste_certificate_number', 'caste_issuing_authority', 'state', 'district', 'pincode'],
   disability_certificate: ['full_name', 'disability_type', 'disability_percentage', 'disability_issuing_authority', 'state', 'district'],
-  caste_certificate: ['full_name', 'caste_category', 'sub_caste', 'caste_certificate_number', 'caste_issuing_authority', 'state', 'district'],
+  land_records: ['full_name', 'land_area_acres', 'land_survey_number', 'land_type', 'state', 'district'],
+  kisan_credit_card: ['full_name', 'kcc_number', 'kcc_credit_limit', 'bank_name', 'state', 'district'],
+  bank_passbook: ['full_name', 'bank_name', 'account_number_masked', 'ifsc', 'state', 'district'],
+  degree_certificate: ['full_name', 'degree_name', 'institution_name', 'education_year', 'education_percentage'],
+  tenth_marksheet: ['full_name', 'education_board', 'education_year', 'education_percentage'],
+  twelfth_marksheet: ['full_name', 'education_board', 'education_year', 'education_percentage'],
+  pm_kisan_registration: ['full_name', 'pm_kisan_registered', 'pm_kisan_farmer_id', 'state', 'district'],
   minority_certificate: ['full_name', 'religion', 'minority_status', 'state', 'district'],
   soil_health_card: ['full_name', 'soil_type', 'state', 'district'],
   crop_insurance_policy: ['full_name', 'crop_insurance_policy_number', 'crop_insurance_sum_insured', 'insured_crops', 'state', 'district'],
   senior_citizen_card: ['full_name', 'dob', 'age', 'senior_citizen_issuing_authority', 'state', 'district'],
-  // Backward-compatible aliases for any in-flight states
-  income: ['full_name', 'annual_income', 'occupation', 'state', 'district', 'pincode'],
-  caste: ['full_name', 'social_category', 'state', 'district', 'pincode'],
-  ration: ['full_name', 'ration_card_number', 'ration_card_type', 'is_bpl', 'state', 'district', 'pincode'],
+}
+
+const CATEGORY_ORDER = ['Identity', 'Income', 'Education', 'Agriculture', 'Special Category']
+
+const DOC_TYPE_TO_CATEGORY = DOCUMENT_TYPES.reduce((acc, doc) => {
+  acc[doc.id] = doc.category
+  return acc
+}, {})
+
+const REQUIRED_CHECKLIST_ORDER = ['aadhaar', 'income_certificate', 'caste_certificate']
+
+const REQUIRED_LABELS = {
+  aadhaar: 'Aadhaar',
+  income_certificate: 'Income Certificate',
+  caste_certificate: 'Caste Certificate',
 }
 
 const getApiErrorMessage = (error, fallback) => {
@@ -231,11 +125,7 @@ const withExpectedReviewFields = (normalizedData, docType) => {
 
   orderedFields.forEach((field) => {
     if (!(field in output)) {
-      output[field] = {
-        value: '',
-        confidence: 0,
-        edited: false,
-      }
+      output[field] = { value: '', confidence: 0, edited: false }
     }
   })
 
@@ -274,6 +164,34 @@ const hasMeaningfulExtractedData = (normalizedData) => {
   })
 }
 
+const formatFileSize = (bytes) => {
+  if (!bytes || Number.isNaN(Number(bytes))) return '0 KB'
+  const mb = Number(bytes) / (1024 * 1024)
+  if (mb >= 1) return `${mb.toFixed(2)} MB`
+  const kb = Number(bytes) / 1024
+  return `${kb.toFixed(1)} KB`
+}
+
+const parseDocumentExtractedData = (doc) => {
+  if (!doc?.extracted_data) {
+    return {}
+  }
+  if (typeof doc.extracted_data === 'object') {
+    return doc.extracted_data
+  }
+  if (typeof doc.extracted_data === 'string') {
+    try {
+      return JSON.parse(doc.extracted_data)
+    } catch {
+      return {}
+    }
+  }
+  return {}
+}
+
+const isImageFile = (filename = '') => /\.(jpg|jpeg|png|webp)$/i.test(filename)
+const isPdfFile = (filename = '') => /\.pdf$/i.test(filename)
+
 const toText = (value) => (value === null || value === undefined ? '' : String(value).trim())
 
 const normalizeGender = (value) => {
@@ -289,9 +207,7 @@ const normalizeDobToIso = (value) => {
   const raw = toText(value)
   if (!raw) return ''
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return raw
-  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
 
   const dmy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
   if (dmy) {
@@ -308,7 +224,6 @@ const normalizeDobToIso = (value) => {
     const dd = ymd[3].padStart(2, '0')
     return `${yyyy}-${mm}-${dd}`
   }
-
   return ''
 }
 
@@ -353,9 +268,7 @@ const normalizeSocialCategory = (value) => {
 }
 
 const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
-  if (!confirmedData || typeof confirmedData !== 'object') {
-    return {}
-  }
+  if (!confirmedData || typeof confirmedData !== 'object') return {}
 
   const normalizedDocType = toText(docType).toLowerCase()
 
@@ -372,9 +285,7 @@ const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
   const patch = {}
 
   const fullName = valueFor('full_name', 'name')
-  if (fullName) {
-    patch.full_name = fullName
-  }
+  if (fullName) patch.full_name = fullName
 
   const dobIso = normalizeDobToIso(valueFor('dob', 'date_of_birth'))
   if (dobIso) {
@@ -382,70 +293,46 @@ const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
     const age = calculateAgeFromDob(dobIso)
     if (age !== null) {
       patch.age = age
-      if (age >= 60) {
-        patch.is_senior_citizen = 1
-      }
+      if (age >= 60) patch.is_senior_citizen = 1
     }
   }
 
   const gender = normalizeGender(valueFor('gender', 'sex'))
-  if (gender) {
-    patch.gender = gender
-  }
+  if (gender) patch.gender = gender
 
   const state = valueFor('state')
-  if (state) {
-    patch.state = state
-  }
+  if (state) patch.state = state
 
   const district = valueFor('district')
-  if (district) {
-    patch.district = district
-  }
+  if (district) patch.district = district
 
   const pincode = normalizePincode(valueFor('pincode', 'postal_code', 'zip_code'))
-  if (pincode) {
-    patch.pincode = pincode
-  }
+  if (pincode) patch.pincode = pincode
 
   const annualIncome = normalizeIncome(valueFor('annual_income', 'income'))
-  if (annualIncome !== null) {
-    patch.annual_income = annualIncome
-  }
+  if (annualIncome !== null) patch.annual_income = annualIncome
 
   const occupation = valueFor('occupation', 'employment', 'profession')
   if (occupation) {
     patch.occupation = occupation
     const loweredOccupation = occupation.toLowerCase()
-    if (loweredOccupation.includes('farmer') || loweredOccupation.includes('agri')) {
-      patch.is_farmer = 1
-    }
-    if (loweredOccupation.includes('student')) {
-      patch.is_student = 1
-    }
+    if (loweredOccupation.includes('farmer') || loweredOccupation.includes('agri')) patch.is_farmer = 1
+    if (loweredOccupation.includes('student')) patch.is_student = 1
   }
 
   const socialCategory = normalizeSocialCategory(valueFor('social_category', 'category', 'caste_category'))
-  if (socialCategory) {
-    patch.social_category = socialCategory
-  }
+  if (socialCategory) patch.social_category = socialCategory
 
-  if (normalizedDocType === 'ration' || normalizedDocType === 'ration_card') {
-    patch.has_ration_card = 1
-  }
+  if (normalizedDocType === 'ration' || normalizedDocType === 'ration_card') patch.has_ration_card = 1
 
   const rationCardType = valueFor('ration_card_type', 'ration_card_category').toLowerCase()
   if (['apl', 'bpl', 'phh', 'antyodaya'].includes(rationCardType)) {
     patch.ration_card_type = rationCardType
-    if (['bpl', 'phh', 'antyodaya'].includes(rationCardType)) {
-      patch.is_bpl = 1
-    }
+    if (['bpl', 'phh', 'antyodaya'].includes(rationCardType)) patch.is_bpl = 1
   }
 
   const explicitBpl = toText(confirmedData.is_bpl || confirmedData.bpl_status).toLowerCase()
-  if (explicitBpl === '1' || explicitBpl === 'true' || explicitBpl === 'yes') {
-    patch.is_bpl = 1
-  }
+  if (explicitBpl === '1' || explicitBpl === 'true' || explicitBpl === 'yes') patch.is_bpl = 1
 
   if ((normalizedDocType === 'caste' || normalizedDocType === 'caste_certificate') && socialCategory) {
     patch.social_category = socialCategory
@@ -455,23 +342,15 @@ const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
     patch.has_bank_account = 1
     patch.bank_account_linked = 1
   }
-
-  if (normalizedDocType === 'minority_certificate') {
-    patch.is_minority = 1
-  }
-
-  if (normalizedDocType === 'disability_certificate') {
-    patch.has_disability = 1
-  }
+  if (normalizedDocType === 'minority_certificate') patch.is_minority = 1
+  if (normalizedDocType === 'disability_certificate') patch.has_disability = 1
 
   if (normalizedDocType === 'kisan_credit_card') {
     patch.kcc_holder = 1
     patch.is_farmer = 1
   }
 
-  if (normalizedDocType === 'crop_insurance_policy') {
-    patch.crop_insurance = 1
-  }
+  if (normalizedDocType === 'crop_insurance_policy') patch.crop_insurance = 1
 
   if (normalizedDocType === 'pm_kisan_registration') {
     const pmKisanRegistered = toText(confirmedData.pm_kisan_registered).toLowerCase()
@@ -481,11 +360,42 @@ const deriveProfilePatchFromExtraction = (confirmedData, docType) => {
     }
   }
 
-  if (normalizedDocType === 'senior_citizen_card') {
-    patch.is_senior_citizen = 1
-  }
+  if (normalizedDocType === 'senior_citizen_card') patch.is_senior_citizen = 1
 
   return patch
+}
+
+const getConfidenceStyle = (confidence) => {
+  const value = Number(confidence || 0)
+  if (value >= 85) return { dot: 'bg-green-500', label: 'High', row: '' }
+  if (value >= 60) return { dot: 'bg-amber-500', label: 'Medium', row: 'bg-amber-50/50' }
+  return { dot: 'bg-red-500', label: 'Low', row: 'bg-amber-100/60 border border-amber-300' }
+}
+
+const getStatusBadge = (doc) => {
+  if (doc.extraction_status === 'failed') {
+    return { label: 'Manual Entry', cls: 'bg-red-100 text-red-700 border-red-200' }
+  }
+
+  if (doc.extraction_status === 'processing' || doc.extraction_status === 'pending') {
+    return { label: 'Extracting', cls: 'bg-blue-100 text-blue-700 border-blue-200' }
+  }
+
+  if (doc.extraction_status === 'completed' && Number(doc.is_verified || 0) === 1) {
+    return { label: 'Extracted', cls: 'bg-green-100 text-green-700 border-green-200' }
+  }
+
+  if (doc.extraction_status === 'completed') {
+    return { label: 'Needs Review', cls: 'bg-amber-100 text-amber-700 border-amber-200' }
+  }
+
+  return { label: 'Pending', cls: 'bg-stone-100 text-stone-700 border-stone-200' }
+}
+
+const getDocTypeMeta = (docType) => DOCUMENT_TYPES.find((item) => item.id === docType)
+
+const getChecklistStatus = (docType, uploadedDocs) => {
+  return uploadedDocs.some((doc) => doc.doc_type === docType && doc.extraction_status === 'completed')
 }
 
 export default function UploadDocuments() {
@@ -495,57 +405,93 @@ export default function UploadDocuments() {
     const value = t(key)
     return value && value !== key ? value : fallback
   }
-  const [step, setStep] = useState(1) // 1: select, 2: upload, 3: processing, 4: review, 5: success
-  const [selectedDocType, setSelectedDocType] = useState(null)
-  const [useCamera, setUseCamera] = useState(false)
-  const [docId, setDocId] = useState(null)
-  const [extractedData, setExtractedData] = useState(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [uploadedCount, setUploadedCount] = useState(0)
 
-  /**
-   * Step 1: Select document type
-   */
-  const handleSelectDocType = (docType) => {
-    setSelectedDocType(docType)
-    setUseCamera(false)
-    setStep(2)
+  const [selectedDocType, setSelectedDocType] = useState('aadhaar')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
+  const [extractionState, setExtractionState] = useState('idle')
+  const [activeDocId, setActiveDocId] = useState(null)
+  const [extractedData, setExtractedData] = useState({})
+  const [editingField, setEditingField] = useState(null)
+  const [isSavingReview, setIsSavingReview] = useState(false)
+  const [uploadedDocs, setUploadedDocs] = useState([])
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true)
+  const [profile, setProfile] = useState(null)
+
+  const selectedDocMeta = getDocTypeMeta(selectedDocType)
+
+  const loadUploadedDocs = async () => {
+    try {
+      const response = await documentService.getDocuments()
+      const docs = Array.isArray(response.data) ? response.data : []
+      docs.sort((a, b) => String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || '')))
+      setUploadedDocs(docs)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, tr('documents.fetchListError', 'Failed to load uploaded documents')))
+    }
   }
 
-  /**
-   * Step 2: Upload document
-   */
-  const handleUploadSuccess = (uploadDocId) => {
-    setDocId(uploadDocId)
-    setStep(3) // Go to processing
-    pollExtractionStatus(uploadDocId)
+  const loadProfile = async () => {
+    try {
+      const response = await profileService.getProfile()
+      setProfile(response.data || null)
+    } catch {
+      setProfile(null)
+    }
   }
 
-  const handleUploadError = (error) => {
-    console.error('Upload error:', error)
-    const message =
-      typeof error === 'string'
-        ? error
-        : getApiErrorMessage(error, tr('documents.uploadFailed', 'Upload failed'))
-    toast.error(message)
+  useEffect(() => {
+    const init = async () => {
+      setIsLoadingDocs(true)
+      await Promise.all([loadUploadedDocs(), loadProfile()])
+      setIsLoadingDocs(false)
+    }
+    init()
+  }, [])
+
+  const resetCurrentUploadState = () => {
+    setSelectedFile(null)
+    setUploadProgress(0)
+    setExtractionState('idle')
+    setActiveDocId(null)
+    setExtractedData({})
+    setEditingField(null)
   }
 
-  /**
-   * Step 3: Poll for extraction completion
-   */
-  const pollExtractionStatus = async (docIdToPoll) => {
-    setIsProcessing(true)
+  const onSelectFile = (file) => {
+    if (!file) return
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+    if (!validTypes.includes(file.type)) {
+      toast.error(tr('documents.validationError.invalidType', 'Invalid file type. Use JPG, PNG, or PDF.'))
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(tr('documents.validationError.fileTooLarge', 'File too large. Max 10MB per file.'))
+      return
+    }
+
+    setSelectedFile(file)
+    setExtractionState('idle')
+    setUploadProgress(0)
+    setExtractedData({})
+    setActiveDocId(null)
+    setEditingField(null)
+  }
+
+  const pollExtractionStatus = async (docId, docType) => {
     let attempts = 0
-    const maxAttempts = 60 // 5 minutes (5 sec * 60)
+    const maxAttempts = 60
 
-    const poll = async () => {
-      attempts++
-
+    const check = async () => {
+      attempts += 1
       try {
-        const response = await documentService.getDocument(docIdToPoll)
+        const response = await documentService.getDocument(docId)
         const doc = response.data
 
-        // Check if processing complete
         if (doc.extraction_status === 'completed') {
           const confidenceScore = Number(doc.confidence_score || 0)
           const normalizedConfidence =
@@ -553,428 +499,533 @@ export default function UploadDocuments() {
               ? Math.round(confidenceScore * 100)
               : Math.round(confidenceScore)
 
-          let parsedExtractionData = {}
-          if (typeof doc.extracted_data === 'string') {
-            try {
-              parsedExtractionData = JSON.parse(doc.extracted_data || '{}')
-            } catch {
-              parsedExtractionData = {}
-            }
-          } else if (doc.extracted_data && typeof doc.extracted_data === 'object') {
-            parsedExtractionData = doc.extracted_data
+          const normalized = normalizeExtractedData(parseDocumentExtractedData(doc), normalizedConfidence)
+          const reviewReady = withExpectedReviewFields(normalized, docType)
+
+          if (!hasMeaningfulExtractedData(reviewReady)) {
+            setExtractionState('failed')
+            toast.error(doc.error_message || tr('documents.extractionFailed', 'Extraction failed. Please try re-upload.'))
+          } else {
+            setExtractedData(reviewReady)
+            const hasLowConfidence = Object.values(reviewReady).some((field) => Number(field?.confidence || 0) < 60)
+            setExtractionState(hasLowConfidence ? 'needs_review' : 'completed')
+            toast.success(tr('documents.extractionComplete', 'Extraction complete'))
           }
 
-          const normalizedData = normalizeExtractedData(
-            parsedExtractionData,
-            normalizedConfidence
-          )
-          const reviewReadyData = withExpectedReviewFields(
-            normalizedData,
-            selectedDocType
-          )
+          await loadUploadedDocs()
+          return
+        }
 
-          if (!hasMeaningfulExtractedData(reviewReadyData)) {
-            setIsProcessing(false)
-            toast.error(
-              doc.error_message ||
-                tr(
-                  'documents.extractionFailed',
-                  'Extraction failed. Please try again with a clearer document.'
-                )
-            )
-            setStep(2)
-            return
-          }
+        if (doc.extraction_status === 'failed') {
+          setExtractionState('failed')
+          toast.error(doc.error_message || tr('documents.extractionFailed', 'Extraction failed. Please try re-upload.'))
+          await loadUploadedDocs()
+          return
+        }
 
-          setExtractedData(reviewReadyData)
-          setIsProcessing(false)
-          setStep(4) // Go to review
-          toast.success(tr('documents.extractionComplete', 'Extraction complete!'))
-        } else if (doc.extraction_status === 'failed') {
-          setIsProcessing(false)
-          toast.error(
-            doc.error_message ||
-              tr('documents.extractionFailed', 'Extraction failed. Please try again.')
-          )
-          setStep(2) // Back to upload
-        } else if (attempts < maxAttempts) {
-          // Still processing, poll again in 5 seconds
-          setTimeout(poll, 5000)
+        if (attempts < maxAttempts) {
+          setTimeout(check, 2000)
         } else {
-          // Timeout
-          setIsProcessing(false)
-          toast.error(
-            tr('documents.extractionTimeout', 'Extraction took too long. Please try again.')
-          )
-          setStep(2)
+          setExtractionState('failed')
+          toast.error(tr('documents.extractionTimeout', 'Extraction timed out. Please try again.'))
         }
       } catch (error) {
-        console.error('Poll error:', error)
         if (attempts < maxAttempts) {
-          setTimeout(poll, 5000)
+          setTimeout(check, 2000)
         } else {
-          setIsProcessing(false)
-          toast.error(getApiErrorMessage(error, 'Error checking extraction status'))
-          setStep(2)
+          setExtractionState('failed')
+          toast.error(getApiErrorMessage(error, tr('documents.statusError', 'Failed to check extraction status')))
         }
       }
     }
 
-    poll()
+    check()
   }
 
-  /**
-   * Step 4: Confirm extracted data
-   */
-  const handleConfirmExtraction = async (confirmedData) => {
+  const handleUploadAndExtract = async () => {
+    if (!selectedDocType) {
+      toast.error(tr('documents.validationError.docTypeRequired', 'Please select document type first.'))
+      return
+    }
+    if (!selectedFile) {
+      toast.error(tr('documents.validationError.fileRequired', 'Please choose a file first.'))
+      return
+    }
+
+    setIsUploading(true)
+    setExtractionState('uploading')
+    setUploadProgress(0)
+
     try {
-      if (docId) {
-        await documentService.updateExtraction(docId, confirmedData)
+      const response = await documentService.uploadDocument(selectedFile, selectedDocType, {
+        onUploadProgress: (progressEvent) => {
+          if (!progressEvent.total) return
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          setUploadProgress(Math.min(100, Math.max(0, percent)))
+        },
+      })
+
+      const docId = response?.data?.doc_id
+      if (!docId) {
+        throw new Error('Document upload did not return document id')
       }
 
-      const profilePatch = deriveProfilePatchFromExtraction(
-        confirmedData,
-        selectedDocType
-      )
+      setActiveDocId(docId)
+      setIsUploading(false)
+      setExtractionState('extracting')
+      setUploadProgress(100)
+      await pollExtractionStatus(docId, selectedDocType)
+    } catch (error) {
+      setIsUploading(false)
+      setExtractionState('failed')
+      toast.error(getApiErrorMessage(error, tr('documents.uploadFailed', 'Upload failed')))
+    }
+  }
 
+  const handleFieldEdit = (field, value) => {
+    setExtractedData((prev) => ({
+      ...prev,
+      [field]: {
+        ...(prev[field] || {}),
+        value,
+        edited: true,
+      },
+    }))
+  }
+
+  const handleConfirmAndSave = async () => {
+    if (!activeDocId) {
+      toast.error(tr('documents.noActiveDocument', 'No document selected for saving'))
+      return
+    }
+
+    const cleanedData = Object.entries(extractedData).reduce((acc, [field, item]) => {
+      acc[field] = item?.value ?? ''
+      return acc
+    }, {})
+
+    setIsSavingReview(true)
+    try {
+      await documentService.updateExtraction(activeDocId, cleanedData)
+
+      const profilePatch = deriveProfilePatchFromExtraction(cleanedData, selectedDocType)
       if (Object.keys(profilePatch).length > 0) {
         await profileService.updateProfile(profilePatch)
-        toast.success(
-          tr(
-            'documents.dataSavedWithAutofill',
-            `Document data saved and ${Object.keys(profilePatch).length} profile fields were auto-filled!`
-          )
-        )
-      } else {
-        toast.info(
-          tr(
-            'documents.dataSavedNoAutofill',
-            'Document data saved. No matching profile fields found to auto-fill.'
-          )
-        )
       }
 
-      setUploadedCount((prev) => prev + 1)
-      setStep(5) // Go to success
+      toast.success(tr('documents.savedSuccess', 'Extracted data confirmed and saved'))
+      setExtractionState('completed')
+      await Promise.all([loadUploadedDocs(), loadProfile()])
     } catch (error) {
-      console.error('Save error:', error)
-      toast.error(getApiErrorMessage(error, tr('documents.saveFailed', 'Failed to save data')))
+      toast.error(getApiErrorMessage(error, tr('documents.saveFailed', 'Failed to save extraction data')))
+    } finally {
+      setIsSavingReview(false)
     }
   }
 
-  /**
-   * Step 5: Success screen
-   */
-  const handleContinue = () => {
-    // Reset for next document or go to profile
-    setStep(1)
-    setSelectedDocType(null)
-    setDocId(null)
-    setExtractedData(null)
-    setUseCamera(false)
-  }
-
-  const handleDeleteUploadedDocument = async () => {
-    if (!docId) {
-      toast.info(tr('documents.noDocumentToDelete', 'No uploaded document to delete'))
-      return
-    }
-
-    const shouldDelete = window.confirm(
-      tr('documents.confirmDelete', 'Delete this uploaded document?')
-    )
-    if (!shouldDelete) {
-      return
-    }
+  const handleDeleteDocument = async (docId) => {
+    const confirmDelete = window.confirm(tr('documents.confirmDelete', 'Delete this uploaded document?'))
+    if (!confirmDelete) return
 
     try {
       await documentService.deleteDocument(docId)
       toast.success(tr('documents.deleteSuccess', 'Document deleted successfully'))
-      setDocId(null)
-      setExtractedData(null)
-      setStep(2)
+
+      if (activeDocId === docId) {
+        resetCurrentUploadState()
+      }
+
+      await loadUploadedDocs()
     } catch (error) {
       toast.error(getApiErrorMessage(error, tr('documents.deleteFailed', 'Failed to delete document')))
     }
   }
 
-  /**
-   * Go back to previous step
-   */
-  const handleBack = () => {
-    if (step === 2) {
-      setSelectedDocType(null)
-      setUseCamera(false)
-      setStep(1)
-    } else if (step === 4) {
-      setStep(2)
-    } else {
-      setStep(Math.max(1, step - 1))
+  const handleViewExtractedData = (doc) => {
+    const normalized = normalizeExtractedData(parseDocumentExtractedData(doc), Number(doc.confidence_score || 0) * 100)
+    const reviewReady = withExpectedReviewFields(normalized, doc.doc_type)
+
+    setSelectedDocType(doc.doc_type)
+    setActiveDocId(doc.id)
+    setExtractedData(reviewReady)
+    setSelectedFile(null)
+    const hasLowConfidence = Object.values(reviewReady).some((field) => Number(field?.confidence || 0) < 60)
+    setExtractionState(hasLowConfidence ? 'needs_review' : 'completed')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const groupedDocuments = useMemo(() => {
+    const groups = {
+      Identity: [],
+      Income: [],
+      Education: [],
+      Agriculture: [],
+      'Special Category': [],
     }
+
+    uploadedDocs.forEach((doc) => {
+      const category = DOC_TYPE_TO_CATEGORY[doc.doc_type] || 'Special Category'
+      const normalizedCategory = CATEGORY_ORDER.includes(category) ? category : 'Special Category'
+      groups[normalizedCategory].push(doc)
+    })
+
+    return groups
+  }, [uploadedDocs])
+
+  const checklistItems = useMemo(() => {
+    const socialCategory = String(profile?.social_category || profile?.caste_category || '').toLowerCase()
+    const casteRequired = ['sc', 'st', 'obc'].includes(socialCategory)
+
+    return REQUIRED_CHECKLIST_ORDER.map((docType) => {
+      if (docType === 'caste_certificate') {
+        return {
+          docType,
+          label: REQUIRED_LABELS[docType],
+          required: casteRequired,
+          uploaded: getChecklistStatus(docType, uploadedDocs),
+        }
+      }
+
+      return {
+        docType,
+        label: REQUIRED_LABELS[docType],
+        required: true,
+        uploaded: getChecklistStatus(docType, uploadedDocs),
+      }
+    })
+  }, [profile, uploadedDocs])
+
+  const extractionIndicator = (() => {
+    if (extractionState === 'extracting' || extractionState === 'uploading') {
+      return {
+        cls: 'bg-blue-50 border-blue-200 text-blue-800',
+        text: tr('documents.extracting', 'Extracting information...'),
+        icon: <Loader2 className="h-4 w-4 animate-spin" />,
+      }
+    }
+    if (extractionState === 'completed') {
+      return {
+        cls: 'bg-green-50 border-green-200 text-green-800',
+        text: tr('documents.extractionComplete', 'Extraction complete'),
+        icon: <CheckCircle2 className="h-4 w-4" />,
+      }
+    }
+    if (extractionState === 'needs_review') {
+      return {
+        cls: 'bg-amber-50 border-amber-200 text-amber-900',
+        text: tr('documents.extractionNeedsReview', 'Extraction needs review'),
+        icon: <AlertTriangle className="h-4 w-4" />,
+      }
+    }
+    if (extractionState === 'failed') {
+      return {
+        cls: 'bg-red-50 border-red-200 text-red-700',
+        text: tr('documents.extractionFailed', 'Extraction failed. Please re-upload.'),
+        icon: <AlertTriangle className="h-4 w-4" />,
+      }
+    }
+    return null
+  })()
+
+  const handleDrop = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setDragOver(false)
+    const file = event.dataTransfer?.files?.[0]
+    onSelectFile(file)
   }
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title={tr('uploadDocuments.title', 'Upload Your Documents')}
-        description={tr(
-          'uploadDocuments.subtitle',
-          'Upload government ID and income documents to find eligible schemes'
-        )}
-        actions={
-          <Button variant="ghost" onClick={() => navigate('/dashboard')}>
-            {tr('common.back', 'Back')}
-          </Button>
-        }
+        title={tr('uploadDocuments.title', 'Upload Documents')}
+        description={tr('uploadDocuments.subtitle', 'Upload and verify your documents to improve eligibility matching accuracy')}
+        actions={<Button variant="ghost" onClick={() => navigate('/dashboard')}>{tr('common.back', 'Back')}</Button>}
       />
 
-      <div className="mx-auto w-full max-w-4xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-h3 font-medium text-stone-900">
-            {tr('uploadDocuments.title', 'Upload Your Documents')}
-          </h2>
-          <p className="text-caption font-medium uppercase tracking-wide text-stone-500">Step {step} of 5</p>
+      <Card className="border border-stone-200 bg-gradient-to-r from-orange-50 via-white to-green-50">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-h3 font-medium text-stone-900">Upload these documents to unlock more scheme matches</h2>
+            <p className="mt-1 text-body-sm text-stone-600">Required and recommended checklist based on your profile.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {checklistItems.map((item) => (
+              <div key={item.docType} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-body-sm">
+                <p className="font-medium text-stone-900">{item.label}</p>
+                <p className="text-caption text-stone-600">
+                  {item.required ? 'Required' : 'If applicable'} {item.uploaded ? '✅' : '⏳ Pending'}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
+      </Card>
 
-        {/* Progress Stepper */}
-        <div className="mb-5 flex justify-between items-center">
-          {[1, 2, 3, 4, 5].map((s) => (
-            <div key={s} className="flex items-center">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="space-y-5">
+          <Card className="border border-stone-200">
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-label font-medium text-stone-800">Document type</label>
+                <select
+                  value={selectedDocType}
+                  onChange={(event) => {
+                    setSelectedDocType(event.target.value)
+                    resetCurrentUploadState()
+                  }}
+                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-body-sm text-stone-800"
+                >
+                  {DOCUMENT_TYPES.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      {doc.name} ({doc.category})
+                    </option>
+                  ))}
+                </select>
+                {selectedDocMeta ? (
+                  <p className="mt-2 text-body-sm text-stone-600">{selectedDocMeta.description}</p>
+                ) : null}
+              </div>
+
               <div
-                className={`h-9 w-9 rounded-full flex items-center justify-center font-medium text-caption transition ${
-                  step >= s
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-stone-300 text-stone-600'
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setDragOver(true)
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setDragOver(false)
+                }}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById('upload-doc-file-input')?.click()}
+                className={`cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition ${
+                  dragOver
+                    ? 'border-orange-500 bg-orange-50'
+                    : 'border-stone-300 bg-stone-50 hover:border-orange-400 hover:bg-orange-50/60'
                 }`}
               >
-                {step > s ? '✓' : s}
+                <UploadCloud className="mx-auto h-12 w-12 text-orange-700" />
+                <h3 className="mt-3 text-h3 font-medium text-stone-900">Drag files here or click to browse</h3>
+                <p className="mt-1 text-body-sm text-stone-600">JPG, PNG, PDF · Max 10MB per file</p>
               </div>
-              {s < 5 && (
-                <div
-                  className={`h-1 w-8 transition md:w-12 ${
-                    step > s ? 'bg-orange-600' : 'bg-stone-300'
-                  }`}
-                />
-              )}
+
+              <input
+                id="upload-doc-file-input"
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.pdf"
+                className="hidden"
+                onChange={(event) => onSelectFile(event.target.files?.[0])}
+              />
+
+              {selectedFile ? (
+                <div className="rounded-xl border border-stone-200 bg-white p-3">
+                  <div className="flex items-center gap-3">
+                    {isImageFile(selectedFile.name) ? <FileImage className="h-5 w-5 text-blue-700" /> : <FileText className="h-5 w-5 text-red-700" />}
+                    <div className="min-w-0">
+                      <p className="truncate text-body-sm font-medium text-stone-900">{selectedFile.name}</p>
+                      <p className="text-caption text-stone-600">{formatFileSize(selectedFile.size)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={handleUploadAndExtract} loading={isUploading}>
+                  <UploadCloud className="h-4 w-4" />
+                  Upload & Extract
+                </Button>
+                <Button variant="secondary" onClick={resetCurrentUploadState}>
+                  <RefreshCcw className="h-4 w-4" />
+                  Re-upload
+                </Button>
+              </div>
+
+              {(isUploading || extractionState === 'uploading' || extractionState === 'extracting') ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-body-sm text-stone-700">
+                    <span>Upload progress</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-stone-200">
+                    <div
+                      className="h-2 rounded-full bg-gradient-to-r from-orange-500 to-green-600 transition-all"
+                      style={{ width: `${Math.max(2, uploadProgress)}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {extractionIndicator ? (
+                <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-body-sm ${extractionIndicator.cls}`}>
+                  {extractionIndicator.icon}
+                  <span>{extractionIndicator.text}</span>
+                </div>
+              ) : null}
+
+              <p className="text-caption text-stone-500">Supported formats shown below: JPG, PNG, PDF · Max 10MB per file</p>
             </div>
-          ))}
-        </div>
+          </Card>
 
-        {/* Step Labels */}
-        <div className="mb-5 grid grid-cols-5 gap-2 text-caption font-medium text-center">
-          <div className={step === 1 ? 'text-orange-700' : 'text-stone-500'}>
-            {tr('uploadDocuments.selectType', 'Select')}
-          </div>
-          <div className={step === 2 ? 'text-orange-700' : 'text-stone-500'}>
-            {tr('uploadDocuments.upload', 'Upload')}
-          </div>
-          <div className={step === 3 ? 'text-orange-700' : 'text-stone-500'}>
-            {tr('uploadDocuments.processing', 'Processing')}
-          </div>
-          <div className={step === 4 ? 'text-orange-700' : 'text-stone-500'}>
-            {tr('uploadDocuments.review', 'Review')}
-          </div>
-          <div className={step === 5 ? 'text-orange-700' : 'text-stone-500'}>
-            {tr('uploadDocuments.complete', 'Complete')}
-          </div>
-        </div>
+          {Object.keys(extractedData).length > 0 ? (
+            <Card className="border border-stone-200">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-h3 font-medium text-stone-900">Extracted data review</h3>
+                <span className="text-caption text-stone-500">Click the edit icon to correct values</span>
+              </div>
 
-        {/* Content */}
-        <Card className="border border-stone-200">
-          {/* Step 1: Select Document Type */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <h2 className="text-h2 font-medium text-gray-800">
-                {tr('uploadDocuments.selectDocType', 'What would you like to upload?')}
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {DOCUMENT_TYPES.map((doc) => {
-                  const Icon = doc.icon
+              <div className="space-y-2">
+                {Object.entries(extractedData).map(([field, item]) => {
+                  const style = getConfidenceStyle(item?.confidence)
+                  const isEditing = editingField === field
                   return (
-                    <button
-                      key={doc.id}
-                      onClick={() => handleSelectDocType(doc.id)}
-                      className="rounded-xl border-2 border-stone-200 p-5 text-left transition hover:border-orange-300 hover:bg-orange-50"
-                    >
-                      <Icon size={28} className="mb-3 text-orange-700" />
-                      {doc.category ? (
-                        <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{doc.category}</p>
+                    <div key={field} className={`rounded-lg px-3 py-2 ${style.row || 'border border-stone-200'}`}>
+                      <div className="grid items-center gap-2 md:grid-cols-[1.1fr_2fr_auto]">
+                        <p className="text-body-sm font-medium capitalize text-stone-800">{field.replace(/_/g, ' ')}</p>
+                        {isEditing ? (
+                          <input
+                            value={item?.value ?? ''}
+                            onChange={(event) => handleFieldEdit(field, event.target.value)}
+                            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
+                            onBlur={() => setEditingField(null)}
+                          />
+                        ) : (
+                          <p className="text-body-sm text-stone-700">{toText(item?.value) || '—'}</p>
+                        )}
+
+                        <div className="flex items-center gap-2 justify-self-end">
+                          <span className={`inline-block h-2.5 w-2.5 rounded-full ${style.dot}`} />
+                          <span className="text-caption text-stone-600">{style.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditingField(isEditing ? null : field)}
+                            className="rounded-md p-1 text-stone-600 hover:bg-stone-100"
+                            title="Edit field"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      {Number(item?.confidence || 0) < 50 ? (
+                        <p className="mt-1 text-caption text-amber-800">We couldn't read this clearly - please enter manually.</p>
                       ) : null}
-                      <h3 className="font-medium text-stone-900">{doc.name}</h3>
-                      <p className="mt-1 text-body-sm text-stone-600">{doc.description}</p>
-                    </button>
+                    </div>
                   )
                 })}
               </div>
 
-              <p className="text-center text-body-sm text-stone-600">
-                {tr(
-                  'uploadDocuments.optionalNote',
-                  'You can upload these documents later if needed'
-                )}
-              </p>
-            </div>
-          )}
-
-          {/* Step 2: Upload */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-h2 font-medium text-gray-800 mb-2">
-                  {tr('uploadDocuments.uploadDoc', 'Upload Your Document')}
-                </h2>
-                <p className="text-gray-600">
-                  {DOCUMENT_TYPES.find((d) => d.id === selectedDocType)?.name}
-                </p>
-              </div>
-
-              {/* Tab: Upload vs Camera */}
-              <div className="flex gap-2 border-b">
-                <button
-                  onClick={() => setUseCamera(false)}
-                  className={`px-4 py-2 font-medium border-b-2 transition ${
-                    !useCamera
-                      ? 'border-orange-600 text-orange-700'
-                      : 'border-transparent text-stone-600'
-                  }`}
-                >
-                  <ImageIcon size={18} className="inline mr-2" />
-                  {tr('uploadDocuments.uploadFile', 'Upload File')}
-                </button>
-                <button
-                  onClick={() => setUseCamera(true)}
-                  className={`px-4 py-2 font-medium border-b-2 transition ${
-                    useCamera
-                      ? 'border-orange-600 text-orange-700'
-                      : 'border-transparent text-stone-600'
-                  }`}
-                >
-                  <Camera size={18} className="inline mr-2" />
-                  {tr('uploadDocuments.takePhoto', 'Take Photo')}
-                </button>
-              </div>
-
-              {/* Upload or Camera Component */}
-              {!useCamera ? (
-                <DocumentUploader
-                  docType={selectedDocType}
-                  onUploadSuccess={handleUploadSuccess}
-                  onUploadError={handleUploadError}
-                />
-              ) : (
-                <CameraCapture
-                  onCapture={async (blob) => {
-                    try {
-                      const response = await documentService.uploadDocument(blob, selectedDocType)
-                      handleUploadSuccess(response.data.doc_id)
-                    } catch (error) {
-                      handleUploadError(error)
-                    }
-                  }}
-                  onCancel={() => setUseCamera(false)}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Step 3: Processing */}
-          {step === 3 && (
-            <div className="text-center py-12">
-              <div className="inline-block">
-                <Loader size={48} className="mb-4 animate-spin text-orange-700" />
-              </div>
-              <h2 className="text-h2 font-medium text-gray-900 mb-2">
-                {tr('uploadDocuments.extractingData', 'Extracting Data')}
-              </h2>
-              <p className="text-gray-600">
-                {tr(
-                  'uploadDocuments.processingMessage',
-                  'Please wait while we analyze your document...'
-                )}
-              </p>
-              <p className="text-body-sm text-gray-500 mt-4">
-                {tr('uploadDocuments.timeEstimate', 'This usually takes 30-60 seconds')}
-              </p>
-            </div>
-          )}
-
-          {/* Step 4: Review */}
-          {step === 4 && (
-            <ExtractionReview
-              docId={docId}
-              extractedData={extractedData}
-              onConfirm={handleConfirmExtraction}
-              onCancel={handleBack}
-              isLoading={false}
-            />
-          )}
-
-          {/* Step 5: Success */}
-          {step === 5 && (
-            <div className="text-center py-12">
-              <CheckCircle size={64} className="text-green-600 mx-auto mb-4" />
-              <h2 className="text-h2 font-medium text-gray-900 mb-2">
-                {tr('uploadDocuments.success', 'Document Uploaded Successfully!')}
-              </h2>
-              <p className="text-gray-600 mb-4">
-                {tr(
-                  'uploadDocuments.successMessage',
-                  'Your document data has been saved and will help us find better schemes for you.'
-                )}
-              </p>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
-                <p className="text-body-sm text-blue-800">
-                  <strong>{tr('uploadDocuments.documentsUploaded', 'Documents uploaded:')}</strong>{' '}
-                  {uploadedCount} / {DOCUMENT_TYPES.length}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <Button
-                  onClick={handleContinue}
-                  className="w-full"
-                  size="lg"
-                >
-                  {uploadedCount < DOCUMENT_TYPES.length
-                    ? tr('uploadDocuments.uploadMore', 'Upload Another Document')
-                    : tr('uploadDocuments.viewSchemes', 'View Available Schemes')}
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button onClick={handleConfirmAndSave} loading={isSavingReview}>
+                  Confirm & Save
                 </Button>
-                <Button
-                  onClick={() => navigate('/schemes')}
-                  className="w-full"
-                  variant="ghost"
-                  size="lg"
-                >
-                  {tr('uploadDocuments.skipForNow', 'Skip for Now')}
+                <Button variant="secondary" onClick={resetCurrentUploadState}>
+                  Re-upload
                 </Button>
-                {docId && (
-                  <Button
-                    onClick={handleDeleteUploadedDocument}
-                    className="w-full"
-                    variant="danger"
-                    size="lg"
-                  >
-                    {tr('documents.deleteUploaded', 'Delete Uploaded Document')}
-                  </Button>
-                )}
               </div>
-            </div>
-          )}
-        </Card>
+            </Card>
+          ) : null}
+        </div>
 
-        {/* Back Button (except on step 1) */}
-        {step > 1 && step !== 3 && (
-          <div className="mt-4 flex justify-start">
-            <Button
-              onClick={handleBack}
-              variant="ghost"
-            >
-              {tr('common.back', 'Back')}
-            </Button>
-          </div>
-        )}
+        <div className="space-y-5">
+          <Card className="border border-stone-200">
+            <h3 className="text-h3 font-medium text-stone-900">Uploaded documents</h3>
+            <p className="mt-1 text-body-sm text-stone-600">Grouped by category with extraction status and actions.</p>
+
+            {isLoadingDocs ? (
+              <div className="mt-4 flex items-center gap-2 text-body-sm text-stone-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading documents...
+              </div>
+            ) : uploadedDocs.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-stone-300 bg-stone-50 p-6 text-center">
+                <FileText className="mx-auto h-8 w-8 text-stone-400" />
+                <p className="mt-2 text-body-sm font-medium text-stone-700">No documents uploaded yet.</p>
+                <p className="text-caption text-stone-500">Start with your Aadhaar card.</p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-4">
+                {CATEGORY_ORDER.map((category) => {
+                  const docs = groupedDocuments[category] || []
+                  if (!docs.length) return null
+
+                  return (
+                    <div key={category}>
+                      <p className="mb-2 text-caption font-medium uppercase tracking-wider text-stone-500">{category}</p>
+                      <div className="space-y-2">
+                        {docs.map((doc) => {
+                          const meta = getDocTypeMeta(doc.doc_type)
+                          const statusBadge = getStatusBadge(doc)
+                          const canView = Boolean(parseDocumentExtractedData(doc) && Object.keys(parseDocumentExtractedData(doc)).length)
+                          return (
+                            <div key={doc.id} className="rounded-xl border border-stone-200 bg-white p-3">
+                              <div className="flex items-start gap-3">
+                                <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-lg bg-stone-100">
+                                  {isImageFile(doc.file_name) ? (
+                                    <FileImage className="h-5 w-5 text-blue-700" />
+                                  ) : isPdfFile(doc.file_name) ? (
+                                    <FileText className="h-5 w-5 text-red-700" />
+                                  ) : (
+                                    <FileText className="h-5 w-5 text-stone-600" />
+                                  )}
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-full bg-orange-100 px-2 py-1 text-caption font-medium text-orange-800">
+                                      {meta?.name || doc.doc_type}
+                                    </span>
+                                    <span className={`rounded-full border px-2 py-1 text-caption font-medium ${statusBadge.cls}`}>
+                                      {statusBadge.label}
+                                    </span>
+                                  </div>
+
+                                  <p className="mt-2 truncate text-body-sm font-medium text-stone-900">{doc.file_name}</p>
+                                  <p className="text-caption text-stone-500">Uploaded: {new Date(doc.uploaded_at).toLocaleString()}</p>
+
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={!canView}
+                                      className="inline-flex items-center gap-1 rounded-md border border-stone-200 px-2 py-1 text-caption text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                      onClick={() => handleViewExtractedData(doc)}
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                      View extracted data
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="inline-flex items-center gap-1 rounded-md border border-stone-200 px-2 py-1 text-caption text-stone-700"
+                                      onClick={() => {
+                                        setSelectedDocType(doc.doc_type)
+                                        resetCurrentUploadState()
+                                      }}
+                                    >
+                                      <RefreshCcw className="h-3.5 w-3.5" />
+                                      Re-upload
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-caption text-red-700"
+                                      onClick={() => handleDeleteDocument(doc.id)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   )

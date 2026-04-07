@@ -540,11 +540,24 @@ class EligibilityMatchingAgent:
             else:
                 unknown_conditions.append(rule_key)
 
+        mandatory_missing_docs: List[str] = []
+        aadhaar_verified = int(getattr(profile, "aadhaar_verified", 0) or 0) == 1
+        annual_income_known = getattr(profile, "annual_income", None) is not None
+
+        if not aadhaar_verified:
+            mandatory_missing_docs.append("aadhaar")
+        if not annual_income_known:
+            mandatory_missing_docs.append("income_certificate")
+
         total = len(matched_conditions) + len(failed_conditions) + len(unknown_conditions)
         if total == 0:
             match_score = 0.0
         else:
             match_score = (len(matched_conditions) + 0.25 * len(unknown_conditions)) / total
+
+        if mandatory_missing_docs:
+            match_score = min(match_score, 0.35 if len(mandatory_missing_docs) == 1 else 0.2)
+
         match_score = round(float(min(max(match_score, 0.0), 1.0)), 4)
 
         is_eligible = len(failed_conditions) == 0 and len(unknown_conditions) == 0 and total > 0
@@ -552,12 +565,17 @@ class EligibilityMatchingAgent:
             match_score >= 0.4 or (len(failed_conditions) <= 1 and len(matched_conditions) > 0)
         )
 
+        if mandatory_missing_docs:
+            is_eligible = False
+            is_partially_eligible = is_partially_eligible or bool(matched_conditions)
+
         missing_data_for_full_check = sorted(
             {
                 self.rule_missing_field_map.get(rule_key, rule_key)
                 for rule_key in unknown_conditions
             }
         )
+        missing_data_for_full_check = sorted(set(missing_data_for_full_check + mandatory_missing_docs))
 
         return {
             "scheme_id": str(getattr(scheme, "id", "")),

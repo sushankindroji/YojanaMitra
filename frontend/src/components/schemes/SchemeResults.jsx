@@ -46,7 +46,7 @@ export default function SchemeResults({
   sortBy = 'name',
   onSortChange = () => {},
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const filterKeyRef = useRef('')
 
@@ -70,7 +70,7 @@ export default function SchemeResults({
     }
 
     fetchSchemes()
-  }, [filters, sortBy, currentPage])
+  }, [currentPage, filters, i18n?.language, i18n?.resolvedLanguage, sortBy])
 
   const fetchSchemes = async () => {
     try {
@@ -83,6 +83,7 @@ export default function SchemeResults({
         state: filters.states?.join(',') || '',
         skip: (currentPage - 1) * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
+        lang: (i18n?.resolvedLanguage || i18n?.language || 'en').split('-')[0],
       })
 
       let schemesData = response.data.schemes || []
@@ -97,7 +98,7 @@ export default function SchemeResults({
         })
       } else if (sortBy === 'name') {
         schemesData = schemesData.sort((a, b) =>
-          (a.name_en || a.name || '').localeCompare(b.name_en || b.name || '')
+          (a.name || a.name_en || '').localeCompare(b.name || b.name_en || '')
         )
       } else if (sortBy === 'benefit') {
         schemesData = schemesData.sort((a, b) => {
@@ -177,7 +178,9 @@ export default function SchemeResults({
             {t('schemes.availableSchemes', { defaultValue: 'Available Schemes' })}
           </h2>
           <p className="mt-1 text-body-sm text-stone-600">
-            {totalCount} {totalCount === 1 ? 'scheme found' : 'schemes found'}
+            {totalCount === 1
+              ? t('schemes.schemeFoundSingle', { count: totalCount, defaultValue: '1 scheme found' })
+              : t('schemes.schemeFoundPlural', { count: totalCount, defaultValue: '{{count}} schemes found' })}
           </p>
         </div>
 
@@ -257,7 +260,12 @@ export default function SchemeResults({
       {/* Page Info */}
       <div className="mt-4 text-center text-caption text-stone-500">
         {totalCount > 0
-          ? `Showing ${startIdx + 1}-${Math.min(startIdx + ITEMS_PER_PAGE, totalCount)} of ${totalCount}`
+          ? t('schemes.showingRange', {
+              from: startIdx + 1,
+              to: Math.min(startIdx + ITEMS_PER_PAGE, totalCount),
+              total: totalCount,
+              defaultValue: 'Showing {{from}}-{{to}} of {{total}}',
+            })
           : t('schemes.noResults', { defaultValue: 'No schemes found' })}
       </div>
     </div>

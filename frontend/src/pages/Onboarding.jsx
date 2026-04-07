@@ -9,7 +9,7 @@ import Card from '../components/ui/Card'
 
 const STEP_TITLES = {
   1: 'Step 1: Aadhaar Upload',
-  2: 'Step 2: Optional Documents',
+  2: 'Step 2: Income Proof & Additional Documents',
   3: 'Step 3: Quick Questions',
   4: 'Step 4: Building Your Scheme Profile',
 }
@@ -87,6 +87,12 @@ export default function OnboardingPage() {
   const [optionalDocData, setOptionalDocData] = useState({})
   const [optionalDocConfidence, setOptionalDocConfidence] = useState({})
   const [uploadedDocTypes, setUploadedDocTypes] = useState([])
+  const [incomeDone, setIncomeDone] = useState(false)
+  const [manualIncomeFallback, setManualIncomeFallback] = useState({
+    enabled: false,
+    declaredAnnualIncome: '',
+    reason: '',
+  })
 
   const [quickData, setQuickData] = useState({
     mobile_number: '',
@@ -118,7 +124,13 @@ export default function OnboardingPage() {
         const response = await onboardingService.getStatus()
         if (!mounted) return
 
-        const { completed, step: backendStep, aadhaar_done: aadhaarDone, job } = response.data || {}
+        const {
+          completed,
+          step: backendStep,
+          aadhaar_done: aadhaarDone,
+          income_done: incomeDoneFromBackend,
+          job,
+        } = response.data || {}
         if (completed) {
           navigate('/dashboard', { replace: true })
           return
@@ -126,6 +138,10 @@ export default function OnboardingPage() {
 
         if (aadhaarDone) {
           setAadhaarConfirmed(true)
+        }
+
+        if (incomeDoneFromBackend) {
+          setIncomeDone(true)
         }
 
         if (job?.status === 'running' && job?.job_id) {
@@ -268,6 +284,9 @@ export default function OnboardingPage() {
         if (prev.includes(selectedDocType)) return prev
         return [...prev, selectedDocType]
       })
+      if (selectedDocType === 'income_certificate') {
+        setIncomeDone(true)
+      }
       setOptionalDocData({})
       setOptionalDocConfidence({})
       setOptionalDocFile(null)
@@ -279,7 +298,24 @@ export default function OnboardingPage() {
     }
   }
 
-  const skipRemainingDocs = () => {
+  const continueToQuestions = () => {
+    if (!incomeDone) {
+      if (!manualIncomeFallback.enabled) {
+        toast.error('Income certificate is required. Upload it or use manual fallback below.')
+        return
+      }
+
+      if (!manualIncomeFallback.declaredAnnualIncome) {
+        toast.error('Enter your declared annual income for manual fallback.')
+        return
+      }
+
+      if (!manualIncomeFallback.reason.trim()) {
+        toast.error('Please provide a reason for manual income fallback.')
+        return
+      }
+    }
+
     setStep(3)
   }
 
@@ -302,6 +338,13 @@ export default function OnboardingPage() {
         family_size: quickData.family_size,
         is_woman_headed_household: quickData.is_woman_headed_household,
         has_bank_account: quickData.has_bank_account,
+        manual_income_fallback: !incomeDone && manualIncomeFallback.enabled ? 'yes' : 'no',
+        declared_annual_income: !incomeDone && manualIncomeFallback.enabled
+          ? manualIncomeFallback.declaredAnnualIncome
+          : undefined,
+        income_fallback_reason: !incomeDone && manualIncomeFallback.enabled
+          ? manualIncomeFallback.reason
+          : undefined,
       }
 
       const response = await onboardingService.completeOnboarding(payload)
@@ -430,14 +473,20 @@ export default function OnboardingPage() {
           <Card className="space-y-5 border border-stone-200">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-h3 font-medium text-stone-900">Upload any additional documents you have</h2>
+                <h2 className="text-h3 font-medium text-stone-900">Upload income proof and any additional documents you have</h2>
                 <p className="mt-1 text-body-sm text-stone-600">
-                  All documents in this step are optional. Upload what you have, then skip remaining.
+                  Income Certificate is required unless you provide manual income fallback details.
                 </p>
               </div>
-              <Button variant="ghost" onClick={skipRemainingDocs}>
-                Skip remaining
+              <Button variant="ghost" onClick={continueToQuestions}>
+                Continue to questions
               </Button>
+            </div>
+
+            <div className={incomeDone ? 'rounded-lg border border-green-200 bg-green-50 p-3 text-body-sm text-green-800' : 'rounded-lg border border-amber-200 bg-amber-50 p-3 text-body-sm text-amber-900'}>
+              {incomeDone
+                ? 'Income requirement completed.'
+                : 'Mandatory: Upload Income Certificate or provide manual income fallback before continuing.'}
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -486,11 +535,64 @@ export default function OnboardingPage() {
                   <UploadCloud className="h-4 w-4" />
                   Upload and Extract
                 </Button>
-                <Button variant="secondary" onClick={skipRemainingDocs}>
+                <Button variant="secondary" onClick={continueToQuestions}>
                   Continue to questions
                 </Button>
               </div>
             </div>
+
+            {!incomeDone ? (
+              <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                <label className="flex items-center gap-2 text-body-sm font-medium text-stone-800">
+                  <input
+                    type="checkbox"
+                    checked={manualIncomeFallback.enabled}
+                    onChange={(event) =>
+                      setManualIncomeFallback((prev) => ({
+                        ...prev,
+                        enabled: event.target.checked,
+                      }))
+                    }
+                  />
+                  I do not have an income certificate right now (manual fallback)
+                </label>
+
+                {manualIncomeFallback.enabled ? (
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1 block text-label font-medium text-stone-700">Declared annual income (INR)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={manualIncomeFallback.declaredAnnualIncome}
+                        onChange={(event) =>
+                          setManualIncomeFallback((prev) => ({
+                            ...prev,
+                            declaredAnnualIncome: event.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1 block text-label font-medium text-stone-700">Reason for manual fallback</span>
+                      <input
+                        value={manualIncomeFallback.reason}
+                        onChange={(event) =>
+                          setManualIncomeFallback((prev) => ({
+                            ...prev,
+                            reason: event.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-body-sm"
+                        placeholder="e.g. Certificate under processing"
+                      />
+                    </label>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {Object.keys(optionalDocData).length > 0 ? (
               <div className="rounded-xl border border-stone-200 p-4">

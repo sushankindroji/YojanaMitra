@@ -13,18 +13,19 @@ try:
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
-    logger.warning("Redis not installed. Caching will be disabled.")
+    logger.info("Redis package not installed; cache service will run disabled.")
 
 
 class CacheService:
     """Cache service with Redis backend."""
     
     def __init__(self):
-        self.enabled = settings.REDIS_ENABLED and REDIS_AVAILABLE
+        # Redis caching is intentionally disabled in this project.
+        self.enabled = False
         self.client = None
-        if self.enabled:
+        if self.enabled and REDIS_AVAILABLE:
             try:
-                self.client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+                self.client = redis.from_url("redis://localhost:6379/0", decode_responses=True)
                 self.client.ping()
                 logger.info("Redis cache connected")
             except Exception as e:
@@ -48,7 +49,7 @@ class CacheService:
         if not self.enabled or not self.client:
             return False
         try:
-            ttl = ttl or settings.CACHE_TTL
+            ttl = ttl or 3600
             self.client.setex(key, ttl, json.dumps(value))
             return True
         except Exception as e:

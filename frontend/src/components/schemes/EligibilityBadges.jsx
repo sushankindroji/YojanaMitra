@@ -10,17 +10,21 @@
 
 import { CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export default function EligibilityBadges({
   conditions = [],
-  title = 'Eligibility Conditions',
+  title,
 }) {
+  const { t } = useTranslation()
   const [hoveredId, setHoveredId] = useState(null)
+
+  const resolvedTitle = title || t('schemes.eligibilityConditions', { defaultValue: 'Eligibility Conditions' })
 
   if (!conditions || conditions.length === 0) {
     return (
       <div className="text-center py-4 text-gray-500">
-        <p>No conditions specified</p>
+        <p>{t('schemes.noConditionsSpecified', { defaultValue: 'No conditions specified' })}</p>
       </div>
     )
   }
@@ -34,7 +38,7 @@ export default function EligibilityBadges({
           color: 'bg-green-100 border-green-300',
           text: 'text-green-800',
           icon: CheckCircle,
-          label: 'Met',
+          label: t('schemes.conditionMet', { defaultValue: 'Met' }),
         }
       case 'not_met':
       case 'ineligible':
@@ -43,21 +47,21 @@ export default function EligibilityBadges({
           color: 'bg-red-100 border-red-300',
           text: 'text-red-800',
           icon: XCircle,
-          label: 'Not Met',
+          label: t('schemes.conditionNotMet', { defaultValue: 'Not Met' }),
         }
       default:
         return {
           color: 'bg-yellow-100 border-yellow-300',
           text: 'text-yellow-800',
           icon: AlertCircle,
-          label: 'Unknown',
+          label: t('common.unknown', { defaultValue: 'Unknown' }),
         }
     }
   }
 
   return (
     <div className="w-full">
-      <h3 className="text-h3 font-medium text-gray-900 mb-4">{title}</h3>
+      <h3 className="text-h3 font-medium text-gray-900 mb-4">{resolvedTitle}</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {conditions.map((condition, idx) => {
@@ -91,17 +95,17 @@ export default function EligibilityBadges({
                   {condition.details && <p className="mb-2">{condition.details}</p>}
                   {condition.user_value && (
                     <p className="border-t border-gray-700 pt-2 mt-2">
-                      <span className="text-gray-400">Your value:</span> {condition.user_value}
+                      <span className="text-gray-400">{t('schemes.yourValue', { defaultValue: 'Your value' })}:</span> {condition.user_value}
                     </p>
                   )}
                   {condition.required_value && (
                     <p className="border-t border-gray-700 pt-2 mt-2">
-                      <span className="text-gray-400">Required:</span> {condition.required_value}
+                      <span className="text-gray-400">{t('schemes.requiredValue', { defaultValue: 'Required' })}:</span> {condition.required_value}
                     </p>
                   )}
                   {condition.confidence && (
                     <p className="border-t border-gray-700 pt-2 mt-2">
-                      <span className="text-gray-400">Confidence:</span> {condition.confidence}%
+                      <span className="text-gray-400">{t('schemes.confidence', { defaultValue: 'Confidence' })}:</span> {condition.confidence}%
                     </p>
                   )}
 

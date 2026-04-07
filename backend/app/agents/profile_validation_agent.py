@@ -23,6 +23,8 @@ class ProfileValidationAgent:
         "gender": "Upload Aadhaar to confirm gender.",
         "state": "Confirm address fields from Aadhaar or voter ID.",
         "annual_income": "Upload income certificate for accurate income filtering.",
+        "income_certificate": "Upload income certificate or submit manual income fallback declaration.",
+        "aadhaar_document": "Upload and verify Aadhaar document before eligibility check.",
         "caste_category": "Upload caste certificate if applicable.",
         "has_bank_account": "Answer the bank-account quick question for DBT schemes.",
     }
@@ -46,15 +48,34 @@ class ProfileValidationAgent:
             else:
                 missing_critical_fields.append(field)
 
-        aadhaar_verified = int(getattr(profile, "aadhaar_verified", 0) or 0) == 1
-        verified_docs_count = sum(1 for doc in documents if int(getattr(doc, "is_verified", 0) or 0) == 1)
+        verified_docs = [doc for doc in documents if int(getattr(doc, "is_verified", 0) or 0) == 1]
+        verified_doc_types = {str(getattr(doc, "doc_type", "") or "").strip().lower() for doc in verified_docs}
+
+        aadhaar_verified = int(getattr(profile, "aadhaar_verified", 0) or 0) == 1 or "aadhaar" in verified_doc_types
+        income_cert_verified = bool(verified_doc_types.intersection({"income_certificate", "income_declaration_manual"}))
+
+        if not aadhaar_verified:
+            missing_critical_fields.append("aadhaar_document")
+        if not income_cert_verified:
+            missing_critical_fields.append("income_certificate")
+
+        verified_docs_count = len(verified_docs)
 
         confidence = 0
         if aadhaar_verified:
-            confidence += 35
+            confidence += 25
 
-        confidence += min(verified_docs_count * 8, 35)
+        if income_cert_verified:
+            confidence += 20
+        elif self._is_filled(getattr(profile, "annual_income", None)):
+            confidence += 8
+
+        confidence += min(verified_docs_count * 6, 25)
         confidence += int((filled_critical / max(len(self.CRITICAL_FIELDS), 1)) * 30)
+
+        if not aadhaar_verified and not income_cert_verified:
+            confidence = min(confidence, 25)
+
         confidence = min(confidence, 100)
 
         is_sufficient = confidence >= 30 and filled_critical >= 3
@@ -74,6 +95,10 @@ class ProfileValidationAgent:
         return {
             "is_sufficient": is_sufficient,
             "confidence": confidence,
+            "mandatory_docs": {
+                "aadhaar": aadhaar_verified,
+                "income_certificate": income_cert_verified,
+            },
             "missing_critical_fields": missing_critical_fields,
             "suggestions": suggestions,
             "message": message,

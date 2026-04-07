@@ -94,6 +94,12 @@ export default function SchemeFilter({
     (localFilters.sectors?.length || 0) +
     (localFilters.states?.length || 0)
 
+  const activeCountLabel = t('schemes.activeCount', { count: activeFilterCount, defaultValue: '{{count}} active' })
+  const activeFiltersLabel =
+    activeFilterCount === 1
+      ? t('schemes.activeFilterSingle', { defaultValue: '1 active filter' })
+      : t('schemes.activeFilterPlural', { count: activeFilterCount, defaultValue: '{{count}} active filters' })
+
   return (
     <Card className="w-full border border-stone-200">
       {/* Header */}
@@ -102,7 +108,7 @@ export default function SchemeFilter({
           {t('schemes.filter', { defaultValue: 'Filter' })}
         </h3>
         <div className="flex items-center gap-2">
-          <Badge variant="neutral">{activeFilterCount} active</Badge>
+          <Badge variant="neutral">{activeCountLabel}</Badge>
           {activeFilterCount > 0 ? (
             <button
               onClick={onClear}
@@ -119,7 +125,7 @@ export default function SchemeFilter({
       {activeFilterCount > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-6">
           <p className="text-body-sm text-orange-800">
-            {activeFilterCount} active {activeFilterCount === 1 ? 'filter' : 'filters'}
+            {activeFiltersLabel}
           </p>
         </div>
       )}

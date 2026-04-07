@@ -9,7 +9,6 @@ from app.config import settings
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[f"{settings.RATE_LIMIT_REQUESTS}/{settings.RATE_LIMIT_PERIOD}s"],
-    storage_uri=settings.REDIS_URL if settings.REDIS_ENABLED else None,
 )
 
 # Rate limit policies

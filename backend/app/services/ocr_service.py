@@ -21,6 +21,14 @@ try:
 except Exception:
     PDFPLUMBER_AVAILABLE = False
 
+try:
+    import cv2
+    import numpy as np
+
+    OPENCV_AVAILABLE = True
+except Exception:
+    OPENCV_AVAILABLE = False
+
 from app.config import settings
 
 
@@ -103,12 +111,46 @@ DOC_TYPE_ALIASES = {
 }
 
 
+DOC_TESSERACT_LANGS = {
+    "aadhaar": "eng+hin",
+    "income_certificate": "eng+hin",
+    "caste_certificate": "eng+hin",
+    "ration_card": "eng+hin",
+    "land_records": "eng+hin",
+    "pm_kisan_registration": "eng+hin",
+    "minority_certificate": "eng+hin",
+    "soil_health_card": "eng+hin",
+    "crop_insurance_policy": "eng+hin",
+    "bank_passbook": "eng",
+    "passport": "eng",
+    "pan_card": "eng",
+    "voter_id": "eng+hin",
+}
+
+
+DOC_REQUIRED_FIELDS = {
+    "aadhaar": ["full_name", "dob", "gender", "aadhaar_number"],
+    "income_certificate": ["annual_income"],
+    "caste_certificate": ["caste_category"],
+    "ration_card": ["ration_card_number"],
+    "bank_passbook": ["ifsc", "account_number_masked"],
+}
+
+
+OCR_CONFIG_CANDIDATES = [
+    "--oem 3 --psm 6",
+    "--oem 3 --psm 4",
+    "--oem 1 --psm 11",
+]
+
+
 class OCRService:
     """Local OCR + regex extraction service."""
 
     def __init__(self):
         self.tesseract_available = TESSERACT_AVAILABLE
         self.pdf_available = PDFPLUMBER_AVAILABLE
+        self.cv_available = OPENCV_AVAILABLE
 
     @staticmethod
     def normalize_doc_type(doc_type: str) -> str:
@@ -261,13 +303,72 @@ class OCRService:
             return ""
         return "\n".join(pages).strip()
 
-    def _preprocess_image(self, image: Image.Image) -> Image.Image:
-        image = image.convert("L")
-        image = ImageOps.autocontrast(image)
-        image = image.filter(ImageFilter.MedianFilter(size=3))
-        return image
+    @staticmethod
+    def _score_ocr_text(text: str) -> int:
+        if not text:
+            return 0
+        alpha_num = len(re.findall(r"[A-Za-z0-9]", text))
+        lines = len([line for line in text.splitlines() if line.strip()])
+        return alpha_num + min(lines * 2, 40)
 
-    def _ocr_text_from_image(self, file_bytes: bytes) -> str:
+    def _get_lang_candidates(self, doc_type: str | None) -> List[str]:
+        normalized = self.normalize_doc_type(doc_type or "")
+        preferred = DOC_TESSERACT_LANGS.get(normalized)
+        configured = str(getattr(settings, "TESSERACT_LANGS", "") or "").strip()
+
+        candidates: List[str] = []
+        for lang in [preferred, configured, "eng+hin", "eng"]:
+            if lang and lang not in candidates:
+                candidates.append(lang)
+
+        return candidates or ["eng"]
+
+    def _preprocess_image(self, image: Image.Image) -> Image.Image:
+        image = image.convert("RGB")
+
+        if self.cv_available:
+            try:
+                frame = np.array(image)
+                gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+                denoised = cv2.fastNlMeansDenoising(gray, None, 12, 7, 21)
+                thresholded = cv2.adaptiveThreshold(
+                    denoised,
+                    255,
+                    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                    cv2.THRESH_BINARY,
+                    31,
+                    11,
+                )
+
+                coords = np.column_stack(np.where(thresholded < 255))
+                if coords.size:
+                    angle = cv2.minAreaRect(coords)[-1]
+                    if angle < -45:
+                        angle = -(90 + angle)
+                    else:
+                        angle = -angle
+
+                    if 0.5 < abs(angle) < 15:
+                        h, w = thresholded.shape[:2]
+                        matrix = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+                        thresholded = cv2.warpAffine(
+                            thresholded,
+                            matrix,
+                            (w, h),
+                            flags=cv2.INTER_CUBIC,
+                            borderMode=cv2.BORDER_REPLICATE,
+                        )
+
+                return Image.fromarray(thresholded)
+            except Exception:
+                pass
+
+        fallback = image.convert("L")
+        fallback = ImageOps.autocontrast(fallback)
+        fallback = fallback.filter(ImageFilter.MedianFilter(size=3))
+        return fallback
+
+    def _ocr_text_from_image(self, file_bytes: bytes, doc_type: str | None = None) -> str:
         if not self.tesseract_available:
             return ""
 
@@ -278,20 +379,32 @@ class OCRService:
             image = Image.open(io.BytesIO(file_bytes))
             image = self._preprocess_image(image)
 
-            try:
-                return pytesseract.image_to_string(image, lang="eng+hin").strip()
-            except Exception:
-                return pytesseract.image_to_string(image, lang="eng").strip()
+            best_text = ""
+            best_score = -1
+
+            for lang in self._get_lang_candidates(doc_type):
+                for config in OCR_CONFIG_CANDIDATES:
+                    try:
+                        extracted = pytesseract.image_to_string(image, lang=lang, config=config).strip()
+                    except Exception:
+                        continue
+
+                    score = self._score_ocr_text(extracted)
+                    if score > best_score:
+                        best_score = score
+                        best_text = extracted
+
+            return best_text.strip()
         except Exception:
             return ""
 
-    def extract_text(self, file_bytes: bytes) -> str:
+    def extract_text(self, file_bytes: bytes, doc_type: str | None = None) -> str:
         if file_bytes.startswith(b"%PDF"):
             text = self._ocr_text_from_pdf(file_bytes)
             if text:
                 return text
 
-        return self._ocr_text_from_image(file_bytes)
+        return self._ocr_text_from_image(file_bytes, doc_type=doc_type)
 
     @staticmethod
     def _filter_output(data: Dict[str, object], confidence: Dict[str, float]) -> Tuple[Dict[str, object], Dict[str, float]]:
@@ -371,10 +484,10 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_aadhaar(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        return self._extract_aadhaar_from_text(self.extract_text(file_bytes))
+        return self._extract_aadhaar_from_text(self.extract_text(file_bytes, "aadhaar"))
 
     def extract_pan_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "pan_card")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -391,7 +504,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_voter_id(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "voter_id")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -418,7 +531,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_passport(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "passport")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -434,7 +547,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_income_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "income_certificate")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -463,7 +576,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_ration_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "ration_card")
         data: Dict[str, object] = {"has_ration_card": 1}
         conf: Dict[str, float] = {"has_ration_card": 0.95}
 
@@ -499,7 +612,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_bank_passbook(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "bank_passbook")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -549,21 +662,21 @@ class OCRService:
         return self.extract_degree_certificate(file_bytes)
 
     def extract_tenth_marksheet(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "tenth_marksheet")
         data, conf = self._extract_education_common(text)
         data["education_level"] = "10th"
         conf["education_level"] = 0.95
         return self._filter_output(data, conf)
 
     def extract_twelfth_marksheet(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "twelfth_marksheet")
         data, conf = self._extract_education_common(text)
         data["education_level"] = "12th"
         conf["education_level"] = 0.95
         return self._filter_output(data, conf)
 
     def extract_degree_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "degree_certificate")
         data, conf = self._extract_education_common(text)
 
         degree_match = re.search(r"\b(B\.?A|B\.?Sc|B\.?Com|B\.?Tech|M\.?A|M\.?Sc|M\.?Com|M\.?Tech|Ph\.?D|Diploma|Degree)\b", text, re.IGNORECASE)
@@ -581,7 +694,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_land_records(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "land_records")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -607,7 +720,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_kisan_credit_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "kisan_credit_card")
         data: Dict[str, object] = {"kcc_holder": 1}
         conf: Dict[str, float] = {"kcc_holder": 0.94}
 
@@ -629,7 +742,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_pm_kisan_registration(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "pm_kisan_registration")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -645,7 +758,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_disability_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "disability_certificate")
         data: Dict[str, object] = {"has_disability": 1}
         conf: Dict[str, float] = {"has_disability": 0.95}
 
@@ -669,7 +782,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_caste_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "caste_certificate")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -707,7 +820,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_minority_certificate(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "minority_certificate")
         data: Dict[str, object] = {"minority_status": 1}
         conf: Dict[str, float] = {"minority_status": 0.85}
 
@@ -719,7 +832,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_soil_health_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "soil_health_card")
         data: Dict[str, object] = {}
         conf: Dict[str, float] = {}
 
@@ -736,7 +849,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_crop_insurance_policy(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "crop_insurance_policy")
         data: Dict[str, object] = {"crop_insurance": 1}
         conf: Dict[str, float] = {"crop_insurance": 0.9}
 
@@ -758,7 +871,7 @@ class OCRService:
         return self._filter_output(data, conf)
 
     def extract_senior_citizen_card(self, file_bytes: bytes) -> Tuple[Dict[str, object], Dict[str, float]]:
-        text = self.extract_text(file_bytes)
+        text = self.extract_text(file_bytes, "senior_citizen_card")
         data: Dict[str, object] = {"is_senior_citizen": 1}
         conf: Dict[str, float] = {"is_senior_citizen": 0.9}
 
@@ -777,6 +890,56 @@ class OCRService:
         if authority_match:
             data["senior_citizen_issuing_authority"] = authority_match.group(1).strip(" .,")
             conf["senior_citizen_issuing_authority"] = 0.76
+
+        return self._filter_output(data, conf)
+
+    def _extract_generic_fields(self, file_bytes: bytes, doc_type: str) -> Tuple[Dict[str, object], Dict[str, float]]:
+        text = self.extract_text(file_bytes, doc_type)
+        data: Dict[str, object] = {}
+        conf: Dict[str, float] = {}
+
+        name, name_conf = self._extract_name(text)
+        if name:
+            data["full_name"] = name
+            conf["full_name"] = min(name_conf, 0.65)
+
+        dob_match = re.search(r"([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})", text)
+        if dob_match:
+            iso_dob = self._to_iso_date(dob_match.group(1))
+            if iso_dob:
+                data["dob"] = iso_dob
+                conf["dob"] = 0.62
+
+        gender_match = re.search(r"\b(male|female|other|transgender)\b", text, re.IGNORECASE)
+        if gender_match:
+            gender = gender_match.group(1).lower()
+            data["gender"] = "other" if gender == "transgender" else gender
+            conf["gender"] = 0.62
+
+        state, state_conf = self._extract_state(text)
+        if state:
+            data["state"] = state
+            conf["state"] = min(state_conf, 0.65)
+
+        district, district_conf = self._extract_district(text)
+        if district:
+            data["district"] = district
+            conf["district"] = min(district_conf, 0.62)
+
+        pincode, pincode_conf = self._extract_pincode(text)
+        if pincode:
+            data["pincode"] = pincode
+            conf["pincode"] = min(pincode_conf, 0.68)
+
+        address, address_conf = self._extract_address(text)
+        if address:
+            data["address"] = address
+            conf["address"] = min(address_conf, 0.6)
+
+        amount, amount_conf = self._extract_amount(text)
+        if amount:
+            data["annual_income"] = amount
+            conf["annual_income"] = min(amount_conf, 0.64)
 
         return self._filter_output(data, conf)
 
@@ -822,7 +985,7 @@ class OCRService:
         elif normalized == "senior_citizen_card":
             data, confidence_scores = self.extract_senior_citizen_card(file_bytes)
         else:
-            text = self.extract_text(file_bytes)
+            text = self.extract_text(file_bytes, normalized)
             data, confidence_scores = self._extract_aadhaar_from_text(text)
 
         return data, confidence_scores, normalized
@@ -834,29 +997,51 @@ class OCRService:
                 "data": {},
                 "confidence_scores": {},
                 "low_confidence_fields": [],
+                "missing_required_fields": [],
+                "requires_manual_review": False,
+                "fallback_used": False,
                 "error": "OCR engine unavailable: install pytesseract/Pillow and pdfplumber",
                 "doc_type": self.normalize_doc_type(doc_type),
             }
 
         data, confidence_scores, normalized = self._extract_for_doc_type(doc_type, file_bytes)
+        fallback_used = False
+
         if not data:
-            return {
-                "status": "failed",
-                "data": {},
-                "confidence_scores": {},
-                "low_confidence_fields": [],
-                "error": f"Could not extract required fields from {normalized}",
-                "doc_type": normalized,
-            }
+            fallback_data, fallback_conf = self._extract_generic_fields(file_bytes, normalized)
+            if fallback_data:
+                data = fallback_data
+                confidence_scores = fallback_conf
+                fallback_used = True
+            else:
+                return {
+                    "status": "failed",
+                    "data": {},
+                    "confidence_scores": {},
+                    "low_confidence_fields": [],
+                    "missing_required_fields": [],
+                    "requires_manual_review": False,
+                    "fallback_used": False,
+                    "error": f"Could not extract required fields from {normalized}",
+                    "doc_type": normalized,
+                }
+
+        required_fields = DOC_REQUIRED_FIELDS.get(normalized, [])
+        missing_required_fields = [field for field in required_fields if not data.get(field)]
 
         low_confidence = [field for field, score in confidence_scores.items() if float(score) < 0.6]
         overall_confidence = round(sum(confidence_scores.values()) / max(len(confidence_scores), 1), 2)
+        review_threshold = float(getattr(settings, "OCR_CONFIDENCE_THRESHOLD", 0.6) or 0.6)
+        requires_manual_review = bool(missing_required_fields) or overall_confidence < review_threshold or bool(low_confidence)
 
         return {
             "status": "completed",
             "data": data,
             "confidence_scores": confidence_scores,
             "low_confidence_fields": low_confidence,
+            "missing_required_fields": missing_required_fields,
+            "requires_manual_review": requires_manual_review,
+            "fallback_used": fallback_used,
             "overall_confidence": overall_confidence,
             "doc_type": normalized,
         }
@@ -880,6 +1065,9 @@ class OCRService:
             "confidence": result.get("overall_confidence", 0.0),
             "confidence_scores": result.get("confidence_scores", {}),
             "low_confidence_fields": result.get("low_confidence_fields", []),
+            "missing_required_fields": result.get("missing_required_fields", []),
+            "requires_manual_review": result.get("requires_manual_review", False),
+            "fallback_used": result.get("fallback_used", False),
         }
 
 

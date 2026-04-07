@@ -123,14 +123,14 @@ def _has_minimum_doc_specific_data(extracted_data: dict, doc_type: str) -> bool:
 
     if normalized_doc_type == "aadhaar":
         return any(extracted_data.get(key) for key in ["aadhaar_number", "dob", "full_name"])
-    if normalized_doc_type == "income":
+    if normalized_doc_type == "income_certificate":
         has_income = parse_income(extracted_data.get("annual_income")) is not None
         has_name = bool(extracted_data.get("full_name"))
         geo_count = sum(1 for key in ["district", "state", "pincode"] if extracted_data.get(key))
         return has_income or has_name or geo_count >= 2
-    if normalized_doc_type == "caste":
+    if normalized_doc_type == "caste_certificate":
         return bool(extracted_data.get("social_category"))
-    if normalized_doc_type == "ration":
+    if normalized_doc_type == "ration_card":
         return any(
             extracted_data.get(key)
             for key in ["ration_card_number", "ration_card_type", "is_bpl", "has_ration_card"]

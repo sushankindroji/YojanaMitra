@@ -10,6 +10,7 @@ import PageHeader from '../components/ui/PageHeader'
 export default function Schemes() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const isLoggedIn = Boolean(localStorage.getItem('access_token'))
   const [filters, setFilters] = useState({})
   const [sortBy, setSortBy] = useState('name')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
@@ -31,7 +32,7 @@ export default function Schemes() {
     const onKeyPress = (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        const searchInput = document.querySelector('input[placeholder*="Search"]')
+        const searchInput = document.querySelector('input[type="text"]')
         if (searchInput) {
           searchInput.focus()
         }
@@ -49,14 +50,16 @@ export default function Schemes() {
         description={t('schemes.subtitle', { defaultValue: 'Discover government schemes you are eligible for' })}
         actions={
           <div className="flex items-center gap-2">
-            <Badge variant="neutral">Ctrl/Cmd + K search</Badge>
+            <Badge variant="neutral">{t('schemes.shortcutSearch', { defaultValue: 'Ctrl/Cmd + K search' })}</Badge>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-3 py-2 text-body-sm font-medium text-stone-700 hover:bg-stone-100"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(isLoggedIn ? '/dashboard' : '/login')}
             >
               <Compass className="h-4 w-4" />
-              Dashboard
+              {isLoggedIn
+                ? t('nav.dashboard', { defaultValue: 'Dashboard' })
+                : t('auth.login', { defaultValue: 'Login' })}
             </button>
           </div>
         }
@@ -71,10 +74,10 @@ export default function Schemes() {
           >
             <span className="inline-flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4" />
-              Filters
+              {t('schemes.filters', { defaultValue: 'Filters' })}
             </span>
             <Badge variant={activeFilterCount > 0 ? 'warning' : 'neutral'}>
-              {activeFilterCount} active
+              {t('schemes.activeCount', { count: activeFilterCount, defaultValue: '{{count}} active' })}
             </Badge>
           </button>
 

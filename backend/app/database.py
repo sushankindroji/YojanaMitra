@@ -11,18 +11,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-def _build_database_url() -> str:
-    if settings.DATABASE_TYPE == "postgresql" and all(
-        [settings.DB_HOST, settings.DB_USER, settings.DB_PASSWORD, settings.DB_NAME]
-    ):
-        return (
-            f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD}"
-            f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
-        )
-    return settings.DATABASE_URL
-
-
-DATABASE_URL = _build_database_url()
+DATABASE_URL = settings.DATABASE_URL
 
 engine_options = {
     "pool_pre_ping": True,

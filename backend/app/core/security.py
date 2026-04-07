@@ -1,5 +1,5 @@
 """
-Security utilities: JWT, password hashing, OAuth.
+Security utilities: JWT and password hashing.
 """
 from datetime import datetime, timedelta
 from typing import Optional

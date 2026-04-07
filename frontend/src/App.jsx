@@ -75,6 +75,8 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/schemes" element={<Schemes />} />
+          <Route path="/schemes/:schemeId" element={<SchemeDetail />} />
 
           {/* Protected Routes - Onboarding (special layout, no navbar) */}
           <Route
@@ -122,8 +124,6 @@ function App() {
           >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/schemes" element={<Schemes />} />
-            <Route path="/schemes/:schemeId" element={<SchemeDetail />} />
             <Route path="/eligibility" element={<Eligibility />} />
             <Route path="/applications" element={<Applications />} />
             <Route path="/upload" element={<UploadDocuments />} />

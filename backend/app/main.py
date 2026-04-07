@@ -34,8 +34,6 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("[STARTUP] Starting YojanaMitra API...")
     logger.info(f"[CONFIG] Database Type: {settings.DATABASE_TYPE}")
-    logger.info(f"[CONFIG] Redis Enabled: {settings.REDIS_ENABLED}")
-    logger.info(f"[CONFIG] Cache TTL: {settings.CACHE_TTL}s")
     
     if settings.AUTO_RUN_MIGRATIONS:
         try:
@@ -90,7 +88,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

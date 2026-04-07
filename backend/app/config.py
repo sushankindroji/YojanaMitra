@@ -1,11 +1,19 @@
 """
 Application configuration and settings.
 """
+import json
+import platform
 from typing import List, Optional
-from pydantic import Field, field_validator, model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DEV_SECRET = "dev-only-secret-change-me"
+_PROD_SECRET_PLACEHOLDER = "generate-with-openssl-rand-hex-32"
+
+if platform.system() == "Windows":
+    _DEFAULT_TESSERACT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+else:
+    _DEFAULT_TESSERACT = "/usr/bin/tesseract"
 
 
 class Settings(BaseSettings):
@@ -26,12 +34,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_TYPE: str = "postgresql"
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/yojanamitra"
-    DB_HOST: Optional[str] = None
-    DB_PORT: int = 5432
-    DB_USER: Optional[str] = None
-    DB_PASSWORD: Optional[str] = None
-    DB_NAME: Optional[str] = None
+    DATABASE_URL: str = "postgresql://postgres:root@localhost:5432/yojanamitra"
 
     # Pooling
     DB_POOL_SIZE: int = 10
@@ -39,11 +42,6 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
     DB_ECHO: bool = False
-
-    # Redis Cache
-    REDIS_URL: str = "redis://localhost:6379/0"
-    REDIS_ENABLED: bool = False
-    CACHE_TTL: int = 3600
 
     # JWT
     SECRET_KEY: str = _DEV_SECRET
@@ -54,24 +52,10 @@ class Settings(BaseSettings):
     # API
     API_BASE_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:5173"
-    ALLOWED_ORIGINS: List[str] = Field(
-        default_factory=lambda: [
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:3000",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174",
-            "http://127.0.0.1:3000",
-        ]
-    )
+    ALLOWED_ORIGINS: str = "http://localhost:5173"
 
     # AI Services
     GEMINI_API_KEY: Optional[str] = None
-
-    # Google OAuth
-    GOOGLE_CLIENT_ID: Optional[str] = None
-    GOOGLE_CLIENT_SECRET: Optional[str] = None
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
 
     # Encryption
     ENCRYPTION_KEY: Optional[str] = None
@@ -88,7 +72,9 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024
 
     # OCR
-    TESSERACT_PATH: Optional[str] = None
+    TESSERACT_PATH: str = _DEFAULT_TESSERACT
+    TESSERACT_LANGS: str = "eng+hin"
+    OCR_CONFIDENCE_THRESHOLD: float = 0.6
     OCR_RETRY_ATTEMPTS: int = 3
 
     # Rate Limiting
@@ -100,12 +86,21 @@ class Settings(BaseSettings):
     def normalize_environment(cls, value: str) -> str:
         return value.strip().lower()
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, value):
-        if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value
+    @property
+    def cors_allowed_origins(self) -> List[str]:
+        raw_value = (self.ALLOWED_ORIGINS or "").strip()
+        if not raw_value:
+            return ["http://localhost:5173"]
+
+        if raw_value.startswith("["):
+            try:
+                parsed = json.loads(raw_value)
+                if isinstance(parsed, list):
+                    return [str(origin).strip() for origin in parsed if str(origin).strip()]
+            except Exception:
+                pass
+
+        return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
 
     @property
     def is_production(self) -> bool:
@@ -117,11 +112,17 @@ class Settings(BaseSettings):
             return self
 
         missing = []
-        if not self.DATABASE_URL and not all([self.DB_HOST, self.DB_USER, self.DB_PASSWORD, self.DB_NAME]):
-            missing.append("DATABASE_URL or DB_HOST/DB_USER/DB_PASSWORD/DB_NAME")
+        if not self.DATABASE_URL:
+            missing.append("DATABASE_URL")
 
-        if not self.SECRET_KEY or self.SECRET_KEY in {_DEV_SECRET, "your_64_character_random_secret_key_here"}:
+        if not self.SECRET_KEY:
             missing.append("SECRET_KEY")
+        else:
+            lowered_secret = self.SECRET_KEY.lower()
+            if "generate-with" in lowered_secret or len(self.SECRET_KEY) < 32:
+                raise ValueError(
+                    "Invalid production SECRET_KEY: must be at least 32 characters and must not contain placeholder text"
+                )
 
         if not self.ENCRYPTION_KEY:
             missing.append("ENCRYPTION_KEY")

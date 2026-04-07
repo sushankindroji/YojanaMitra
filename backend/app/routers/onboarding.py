@@ -31,6 +31,24 @@ ALLOWED_CONTENT_TYPES = {
 
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
+MANDATORY_INCOME_DOC_TYPES = {"income_certificate", "income_declaration_manual"}
+
+
+def _has_verified_document(db: Session, user_id: str, doc_types: set[str]) -> bool:
+    if not doc_types:
+        return False
+    doc = (
+        db.query(Document)
+        .filter(
+            Document.user_id == user_id,
+            Document.doc_type.in_(list(doc_types)),
+            Document.is_verified == 1,
+        )
+        .order_by(Document.uploaded_at.desc())
+        .first()
+    )
+    return doc is not None
+
 
 def _parse_bool(value: Any) -> int | None:
     if value is None:
@@ -382,23 +400,16 @@ async def onboarding_status(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    aadhaar_done = int(profile.aadhaar_verified or 0) == 1
-    if not aadhaar_done:
-        verified_aadhaar_doc = (
-            db.query(Document)
-            .filter(
-                Document.user_id == current_user.id,
-                Document.doc_type == "aadhaar",
-                Document.is_verified == 1,
-            )
-            .order_by(Document.uploaded_at.desc())
-            .first()
-        )
-        if verified_aadhaar_doc:
-            aadhaar_done = True
-            profile.aadhaar_verified = 1
-            profile.updated_at = datetime.utcnow().isoformat()
-            db.commit()
+    aadhaar_done = int(profile.aadhaar_verified or 0) == 1 or _has_verified_document(db, current_user.id, {"aadhaar"})
+    if aadhaar_done and int(profile.aadhaar_verified or 0) != 1:
+        profile.aadhaar_verified = 1
+        profile.updated_at = datetime.utcnow().isoformat()
+        db.commit()
+
+    income_done = _has_verified_document(db, current_user.id, MANDATORY_INCOME_DOC_TYPES)
+    if not income_done and _parse_float(profile.annual_income) is not None:
+        # Backward compatibility for users who already provided trusted income details.
+        income_done = True
 
     completed = int(profile.onboarding_complete or 0) == 1
 
@@ -406,10 +417,12 @@ async def onboarding_status(
     step = max(1, min(4, step))
     if completed:
         step = 4
-    elif step == 1 and not aadhaar_done:
+    elif not aadhaar_done:
         step = 1
-    elif step < 2 and aadhaar_done:
+    elif not income_done:
         step = 2
+    elif step < 3:
+        step = 3
 
     latest_job = get_latest_job(current_user.id)
 
@@ -420,6 +433,7 @@ async def onboarding_status(
         "step": step,
         "completed": completed,
         "aadhaar_done": aadhaar_done,
+        "income_done": income_done,
         "job": latest_job,
     }
 
@@ -464,6 +478,9 @@ async def upload_aadhaar(
         "extracted_data": result.get("data", {}),
         "confidence_scores": result.get("confidence_scores", {}),
         "low_confidence_fields": result.get("low_confidence_fields", []),
+        "missing_required_fields": result.get("missing_required_fields", []),
+        "requires_manual_review": result.get("requires_manual_review", False),
+        "fallback_used": result.get("fallback_used", False),
     }
 
 
@@ -561,6 +578,9 @@ async def upload_optional_document(
         "extracted_data": result.get("data", {}),
         "confidence_scores": result.get("confidence_scores", {}),
         "low_confidence_fields": result.get("low_confidence_fields", []),
+        "missing_required_fields": result.get("missing_required_fields", []),
+        "requires_manual_review": result.get("requires_manual_review", False),
+        "fallback_used": result.get("fallback_used", False),
     }
 
 
@@ -619,6 +639,88 @@ async def complete_onboarding(
         raise HTTPException(status_code=404, detail="Profile not found")
 
     additional_data = payload.additional_data or {}
+
+    aadhaar_done = int(profile.aadhaar_verified or 0) == 1 or _has_verified_document(db, current_user.id, {"aadhaar"})
+    if not aadhaar_done:
+        raise HTTPException(status_code=400, detail="Aadhaar verification is required before completing onboarding")
+
+    manual_income_fallback = _parse_bool(
+        additional_data.get("manual_income_fallback")
+        if "manual_income_fallback" in additional_data
+        else additional_data.get("income_manual_fallback")
+    ) == 1
+    declared_annual_income = _parse_float(
+        additional_data.get("declared_annual_income")
+        if "declared_annual_income" in additional_data
+        else additional_data.get("manual_annual_income")
+    )
+    income_fallback_reason = str(additional_data.get("income_fallback_reason") or "").strip()
+
+    income_done = _has_verified_document(db, current_user.id, MANDATORY_INCOME_DOC_TYPES)
+
+    if not income_done:
+        if not manual_income_fallback:
+            raise HTTPException(
+                status_code=400,
+                detail="Income certificate is required. Upload income certificate or use manual fallback",
+            )
+
+        if declared_annual_income is None:
+            raise HTTPException(status_code=400, detail="Declared annual income is required for manual fallback")
+
+        if not income_fallback_reason:
+            raise HTTPException(status_code=400, detail="Reason is required for manual income fallback")
+
+        profile.annual_income = declared_annual_income
+
+        manual_payload = {
+            "annual_income": declared_annual_income,
+            "reason": income_fallback_reason,
+            "self_declared": True,
+            "declared_at": datetime.utcnow().isoformat(),
+        }
+
+        manual_doc = (
+            db.query(Document)
+            .filter(
+                Document.user_id == current_user.id,
+                Document.doc_type == "income_declaration_manual",
+            )
+            .order_by(Document.uploaded_at.desc())
+            .first()
+        )
+
+        if manual_doc:
+            manual_doc.extracted_data = json.dumps(manual_payload)
+            manual_doc.extraction_status = "completed"
+            manual_doc.is_verified = 1
+            manual_doc.verified_at = datetime.utcnow().isoformat()
+            manual_doc.processed_at = datetime.utcnow().isoformat()
+            manual_doc.error_message = None
+            manual_doc.confidence_score = 1.0
+        else:
+            db.add(
+                Document(
+                    user_id=current_user.id,
+                    doc_type="income_declaration_manual",
+                    file_name="manual-income-declaration.json",
+                    storage_path=f"manual://income-declaration/{current_user.id}",
+                    extraction_status="completed",
+                    extracted_data=json.dumps(manual_payload),
+                    confidence_score=1.0,
+                    is_verified=1,
+                    verified_at=datetime.utcnow().isoformat(),
+                    processed_at=datetime.utcnow().isoformat(),
+                )
+            )
+
+        income_done = True
+
+    if not income_done and _parse_float(profile.annual_income) is not None:
+        income_done = True
+
+    if not income_done:
+        raise HTTPException(status_code=400, detail="Income proof is required before completing onboarding")
 
     mobile_number = str(additional_data.get("mobile_number") or "").strip()
     if mobile_number:

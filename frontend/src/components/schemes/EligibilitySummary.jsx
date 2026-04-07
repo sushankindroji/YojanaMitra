@@ -9,6 +9,7 @@
  */
 
 import {  AlertCircle, CheckCircle, FileText , Lightbulb } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export default function EligibilitySummary({
   explanation = '',
@@ -16,8 +17,9 @@ export default function EligibilitySummary({
   missingDocuments = [],
   eligibilityPercentage = 0,
 }) {
+  const { t } = useTranslation()
   // Use user's language explanation if available, otherwise English
-  const displayText = explanationUserLang || explanation || 'No explanation available'
+  const displayText = explanationUserLang || explanation || t('schemes.noExplanation', { defaultValue: 'No explanation available' })
 
   // Parse bullet points from explanation if it's a string
   const points = displayText
@@ -35,9 +37,9 @@ export default function EligibilitySummary({
           </div>
           <div>
             <h3 className="text-h3 font-medium text-gray-900">
-              Eligibility Summary
+              {t('schemes.eligibilitySummaryTitle', { defaultValue: 'Eligibility Summary' })}
             </h3>
-            <p className="text-body-sm text-gray-600">Based on your profile information</p>
+            <p className="text-body-sm text-gray-600">{t('schemes.eligibilitySummarySubtitle', { defaultValue: 'Based on your profile information' })}</p>
           </div>
         </div>
 
@@ -50,8 +52,8 @@ export default function EligibilitySummary({
               </div>
             </div>
             <div className="flex-1">
-              <p className="text-body-sm font-medium text-gray-900">Eligibility Match</p>
-              <p className="text-caption text-gray-600">Your profile matches this scheme requirements</p>
+              <p className="text-body-sm font-medium text-gray-900">{t('schemes.eligibilityMatch', { defaultValue: 'Eligibility Match' })}</p>
+              <p className="text-caption text-gray-600">{t('schemes.eligibilityMatchSubtitle', { defaultValue: 'Your profile matches this scheme requirements' })}</p>
             </div>
           </div>
         )}
@@ -69,7 +71,7 @@ export default function EligibilitySummary({
         <div className="mb-6">
           <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
             <CheckCircle className="text-green-600" size={20} />
-            Key Requirements
+            {t('schemes.keyRequirements', { defaultValue: 'Key Requirements' })}
           </h4>
           <ul className="space-y-2">
             {points.map((point, idx) => (
@@ -89,7 +91,7 @@ export default function EligibilitySummary({
             <AlertCircle className="flex-shrink-0 text-orange-600 mt-0.5" size={20} />
             <div>
               <h4 className="font-medium text-orange-900 mb-2">
-                Missing Documents
+                {t('schemes.missingDocuments', { defaultValue: 'Missing Documents' })}
               </h4>
               <ul className="space-y-1">
                 {missingDocuments.map((doc, idx) => (
@@ -100,7 +102,7 @@ export default function EligibilitySummary({
                 ))}
               </ul>
               <p className="text-caption text-orange-700 mt-2">
-                Upload these documents to improve your eligibility match
+                {t('schemes.uploadToImproveMatch', { defaultValue: 'Upload these documents to improve your eligibility match' })}
               </p>
             </div>
           </div>
@@ -113,7 +115,7 @@ export default function EligibilitySummary({
           <div className="flex items-center gap-3">
             <CheckCircle className="text-green-600" size={20} />
             <p className="text-body-sm text-green-800 font-medium">
-              All required documents are uploaded
+              {t('schemes.allDocsUploaded', { defaultValue: 'All required documents are uploaded' })}
             </p>
           </div>
         </div>

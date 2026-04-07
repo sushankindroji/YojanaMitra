@@ -9,6 +9,16 @@ import teTranslation from './locales/te/translation.json'
 import knTranslation from './locales/kn/translation.json'
 import bnTranslation from './locales/bn/translation.json'
 
+const LANGUAGE_STORAGE_KEY = 'yojana_mitra_lang'
+
+if (typeof window !== 'undefined') {
+  const legacyLanguage = window.localStorage.getItem('preferredLanguage')
+  const currentLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+  if (!currentLanguage && legacyLanguage) {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, legacyLanguage)
+  }
+}
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -27,7 +37,7 @@ i18n
     },
     detection: {
       order: ['localStorage', 'navigator'],
-      lookupLocalStorage: 'preferredLanguage',
+      lookupLocalStorage: LANGUAGE_STORAGE_KEY,
       caches: ['localStorage'],
     },
   })
