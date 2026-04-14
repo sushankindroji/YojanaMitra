@@ -468,8 +468,9 @@ export default function UploadDocuments() {
     return value && value !== key ? value : fallback
   }
 
-  const [selectedDocType, setSelectedDocType] = useState('aadhaar')
+  const [selectedDocType, setSelectedDocType] = useState('')
   const [selectedFile, setSelectedFile] = useState(null)
+  const [uploadValidationError, setUploadValidationError] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
@@ -540,6 +541,7 @@ export default function UploadDocuments() {
 
   const resetCurrentUploadState = () => {
     setSelectedFile(null)
+    setUploadValidationError('')
     setUploadProgress(0)
     setExtractionState('idle')
     setActiveDocId(null)
@@ -577,19 +579,31 @@ export default function UploadDocuments() {
   }
 
   const onSelectFile = (file) => {
+    if (!selectedDocType) {
+      const message = 'Select a document type before choosing a file.'
+      setUploadValidationError(message)
+      toast.error(message)
+      return
+    }
+
     if (!file) return
 
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
     if (!validTypes.includes(file.type)) {
-      toast.error(tr('documents.validationError.invalidType', 'Invalid file type. Use JPG, PNG, or PDF.'))
+      const message = tr('documents.validationError.invalidType', 'Invalid file type. Use JPG, PNG, or PDF.')
+      setUploadValidationError(message)
+      toast.error(message)
       return
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      toast.error(tr('documents.validationError.fileTooLarge', 'File too large. Max 10MB per file.'))
+      const message = tr('documents.validationError.fileTooLarge', 'File too large. Max 10MB per file.')
+      setUploadValidationError(message)
+      toast.error(message)
       return
     }
 
+    setUploadValidationError('')
     setSelectedFile(file)
     setExtractionState('idle')
     setUploadProgress(0)
@@ -682,13 +696,19 @@ export default function UploadDocuments() {
     }
 
     if (!selectedDocType) {
-      toast.error(tr('documents.validationError.docTypeRequired', 'Please select document type first.'))
+      const message = tr('documents.validationError.docTypeRequired', 'Please select document type first.')
+      setUploadValidationError(message)
+      toast.error(message)
       return
     }
     if (!selectedFile) {
-      toast.error(tr('documents.validationError.fileRequired', 'Please choose a file first.'))
+      const message = tr('documents.validationError.fileRequired', 'Please choose a file first.')
+      setUploadValidationError(message)
+      toast.error(message)
       return
     }
+
+    setUploadValidationError('')
 
     setIsUploading(true)
     setExtractionState('uploading')
@@ -931,6 +951,12 @@ export default function UploadDocuments() {
     event.preventDefault()
     event.stopPropagation()
     setDragOver(false)
+    if (!selectedDocType) {
+      const message = 'Select a document type before dropping a file.'
+      setUploadValidationError(message)
+      toast.error(message)
+      return
+    }
     const file = event.dataTransfer?.files?.[0]
     onSelectFile(file)
   }
@@ -1093,6 +1119,7 @@ export default function UploadDocuments() {
                   }}
                   className="w-full rounded-xl border border-stone-300 px-3 py-2 text-body-sm text-stone-800"
                 >
+                  <option value="">Select document type</option>
                   {DOCUMENT_TYPES.map((doc) => (
                     <option key={doc.id} value={doc.id}>
                       {doc.name} ({doc.category})
@@ -1116,7 +1143,15 @@ export default function UploadDocuments() {
                   setDragOver(false)
                 }}
                 onDrop={handleDrop}
-                onClick={() => document.getElementById('upload-doc-file-input')?.click()}
+                onClick={() => {
+                  if (!selectedDocType) {
+                    const message = 'Select a document type before choosing a file.'
+                    setUploadValidationError(message)
+                    toast.error(message)
+                    return
+                  }
+                  document.getElementById('upload-doc-file-input')?.click()
+                }}
                 className={`cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition ${
                   dragOver
                     ? 'border-orange-500 bg-orange-50'
@@ -1126,6 +1161,9 @@ export default function UploadDocuments() {
                 <UploadCloud className="mx-auto h-12 w-12 text-orange-700" />
                 <h3 className="mt-3 text-h3 font-medium text-stone-900">Drag files here or click to browse</h3>
                 <p className="mt-1 text-body-sm text-stone-600">JPG, PNG, PDF · Max 10MB per file</p>
+                {!selectedDocType ? (
+                  <p className="mt-2 text-caption text-amber-700">Select document type first</p>
+                ) : null}
               </div>
 
               <input
@@ -1135,6 +1173,12 @@ export default function UploadDocuments() {
                 className="hidden"
                 onChange={(event) => onSelectFile(event.target.files?.[0])}
               />
+
+              {uploadValidationError ? (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-body-sm text-red-700" role="alert">
+                  {uploadValidationError}
+                </p>
+              ) : null}
 
               {selectedFile ? (
                 <div className="rounded-xl border border-stone-200 bg-white p-3">
@@ -1149,7 +1193,7 @@ export default function UploadDocuments() {
               ) : null}
 
               <div className="flex flex-wrap gap-3">
-                <Button onClick={handleUploadAndExtract} loading={isUploading}>
+                <Button onClick={handleUploadAndExtract} loading={isUploading} disabled={!selectedDocType || !selectedFile || isUploading || isOffline}>
                   <UploadCloud className="h-4 w-4" />
                   Upload & Extract
                 </Button>

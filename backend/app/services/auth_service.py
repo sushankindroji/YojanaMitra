@@ -5,7 +5,7 @@ from datetime import datetime
 import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from app.models import User
+from app.models import User, Profile
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 import uuid
 
@@ -74,9 +74,34 @@ class AuthService:
         if not verify_password(password, user.password_hash):
             return None
 
+        # Backfill profile for legacy users and keep onboarding flags in sync.
+        profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+        needs_commit = False
+
+        if profile is None:
+            profile = Profile(
+                id=str(uuid.uuid4()),
+                user_id=user.id,
+                onboarding_complete=0,
+                onboarding_step=1,
+                created_at=datetime.utcnow().isoformat(),
+                updated_at=datetime.utcnow().isoformat(),
+            )
+            db.add(profile)
+            needs_commit = True
+
+        expected_onboarding_incomplete = 0 if int(profile.onboarding_complete or 0) == 1 else 1
+        if int(user.onboarding_incomplete or 0) != expected_onboarding_incomplete:
+            user.onboarding_incomplete = expected_onboarding_incomplete
+            needs_commit = True
+
         user.last_login = datetime.utcnow().isoformat()
+        needs_commit = True
+
         try:
-            db.commit()
+            if needs_commit:
+                db.commit()
+                db.refresh(user)
         except Exception:
             db.rollback()
             logger.exception("Failed to persist last_login for user_id=%s", user.id)

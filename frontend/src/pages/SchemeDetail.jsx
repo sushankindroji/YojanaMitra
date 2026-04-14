@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import {
   AlertCircle,
   ArrowLeft,
+  Building2,
   CheckCircle2,
   Circle,
   ExternalLink,
@@ -23,7 +24,20 @@ import Card from '../components/ui/Card'
 import PageHeader from '../components/ui/PageHeader'
 import Skeleton from '../components/ui/Skeleton'
 
-const DEFAULT_CSC_NAME = 'CSC / Jan Seva Kendra'
+const CSC_NAME_BY_STATE = {
+  telangana: 'Mee Seva Centre',
+  'andhra pradesh': 'Mee Seva Centre',
+  'tamil nadu': 'e-Sevai Centre',
+  karnataka: 'Nadakacheri / CSC',
+  kerala: 'Akshaya Centre',
+  maharashtra: 'Aaple Sarkar / CSC',
+  'west bengal': 'Tathya Mitra Kendra',
+  rajasthan: 'e-Mitra Kiosk',
+  'uttar pradesh': 'Jan Seva Kendra / CSC',
+  bihar: 'VASUDHA Kendra / CSC',
+}
+
+const DEFAULT_CSC_NAME = 'CSC / Common Service Centre'
 
 const statusStyle = {
   met: {
@@ -72,6 +86,19 @@ function derivePaymentMethod(benefitType) {
 function safeText(value, fallback) {
   const text = String(value || '').trim()
   return text || fallback
+}
+
+function formatDateDMY(value) {
+  if (!value) return 'Not available'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Not available'
+  return date.toLocaleDateString('en-GB')
+}
+
+function getCscNameByState(stateValue) {
+  const normalized = String(stateValue || '').trim().toLowerCase()
+  if (!normalized) return DEFAULT_CSC_NAME
+  return CSC_NAME_BY_STATE[normalized] || DEFAULT_CSC_NAME
 }
 
 export default function SchemeDetail() {
@@ -178,7 +205,11 @@ export default function SchemeDetail() {
     scheme?.state_portal_url ||
     null
 
-  const localCscName = safeText(applyInfo?.local_csc_name || scheme?.state_service_center, DEFAULT_CSC_NAME)
+  const localCscName = safeText(
+    applyInfo?.local_csc_name || scheme?.state_service_center,
+    getCscNameByState(scheme?.state)
+  )
+  const cscLocatorUrl = safeText(applyInfo?.csc_url, 'https://locator.csccloud.in/')
   const requiredDocuments = Array.isArray(applyInfo?.required_documents) ? applyInfo.required_documents : []
   const faqItems = Array.isArray(applyInfo?.faq) ? applyInfo.faq : Array.isArray(scheme?.faq) ? scheme.faq : []
 
@@ -253,6 +284,8 @@ export default function SchemeDetail() {
     navigate(`/apply/${scheme?.id || scheme?.scheme_id}`)
   }
 
+  const updatedDate = formatDateDMY(scheme?.updated_at || scheme?.last_updated || scheme?.created_at)
+
   const handleSaveScheme = async () => {
     if (!isLoggedIn) {
       navigate(`/login?next=/schemes/${scheme?.id || scheme?.scheme_id}`)
@@ -300,16 +333,21 @@ export default function SchemeDetail() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-20">
+      <button
+        type="button"
+        onClick={() => navigate('/schemes')}
+        className="inline-flex items-center gap-1 text-body-sm font-medium text-stone-700 hover:text-stone-900"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to schemes
+      </button>
+
       <PageHeader
         title={schemeName}
         description={safeText(scheme?.description || scheme?.description_en, 'Government scheme details in simple language.')}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" onClick={() => navigate('/schemes')}>
-              <ArrowLeft className="h-4 w-4" />
-              {t('common.back', { defaultValue: 'Back' })}
-            </Button>
             <Button variant="secondary" onClick={handleSaveScheme}>
               {isLoggedIn
                 ? t('schemes.saveScheme', { defaultValue: 'Save Scheme' })
@@ -322,6 +360,22 @@ export default function SchemeDetail() {
           </div>
         }
       />
+
+      <Card className="border border-stone-200 bg-stone-50">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="inline-flex items-center gap-1 text-body-sm font-medium text-stone-800">
+            <Building2 className="h-4 w-4 text-stone-500" />
+            {safeText(scheme?.ministry, 'Relevant government department')}
+          </p>
+          <span className="rounded-full bg-blue-100 px-2 py-1 text-caption font-medium text-blue-800">
+            {safeText(scheme?.sector, 'General')}
+          </span>
+          <span className="rounded-full bg-stone-200 px-2 py-1 text-caption font-medium text-stone-700">
+            {String(scheme?.state || '').trim().toLowerCase() === 'central' ? 'Central' : safeText(scheme?.state, 'Central')}
+          </span>
+          <span className="text-caption text-stone-500">Last updated: {updatedDate}</span>
+        </div>
+      </Card>
 
       {!isLoggedIn ? (
         <Card className="border border-blue-200 bg-blue-50">
@@ -493,7 +547,7 @@ export default function SchemeDetail() {
                     Apply on Official Portal
                     <ExternalLink className="h-4 w-4" />
                   </Button>
-                  <Button variant="secondary" onClick={() => openPortalLink(applyInfo?.csc_url)} disabled={!applyInfo?.csc_url || isApplyInfoLoading}>
+                  <Button variant="secondary" onClick={() => openPortalLink(cscLocatorUrl)} disabled={!cscLocatorUrl || isApplyInfoLoading}>
                     Find nearest {localCscName}
                     <MapPin className="h-4 w-4" />
                   </Button>
@@ -596,7 +650,7 @@ export default function SchemeDetail() {
                 <h3 className="text-h3 font-medium text-indigo-900">Need help?</h3>
                 <p className="mt-2 inline-flex items-center gap-2 text-body-sm text-indigo-900">
                   <PhoneCall className="h-4 w-4" />
-                  Call: {safeText(applyInfo?.helpline || scheme?.helpline_number, '1800-11-0001')} (Free, {safeText(applyInfo?.helpline_hours || scheme?.helpline_hours, 'Monday-Friday 9AM to 6PM')})
+                  Call {safeText(applyInfo?.helpline || scheme?.helpline_number, '1800-11-0001')} - Free, {safeText(applyInfo?.helpline_hours || scheme?.helpline_hours, 'Monday to Friday 9AM to 6PM')}
                 </p>
                 {safeText(applyInfo?.state_service_helpline, '') ? (
                   <p className="mt-1 text-body-sm text-indigo-900">
@@ -617,6 +671,13 @@ export default function SchemeDetail() {
           ) : null}
         </div>
       </Card>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 p-3 backdrop-blur md:hidden">
+        <Button className="w-full" onClick={handleApply}>
+          {isLoggedIn ? 'Apply Now' : 'Sign in to apply'}
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   )
 }

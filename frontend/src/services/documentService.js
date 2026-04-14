@@ -21,7 +21,7 @@ const documentService = {
       ...options,
     })
   },
-  getDocuments: () => api.get('/documents'),
+  getDocuments: () => api.get('/documents/'),
   getDocument: (docId) => api.get(`/documents/${docId}`),
   updateExtraction: (docId, extractedData) =>
     api.patch(`/documents/${docId}/extraction`, extractedData),

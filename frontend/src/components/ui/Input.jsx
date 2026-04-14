@@ -23,7 +23,7 @@ export default function Input({
 
       <div
         className={clsx(
-          'group flex items-center rounded-xl border bg-white px-3 transition-colors',
+          'group flex items-center rounded-xl border bg-white px-3 transition-colors duration-150 ease-in-out focus-within:ring-[3px] focus-within:ring-orange-500/20',
           error
             ? 'border-red-500 focus-within:border-red-500'
             : 'border-stone-300 focus-within:border-orange-500'
@@ -35,7 +35,7 @@ export default function Input({
           id={inputId}
           className={clsx(
             'h-10 w-full bg-transparent text-body text-stone-900 placeholder:text-stone-400',
-            'focus:outline-none',
+            'focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
             inputClassName
           )}
           aria-invalid={Boolean(error)}

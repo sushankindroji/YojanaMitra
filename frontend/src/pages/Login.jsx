@@ -1,11 +1,44 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, ShieldCheck } from 'lucide-react'
 import LoginForm from '../components/auth/LoginForm'
 import LanguageSelector from '../components/common/LanguageSelector'
+import { useAuthStore } from '../store/authStore'
+
+const isValidToken = (value) =>
+  typeof value === 'string' && value.trim().length > 0 && value !== 'undefined' && value !== 'null'
 
 export default function Login() {
   const { t } = useTranslation()
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const refreshToken = useAuthStore((state) => state.refreshToken)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const params = new URLSearchParams(window.location.search)
+    const redirectReason = params.get('reason')
+    if (redirectReason) return
+
+    const storedAccessToken = localStorage.getItem('access_token')
+    const storedRefreshToken = localStorage.getItem('refresh_token')
+    const storedRole = localStorage.getItem('user_role')
+
+    const hasSession =
+      (isValidToken(accessToken) && isValidToken(refreshToken)) ||
+      (isValidToken(storedAccessToken) && isValidToken(storedRefreshToken))
+
+    if (!hasSession) return
+
+    if (storedRole === 'admin') {
+      window.location.replace('/admin/dashboard')
+      return
+    }
+
+    const onboardingIncomplete = localStorage.getItem('onboarding_incomplete') === 'true'
+    window.location.replace(onboardingIncomplete ? '/onboarding' : '/dashboard')
+  }, [accessToken, refreshToken])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-green-50">

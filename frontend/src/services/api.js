@@ -28,6 +28,22 @@ const shouldAttemptRefresh = (url = '') => {
   return !['/auth/login', '/auth/register', '/auth/refresh'].some((path) => normalized.includes(path))
 }
 
+const isWithinPostLoginGracePeriod = () => {
+  const raw = localStorage.getItem('last_auth_success_at')
+  const lastAuthSuccessAt = Number(raw || 0)
+  if (!Number.isFinite(lastAuthSuccessAt) || lastAuthSuccessAt <= 0) return false
+  return Date.now() - lastAuthSuccessAt <= 15000
+}
+
+const redirectToLogin = (reason = 'unauthorized') => {
+  if (typeof window === 'undefined' || window.location.pathname === '/login') return
+
+  const nextPath = `${window.location.pathname}${window.location.search}`
+  const next = encodeURIComponent(nextPath)
+  const why = encodeURIComponent(reason)
+  window.location.href = `/login?next=${next}&reason=${why}`
+}
+
 // Request interceptor for JWT token
 api.interceptors.request.use(
   (config) => {
@@ -68,19 +84,23 @@ api.interceptors.response.use(
           return api(originalRequest)
         }
       } catch (refreshError) {
-        clearAuthStorage()
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-          window.location.href = '/login'
+        if (isWithinPostLoginGracePeriod()) {
+          return Promise.reject(refreshError)
         }
+
+        clearAuthStorage()
+        redirectToLogin('refresh-failed')
         return Promise.reject(refreshError)
       }
     }
 
     if (status === 401 && shouldAttemptRefresh(requestUrl)) {
-      clearAuthStorage()
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login'
+      if (isWithinPostLoginGracePeriod()) {
+        return Promise.reject(error)
       }
+
+      clearAuthStorage()
+      redirectToLogin('session-expired')
     }
 
     if (status === 403) {

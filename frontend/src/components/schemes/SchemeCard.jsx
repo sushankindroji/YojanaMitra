@@ -18,7 +18,18 @@ import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
 
-export default function SchemeCard({ scheme, isEligible = null, onViewDetails, isAuthenticated }) {
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const sectorTone = (sector) => {
+  const normalized = String(sector || '').toLowerCase()
+  if (normalized.includes('agri')) return 'bg-green-100 text-green-800'
+  if (normalized.includes('health')) return 'bg-red-100 text-red-800'
+  if (normalized.includes('educat')) return 'bg-blue-100 text-blue-800'
+  if (normalized.includes('social')) return 'bg-purple-100 text-purple-800'
+  return 'bg-stone-100 text-stone-700'
+}
+
+export default function SchemeCard({ scheme, isEligible = null, onViewDetails, isAuthenticated, searchTerm = '' }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
@@ -41,6 +52,25 @@ export default function SchemeCard({ scheme, isEligible = null, onViewDetails, i
     ? Math.round(normalizedRawScore * 100)
     : Math.round(normalizedRawScore)
   const officialPortalUrl = scheme.official_portal_url || scheme.official_website
+
+  const highlightMatch = (text, query) => {
+    const safeText = String(text || '')
+    const normalizedQuery = String(query || '').trim()
+    if (normalizedQuery.length < 2) return safeText
+
+    const regex = new RegExp(`(${escapeRegExp(normalizedQuery)})`, 'ig')
+    const parts = safeText.split(regex)
+    return parts.map((part, idx) => {
+      if (part.toLowerCase() === normalizedQuery.toLowerCase()) {
+        return (
+          <mark key={`${part}-${idx}`} className="rounded bg-amber-200 px-0.5 text-stone-900">
+            {part}
+          </mark>
+        )
+      }
+      return <span key={`${part}-${idx}`}>{part}</span>
+    })
+  }
 
   const normalizedConditionPayload = (() => {
     if (Array.isArray(scheme.condition_results)) {
@@ -155,21 +185,36 @@ export default function SchemeCard({ scheme, isEligible = null, onViewDetails, i
       return t('schemes.amountNotSpecified', { defaultValue: 'Not specified' })
     }
 
-    const rs = t('common.currencyRs', { defaultValue: 'Rs' })
-    if (amount >= 100000) return `${rs} ${(amount / 100000).toFixed(1)}L+`
-    return `${rs} ${amount.toLocaleString()}`
+    return `₹${Math.round(amount).toLocaleString('en-IN')}`
   }
 
   return (
-    <Card className="mb-4 border border-stone-200 bg-white">
+    <Card className="mb-4 cursor-pointer border border-stone-200 bg-white transition-all duration-150 ease-in-out hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-h3 font-medium text-stone-900">{schemeName}</h3>
+          <h3 className="text-h3 font-medium text-stone-900">{highlightMatch(schemeName, searchTerm)}</h3>
           <p className="mt-1 flex items-center gap-1 text-body-sm text-stone-600">
             <Building2 className="h-4 w-4" />
             <span className="truncate">{scheme.ministry || scheme.sector || t('schemes.general', { defaultValue: 'General' })}</span>
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2 py-1 text-caption font-medium ${sectorTone(scheme.sector)}`}>
+              {scheme.sector || 'General'}
+            </span>
+            <span className="rounded-full bg-stone-100 px-2 py-1 text-caption font-medium text-stone-700">
+              {String(scheme.state || '').trim().toLowerCase() === 'central' ? 'Central' : (scheme.state || 'Central')}
+            </span>
+          </div>
           <p className="mt-3 text-body-sm leading-relaxed text-stone-600">{schemeDescription || t('schemes.noDescription', { defaultValue: 'No description available.' })}</p>
+          {!isLoggedIn ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/login?next=/schemes/${schemeId}`)}
+              className="mt-2 text-body-sm font-medium text-orange-700 hover:text-orange-800"
+            >
+              Check eligibility →
+            </button>
+          ) : null}
         </div>
 
         {isLoggedIn ? (

@@ -11,10 +11,9 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, X, ChevronDown } from 'lucide-react'
+import { Search, X, ChevronDown, Loader2 } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Card from '../ui/Card'
-import Input from '../ui/Input'
 
 const SECTORS = [
   'Agriculture',
@@ -40,9 +39,11 @@ export default function SchemeFilter({
   filters = {},
   onFilterChange,
   onClear,
+  isLoading = false,
 }) {
   const { t } = useTranslation()
   const [localFilters, setLocalFilters] = useState(filters)
+  const [searchInput, setSearchInput] = useState(filters.search || '')
   const [expandedSections, setExpandedSections] = useState({
     sector: false,
     state: false,
@@ -52,12 +53,26 @@ export default function SchemeFilter({
   // Update local filters when props change
   useEffect(() => {
     setLocalFilters(filters)
+    setSearchInput(filters.search || '')
   }, [filters])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const normalizedSearch = searchInput.trim()
+      const nextSearch = normalizedSearch.length >= 2 ? normalizedSearch : ''
+      const currentSearch = String(localFilters.search || '')
+      if (currentSearch === nextSearch) return
+
+      const updated = { ...localFilters, search: nextSearch }
+      setLocalFilters(updated)
+      onFilterChange(updated)
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [searchInput, localFilters, onFilterChange])
+
   const handleSearchChange = (value) => {
-    const updated = { ...localFilters, search: value }
-    setLocalFilters(updated)
-    onFilterChange(updated)
+    setSearchInput(value)
   }
 
   const handleSectorToggle = (sector) => {
@@ -90,7 +105,7 @@ export default function SchemeFilter({
   }
 
   const activeFilterCount =
-    (localFilters.search ? 1 : 0) +
+    (searchInput.trim() ? 1 : 0) +
     (localFilters.sectors?.length || 0) +
     (localFilters.states?.length || 0)
 
@@ -115,7 +130,7 @@ export default function SchemeFilter({
               className="text-body-sm text-orange-700 hover:text-orange-800 font-medium flex items-center gap-1"
             >
               <X size={16} />
-              {t('common.clear', { defaultValue: 'Clear' })}
+              {t('common.clearAll', { defaultValue: 'Clear all' })}
             </button>
           ) : null}
         </div>
@@ -136,18 +151,45 @@ export default function SchemeFilter({
           onClick={() => toggleSection('search')}
           className="w-full flex items-center justify-between py-3 px-4 bg-stone-50 hover:bg-stone-100 rounded-lg font-medium text-stone-900 transition-colors mb-3"
         >
-          <span>{t('common.search', { defaultValue: 'Search' })}</span>
+          <span className="inline-flex items-center gap-2">
+            <span>{t('common.search', { defaultValue: 'Search' })}</span>
+            <span className="rounded-full bg-orange-600 px-2 py-0.5 text-caption text-white">{searchInput.trim() ? 1 : 0}</span>
+          </span>
           {expandedSections.search ? <ChevronDown size={18} /> : <ChevronDown size={18} className="rotate-180" />}
         </button>
 
         {expandedSections.search && (
-          <Input
-            type="text"
-            placeholder={t('schemes.searchByName', { defaultValue: 'Search scheme name...' })}
-            value={localFilters.search || ''}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            leadingIcon={Search}
-          />
+          <div>
+            <div className="flex h-10 items-center rounded-xl border border-stone-300 bg-white px-3 focus-within:border-orange-500 focus-within:ring-[3px] focus-within:ring-orange-500/20">
+              <Search className="mr-2 h-4 w-4 text-stone-500" aria-hidden="true" />
+              <input
+                type="text"
+                placeholder={t('schemes.searchByName', { defaultValue: 'Search scheme name...' })}
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-10 w-full bg-transparent text-body text-stone-900 placeholder:text-stone-400 focus:outline-none"
+              />
+              {isLoading && searchInput.trim().length >= 2 ? (
+                <Loader2 className="h-4 w-4 animate-spin text-stone-500" aria-label="Searching" />
+              ) : null}
+              {searchInput ? (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange('')}
+                  className="ml-1 rounded-md p-1 text-stone-500 transition-colors hover:bg-stone-100"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+            {searchInput.trim().length > 0 && searchInput.trim().length < 2 ? (
+              <p className="mt-1 text-caption text-amber-700">Type at least 2 characters to search</p>
+            ) : null}
+            {isLoading && searchInput.trim().length >= 2 ? (
+              <p className="mt-1 text-caption text-stone-500">Searching...</p>
+            ) : null}
+          </div>
         )}
       </div>
 

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
-import { ArrowLeft, RefreshCw, Wallet } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Wallet, X, Download } from 'lucide-react'
 import SchemeCard from '../components/schemes/SchemeCard'
 import schemeService from '../services/schemeService'
 import Badge from '../components/ui/Badge'
@@ -10,6 +10,21 @@ import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import PageHeader from '../components/ui/PageHeader'
 import Skeleton from '../components/ui/Skeleton'
+
+const LAST_CHECKED_KEY = 'ym_eligibility_last_checked'
+
+const formatDateTime = (value) => {
+  if (!value) return 'Never checked'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Never checked'
+  return date.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 export default function Eligibility() {
   const navigate = useNavigate()
@@ -20,9 +35,21 @@ export default function Eligibility() {
   const [partiallyEligibleSchemes, setPartiallyEligibleSchemes] = useState([])
   const [totalEligibleCount, setTotalEligibleCount] = useState(0)
   const [totalPartialCount, setTotalPartialCount] = useState(0)
-  const [activeTab, setActiveTab] = useState('eligible')
+  const [activeTab, setActiveTab] = useState('all')
   const [sectorFilter, setSectorFilter] = useState('all')
   const [sectors, setSectors] = useState([])
+  const [sortBy, setSortBy] = useState('match')
+  const [progressPct, setProgressPct] = useState(0)
+  const [progressSchemeCount, setProgressSchemeCount] = useState(0)
+  const [lastCheckedAt, setLastCheckedAt] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return window.localStorage.getItem(LAST_CHECKED_KEY) || ''
+  })
+  const [hasCheckedAtLeastOnce, setHasCheckedAtLeastOnce] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return Boolean(window.localStorage.getItem(LAST_CHECKED_KEY))
+  })
+  const progressTimerRef = useRef(null)
 
   const normalizeScore = (value) => {
     const score = Number(value || 0)
@@ -57,6 +84,14 @@ export default function Eligibility() {
   // Fetch eligible schemes on mount
   useEffect(() => {
     fetchEligibleSchemes()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) {
+        window.clearInterval(progressTimerRef.current)
+      }
+    }
   }, [])
 
   // Extract unique sectors
@@ -123,6 +158,9 @@ export default function Eligibility() {
       setPartiallyEligibleSchemes(partial)
       setTotalEligibleCount(Number.isFinite(eligibleCount) ? eligibleCount : eligible.length)
       setTotalPartialCount(Number.isFinite(partialCount) ? partialCount : partial.length)
+      if (eligible.length > 0 || partial.length > 0) {
+        setHasCheckedAtLeastOnce(true)
+      }
 
     } catch (error) {
       console.error('Failed to fetch schemes:', error)
@@ -133,31 +171,112 @@ export default function Eligibility() {
   }
 
   const handleRunCheck = async () => {
+    if (checking) return
+
     try {
       setChecking(true)
+      setProgressPct(5)
+      setProgressSchemeCount(120)
+
+      progressTimerRef.current = window.setInterval(() => {
+        setProgressPct((prev) => {
+          const next = Math.min(prev + 4, 95)
+          return next
+        })
+        setProgressSchemeCount((prev) => {
+          const next = Math.min(prev + 180, 4504)
+          return next
+        })
+      }, 450)
+
       await schemeService.checkEligibility(true)
-      toast.success('Eligibility check completed!')
+      setProgressPct(100)
+      setProgressSchemeCount(4504)
+      toast.success('Eligibility check completed!', { autoClose: 3000 })
+
+      const nowIso = new Date().toISOString()
+      setLastCheckedAt(nowIso)
+      setHasCheckedAtLeastOnce(true)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(LAST_CHECKED_KEY, nowIso)
+      }
     } catch (error) {
       console.error('Failed to run check:', error)
       toast.warning(error.response?.data?.detail || 'Using the latest recommendations instead')
     } finally {
+      if (progressTimerRef.current) {
+        window.clearInterval(progressTimerRef.current)
+      }
       await fetchEligibleSchemes()
       setChecking(false)
     }
   }
 
-  // Filter schemes based on selected tab and sector
-  const getCurrentSchemes = () => {
-    const schemes = activeTab === 'eligible' ? eligibleSchemes : partiallyEligibleSchemes
-    return sectorFilter === 'all'
-      ? schemes
-      : schemes.filter(s => s.sector === sectorFilter)
+  const handleCancelRun = () => {
+    if (progressTimerRef.current) {
+      window.clearInterval(progressTimerRef.current)
+    }
+    setChecking(false)
+    toast.warning('Eligibility check cancelled on this screen.')
   }
 
-  const currentSchemes = getCurrentSchemes()
+  // Filter schemes based on selected tab and sector
+  const highlyEligibleSchemes = useMemo(
+    () => eligibleSchemes.filter((scheme) => Number(scheme.eligibility_percentage || 0) >= 85),
+    [eligibleSchemes]
+  )
+
+  const oneStepAwaySchemes = useMemo(
+    () => partiallyEligibleSchemes.filter((scheme) => Number(scheme.eligibility_percentage || 0) >= 70),
+    [partiallyEligibleSchemes]
+  )
+
+  const getCurrentSchemes = () => {
+    let schemes
+    if (activeTab === 'eligible') schemes = eligibleSchemes
+    else if (activeTab === 'partial') schemes = partiallyEligibleSchemes
+    else if (activeTab === 'one-step') schemes = oneStepAwaySchemes
+    else schemes = [...eligibleSchemes, ...partiallyEligibleSchemes]
+
+    const bySector = sectorFilter === 'all' ? schemes : schemes.filter((s) => s.sector === sectorFilter)
+    const sorted = [...bySector]
+
+    if (sortBy === 'benefit') {
+      sorted.sort((a, b) => Number(b.benefit_amount || 0) - Number(a.benefit_amount || 0))
+    } else if (sortBy === 'name') {
+      sorted.sort((a, b) => String(a.name_en || '').localeCompare(String(b.name_en || '')))
+    } else {
+      sorted.sort((a, b) => Number(b.eligibility_percentage || 0) - Number(a.eligibility_percentage || 0))
+    }
+
+    return sorted
+  }
+
+  const currentSchemes = useMemo(getCurrentSchemes, [activeTab, eligibleSchemes, partiallyEligibleSchemes, oneStepAwaySchemes, sectorFilter, sortBy])
   const totalEligible = totalEligibleCount
   const totalPartial = totalPartialCount
+  const totalOneStep = oneStepAwaySchemes.length
+  const totalHighlyEligible = highlyEligibleSchemes.length
   const totalBenefit = eligibleSchemes.reduce((sum, s) => sum + (s.benefit_amount || 0), 0)
+
+  if (!loading && !hasCheckedAtLeastOnce && totalEligible === 0 && totalPartial === 0 && !checking) {
+    return (
+      <div className="space-y-5">
+        <PageHeader
+          title={t('eligibility.title')}
+          description="Run one check to find schemes that match your profile."
+        />
+
+        <Card className="border border-stone-200 bg-stone-50 py-12 text-center">
+          <p className="text-h2 font-medium text-stone-900">You haven't checked your eligibility yet</p>
+          <p className="mt-2 text-body-sm text-stone-600">Checks against 4,504 government schemes</p>
+          <Button className="mt-5" onClick={handleRunCheck} loading={checking}>
+            Check Eligibility
+          </Button>
+        </Card>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -193,11 +312,44 @@ export default function Eligibility() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <Card className="border border-stone-200 bg-stone-50">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-body-sm text-stone-700">
+          <p>Last checked: {formatDateTime(lastCheckedAt)}</p>
+          <Button variant="ghost" size="sm" onClick={() => window.print()}>
+            <Download className="h-4 w-4" />
+            Export list
+          </Button>
+        </div>
+      </Card>
+
+      {checking ? (
+        <Card className="border border-blue-200 bg-blue-50">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-body-sm font-medium text-blue-900">
+              Checking scheme {progressSchemeCount.toLocaleString('en-IN')} of 4,504...
+            </p>
+            <Button variant="ghost" size="sm" onClick={handleCancelRun}>
+              <X className="h-4 w-4" />
+              Cancel
+            </Button>
+          </div>
+          <div className="mt-3 h-2 rounded-full bg-blue-200">
+            <div className="h-2 rounded-full bg-blue-700 transition-all duration-150" style={{ width: `${progressPct}%` }} />
+          </div>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-4">
         <Card className="border border-green-200 bg-gradient-to-br from-green-50 to-white">
           <p className="text-micro font-medium uppercase tracking-wider text-green-700">{t('eligibility.fullyEligible')}</p>
           <p className="mt-2 text-h2 font-medium text-green-700">{totalEligible}</p>
           <p className="mt-1 text-caption text-green-800/80">{t('eligibility.fullyEligibleDesc')}</p>
+        </Card>
+
+        <Card className="border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+          <p className="text-micro font-medium uppercase tracking-wider text-emerald-700">Highly Eligible</p>
+          <p className="mt-2 text-h2 font-medium text-emerald-700">{totalHighlyEligible}</p>
+          <p className="mt-1 text-caption text-emerald-800/80">Top match score candidates</p>
         </Card>
 
         <Card className="border border-amber-200 bg-gradient-to-br from-amber-50 to-white">
@@ -212,13 +364,23 @@ export default function Eligibility() {
             <Wallet className="h-7 w-7" />
             {totalBenefit > 0 ? `Rs ${(totalBenefit / 100000).toFixed(1)}L+` : 'N/A'}
           </p>
-          <p className="mt-1 text-caption text-blue-800/80">Combined annual/one-time benefits</p>
+          <p className="mt-1 text-caption text-blue-800/80">One Step Away: {totalOneStep}</p>
         </Card>
       </div>
 
       <Card className="border border-stone-200 p-0">
         <div className="border-b border-stone-200 px-2">
           <div className="flex flex-wrap gap-1 p-2">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`rounded-lg px-4 py-2 text-body-sm font-medium transition ${
+                activeTab === 'all'
+                  ? 'bg-stone-900 text-white'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+              }`}
+            >
+              All ({eligibleSchemes.length + partiallyEligibleSchemes.length})
+            </button>
             <button
               onClick={() => setActiveTab('eligible')}
               className={`rounded-lg px-4 py-2 text-body-sm font-medium transition ${
@@ -239,10 +401,45 @@ export default function Eligibility() {
             >
               Partially Eligible ({totalPartial})
             </button>
+            <button
+              onClick={() => setActiveTab('one-step')}
+              className={`rounded-lg px-4 py-2 text-body-sm font-medium transition ${
+                activeTab === 'one-step'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+              }`}
+            >
+              One Step Away ({totalOneStep})
+            </button>
           </div>
         </div>
 
         <div className="space-y-5 p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="neutral">Sort:</Badge>
+            <button
+              type="button"
+              onClick={() => setSortBy('match')}
+              className={`rounded-full px-3 py-1.5 text-caption font-medium ${sortBy === 'match' ? 'bg-stone-900 text-white' : 'border border-stone-300 text-stone-700'}`}
+            >
+              by Match %
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortBy('benefit')}
+              className={`rounded-full px-3 py-1.5 text-caption font-medium ${sortBy === 'benefit' ? 'bg-stone-900 text-white' : 'border border-stone-300 text-stone-700'}`}
+            >
+              by Benefit Amount
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortBy('name')}
+              className={`rounded-full px-3 py-1.5 text-caption font-medium ${sortBy === 'name' ? 'bg-stone-900 text-white' : 'border border-stone-300 text-stone-700'}`}
+            >
+              by Scheme Name
+            </button>
+          </div>
+
           {sectors.length > 0 ? (
             <div>
               <p className="mb-2 text-micro font-medium uppercase tracking-wider text-stone-500">Filter by Sector</p>
@@ -278,7 +475,7 @@ export default function Eligibility() {
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <p className="text-body-sm text-stone-600">
-                  Showing {currentSchemes.length} of {activeTab === 'eligible' ? totalEligible : totalPartial} scheme{(activeTab === 'eligible' ? totalEligible : totalPartial) !== 1 ? 's' : ''}
+                  Showing {currentSchemes.length} scheme{currentSchemes.length !== 1 ? 's' : ''}
                 </p>
                 {sectorFilter !== 'all' ? <Badge variant="neutral">Sector: {sectorFilter}</Badge> : null}
               </div>
@@ -298,12 +495,18 @@ export default function Eligibility() {
               <p className="text-h3 font-medium text-stone-700">
                 {activeTab === 'eligible'
                   ? 'No fully eligible schemes found'
-                  : 'No partially eligible schemes found'}
+                  : activeTab === 'partial'
+                    ? 'No partially eligible schemes found'
+                    : activeTab === 'one-step'
+                      ? 'No one-step-away schemes found'
+                      : 'No schemes found'}
               </p>
               <p className="mx-auto mt-2 max-w-xl text-body-sm text-stone-500">
                 {activeTab === 'eligible'
                   ? 'Try filling out more profile information to match more schemes.'
-                  : 'You do not partially qualify for any schemes.'}
+                  : activeTab === 'partial'
+                    ? 'You do not partially qualify for any schemes.'
+                    : 'Run a fresh check after updating profile details.'}
               </p>
               {activeTab === 'eligible' && (
                 <Button

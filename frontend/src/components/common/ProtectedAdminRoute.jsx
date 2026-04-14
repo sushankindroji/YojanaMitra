@@ -11,6 +11,9 @@ import { useEffect, useMemo, useState } from 'react'
 import authService from '../../services/authService'
 import LoadingSpinner from './LoadingSpinner'
 
+const isValidToken = (value) =>
+  typeof value === 'string' && value.trim().length > 0 && value !== 'undefined' && value !== 'null'
+
 function getRoleFromStoredUser() {
   try {
     const raw = localStorage.getItem('user')
@@ -26,18 +29,45 @@ export default function ProtectedAdminRoute({ children }) {
   const token = useAuthStore((state) => state.accessToken)
   const userRole = useAuthStore((state) => state.userRole)
   const setUserRole = useAuthStore((state) => state.setUserRole)
+  const setTokens = useAuthStore((state) => state.setTokens)
+  const [isHydratingToken, setIsHydratingToken] = useState(true)
+  const [hasStoredToken, setHasStoredToken] = useState(false)
   const [isCheckingRole, setIsCheckingRole] = useState(false)
+
+  useEffect(() => {
+    const storedAccessToken = localStorage.getItem('access_token')
+    const storedRefreshToken = localStorage.getItem('refresh_token')
+    const storedRole = localStorage.getItem('user_role') || null
+    const storedUserId = localStorage.getItem('user_id') || null
+    const storedOnboarding = localStorage.getItem('onboarding_incomplete')
+
+    if (isValidToken(storedAccessToken) && isValidToken(storedRefreshToken)) {
+      setTokens(
+        storedAccessToken,
+        storedRefreshToken,
+        storedRole,
+        storedUserId,
+        storedOnboarding === null ? null : storedOnboarding === 'true'
+      )
+      setHasStoredToken(true)
+    } else {
+      setHasStoredToken(false)
+    }
+
+    setIsHydratingToken(false)
+  }, [setTokens])
 
   const persistedRole = useMemo(
     () => localStorage.getItem('user_role') || getRoleFromStoredUser(),
     [userRole]
   )
 
+  const effectiveToken = token || (hasStoredToken ? localStorage.getItem('access_token') : null)
   const effectiveRole = userRole || persistedRole
-  const needsRoleResolution = Boolean(token) && !effectiveRole
+  const needsRoleResolution = Boolean(effectiveToken) && !effectiveRole
 
   useEffect(() => {
-    if (!token) return
+    if (!effectiveToken) return
 
     if (persistedRole) {
       if (userRole !== persistedRole) {
@@ -71,11 +101,15 @@ export default function ProtectedAdminRoute({ children }) {
     return () => {
       isMounted = false
     }
-  }, [token, userRole, persistedRole, setUserRole])
+  }, [effectiveToken, userRole, persistedRole, setUserRole])
 
   const isAdmin = effectiveRole === 'admin'
 
-  if (!token) {
+  if (isHydratingToken) {
+    return <LoadingSpinner />
+  }
+
+  if (!effectiveToken) {
     return <Navigate to="/login" replace />
   }
 

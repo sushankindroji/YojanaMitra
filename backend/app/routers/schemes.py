@@ -531,9 +531,15 @@ async def get_eligible_schemes(
         )
     ).all()
 
+    scheme_ids = [e.scheme_id for e in eligibility]
+    scheme_map = {
+        scheme.id: scheme
+        for scheme in db.query(Scheme).filter(Scheme.id.in_(scheme_ids)).all()
+    } if scheme_ids else {}
+
     results = []
     for e in eligibility:
-        scheme = db.query(Scheme).filter(Scheme.id == e.scheme_id).first()
+        scheme = scheme_map.get(e.scheme_id)
         if scheme:
             results.append(_serialize_eligibility_scheme(scheme, e, partial=False, lang=resolved_lang))
     
@@ -572,9 +578,15 @@ async def get_partial_schemes(
         )
     ).all()
 
+    scheme_ids = [e.scheme_id for e in eligibility]
+    scheme_map = {
+        scheme.id: scheme
+        for scheme in db.query(Scheme).filter(Scheme.id.in_(scheme_ids)).all()
+    } if scheme_ids else {}
+
     results = []
     for e in eligibility:
-        scheme = db.query(Scheme).filter(Scheme.id == e.scheme_id).first()
+        scheme = scheme_map.get(e.scheme_id)
         if scheme:
             results.append(_serialize_eligibility_scheme(scheme, e, partial=True, lang=resolved_lang))
     

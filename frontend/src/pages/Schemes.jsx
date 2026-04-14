@@ -8,6 +8,9 @@ import Badge from '../components/ui/Badge'
 import PageHeader from '../components/ui/PageHeader'
 import { useAuthStore } from '../store/authStore'
 
+const FILTERS_STORAGE_KEY = 'ym_schemes_filters'
+const SORT_STORAGE_KEY = 'ym_schemes_sort'
+
 export default function Schemes() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -16,9 +19,20 @@ export default function Schemes() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const storedAccessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
   const effectiveAuthenticated = Boolean(isAuthenticated || accessToken || storedAccessToken)
-  const [filters, setFilters] = useState({})
-  const [sortBy, setSortBy] = useState('name')
+  const [filters, setFilters] = useState(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      return JSON.parse(window.sessionStorage.getItem(FILTERS_STORAGE_KEY) || '{}')
+    } catch {
+      return {}
+    }
+  })
+  const [sortBy, setSortBy] = useState(() => {
+    if (typeof window === 'undefined') return 'name'
+    return window.sessionStorage.getItem(SORT_STORAGE_KEY) || 'name'
+  })
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [resultsLoading, setResultsLoading] = useState(false)
 
   const activeFilterCount =
     (filters.search ? 1 : 0) +
@@ -56,6 +70,16 @@ export default function Schemes() {
     return () => window.removeEventListener('keydown', onKeyPress)
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters || {}))
+  }, [filters])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.sessionStorage.setItem(SORT_STORAGE_KEY, sortBy || 'name')
+  }, [sortBy])
+
   return (
     <div className="mx-auto w-full max-w-[118rem] space-y-4 sm:space-y-5">
       <button
@@ -67,10 +91,10 @@ export default function Schemes() {
       </button>
 
       <PageHeader
-        title={t('schemes.title', { defaultValue: 'Find Schemes' })}
+        title={t('schemes.title', { defaultValue: 'Government Schemes' })}
         description={effectiveAuthenticated
           ? t('schemes.subtitle', { defaultValue: 'Discover government schemes you are eligible for' })
-          : t('schemes.publicSubtitle', { defaultValue: 'Browse government schemes and official details' })}
+          : t('schemes.publicSubtitle', { defaultValue: 'Browse all government schemes' })}
         actions={
           <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
             <Badge variant="neutral" className="hidden md:inline-flex">{t('schemes.shortcutSearch', { defaultValue: 'Ctrl/Cmd + K search' })}</Badge>
@@ -110,6 +134,7 @@ export default function Schemes() {
                 filters={filters}
                 onFilterChange={handleFilterChange}
                 onClear={handleClearFilters}
+                isLoading={resultsLoading}
               />
             </div>
           ) : null}
@@ -121,6 +146,7 @@ export default function Schemes() {
               filters={filters}
               onFilterChange={handleFilterChange}
               onClear={handleClearFilters}
+              isLoading={resultsLoading}
             />
           </div>
         </div>
@@ -132,6 +158,7 @@ export default function Schemes() {
             onSortChange={setSortBy}
             isAuthenticated={effectiveAuthenticated}
             accessToken={accessToken}
+            onLoadingChange={setResultsLoading}
           />
         </div>
       </div>

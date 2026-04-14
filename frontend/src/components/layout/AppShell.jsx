@@ -8,10 +8,11 @@ import {
   Home,
   Layers,
   LogOut,
-  MoreHorizontal,
+  Settings,
   UserCircle,
   WalletCards,
 } from 'lucide-react'
+import { toast } from 'react-toastify'
 import { useAuthStore } from '../../store/authStore'
 import authService from '../../services/authService'
 import LanguageSelector from '../common/LanguageSelector'
@@ -28,9 +29,9 @@ const desktopItems = [
 const mobileTabs = [
   { label: 'Home', to: '/dashboard', icon: Home },
   { label: 'Schemes', to: '/schemes', icon: Compass },
+  { label: 'Eligibility', to: '/eligibility', icon: Layers },
   { label: 'My Schemes', to: '/applications', icon: WalletCards },
   { label: 'Profile', to: '/profile', icon: UserCircle },
-  { label: 'More', to: '/upload', icon: MoreHorizontal },
 ]
 
 const toTitle = (slug) =>
@@ -42,9 +43,17 @@ export default function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const logout = useAuthStore((state) => state.logout)
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('ym_sidebar_collapsed') === 'true'
+  })
   const [user, setUser] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('ym_sidebar_collapsed', String(collapsed))
+  }, [collapsed])
 
   useEffect(() => {
     let mounted = true
@@ -86,6 +95,9 @@ export default function AppShell() {
   }, [location.pathname])
 
   const handleLogout = async () => {
+    const confirmed = window.confirm('Are you sure you want to log out?')
+    if (!confirmed) return
+
     try {
       await authService.logout()
     } catch {
@@ -94,6 +106,19 @@ export default function AppShell() {
     logout()
     navigate('/login', { replace: true })
   }
+
+  const unreadNotifications = Number(
+    user?.notification_count
+    || user?.pending_notifications
+    || (typeof window !== 'undefined' ? window.localStorage.getItem('ym_unread_notifications') : 0)
+    || 0
+  )
+
+  const mySchemesBadge = Number(
+    user?.new_eligible_schemes
+    || (typeof window !== 'undefined' ? window.localStorage.getItem('ym_new_eligible_schemes') : 0)
+    || 0
+  )
 
   return (
     <div className="min-h-screen md:flex">
@@ -123,13 +148,26 @@ export default function AppShell() {
           </button>
         </div>
 
-        <nav className="p-2" aria-label="Primary navigation">
+        <div className="mx-2 mt-2 rounded-xl border border-stone-200 bg-stone-50 p-2">
+          <div className="flex items-center gap-2">
+            <Avatar name={user?.full_name || user?.email || 'User'} size={collapsed ? 'sm' : 'md'} />
+            {!collapsed ? (
+              <div className="min-w-0">
+                <p className="truncate text-body-sm font-medium text-stone-800">{user?.full_name || 'Citizen User'}</p>
+                <p className="truncate text-caption text-stone-500">{user?.email || 'Signed in'}</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto p-2" aria-label="Primary navigation">
           {desktopItems.map((item) => {
             const Icon = item.icon
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
+                title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   `relative mb-1 flex items-center gap-3 rounded-xl px-3 py-2 text-body font-medium transition ${
                     isActive
@@ -144,6 +182,19 @@ export default function AppShell() {
             )
           })}
         </nav>
+
+        <div className="border-t border-stone-200 p-2">
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={collapsed ? 'Logout' : undefined}
+            className="relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-body font-medium text-red-700 transition hover:bg-red-50"
+            aria-label="Logout"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            {!collapsed ? <span>Logout</span> : null}
+          </button>
+        </div>
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
@@ -174,10 +225,15 @@ export default function AppShell() {
 
               <button
                 type="button"
-                className="rounded-full p-2 text-stone-600 hover:bg-stone-100"
+                className="relative rounded-full p-2 text-stone-600 hover:bg-stone-100"
                 aria-label="Notifications"
               >
                 <Bell className="h-4 w-4" />
+                {unreadNotifications > 0 ? (
+                  <span className="absolute right-1 top-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium text-white">
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </span>
+                ) : null}
               </button>
 
               <div className="relative">
@@ -203,7 +259,18 @@ export default function AppShell() {
                       className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-body text-stone-700 hover:bg-stone-100"
                     >
                       <UserCircle className="h-4 w-4" />
-                      Profile
+                      My Profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        toast.info('Settings will be available soon.', { autoClose: 4000 })
+                      }}
+                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-body text-stone-700 hover:bg-stone-100"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
                     </button>
                     <button
                       type="button"
@@ -237,12 +304,17 @@ export default function AppShell() {
               <li key={tab.to}>
                 <NavLink
                   to={tab.to}
-                  className={`flex flex-col items-center justify-center rounded-lg px-1 py-2 text-body-sm font-medium ${
-                    active ? 'bg-orange-50 text-orange-700' : 'text-stone-600'
+                  className={`relative flex min-h-11 flex-col items-center justify-center rounded-lg border-t-2 px-1 py-2 text-body-sm font-medium ${
+                    active ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-transparent text-stone-600'
                   }`}
                 >
                   <Icon className="mb-1 h-4 w-4" />
                   <span>{tab.label}</span>
+                  {tab.to === '/applications' && mySchemesBadge > 0 ? (
+                    <span className="absolute right-1 top-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-medium text-white">
+                      {mySchemesBadge > 9 ? '9+' : mySchemesBadge}
+                    </span>
+                  ) : null}
                 </NavLink>
               </li>
             )

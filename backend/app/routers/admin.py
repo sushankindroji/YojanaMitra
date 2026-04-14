@@ -24,6 +24,7 @@ class AdminSchemeUpdate(BaseModel):
     name_en: Optional[str] = None
     ministry: Optional[str] = None
     benefit_amount: Optional[float] = None
+    official_portal_url: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -155,6 +156,17 @@ async def get_all_users(
             profile.user_id: profile
             for profile in db.query(Profile).filter(Profile.user_id.in_([u.id for u in users])).all()
         } if users else {}
+
+        app_counts = {}
+        if users:
+            user_ids = [user.id for user in users]
+            counts = (
+                db.query(SavedApplication.user_id, func.count(SavedApplication.id))
+                .filter(SavedApplication.user_id.in_(user_ids))
+                .group_by(SavedApplication.user_id)
+                .all()
+            )
+            app_counts = {user_id: count for user_id, count in counts}
         
         users_data = []
         for user in users:
@@ -169,6 +181,7 @@ async def get_all_users(
                 "created_at": user.created_at,
                 "last_login": user.last_login,
                 "profile_completion_pct": profile.profile_complete_pct if profile else 0,
+                "applications_count": app_counts.get(user.id, 0),
                 "profile_complete": bool(profile and (profile.profile_complete_pct or 0) >= 80),
                 "email_verified": _bool_int(user.is_verified),
             })
@@ -235,6 +248,7 @@ async def get_all_schemes(
                     "benefit_amount": scheme.benefit_amount,
                     "sector": scheme.sector,
                     "state": scheme.state,
+                    "official_portal_url": scheme.official_portal_url,
                     "conditions_count": conditions_count,
                     "applications_count": app_counts.get(scheme.id, 0),
                 }
@@ -439,6 +453,9 @@ async def update_scheme(
             scheme.ministry = payload.ministry.strip() if payload.ministry else scheme.ministry
         if payload.benefit_amount is not None:
             scheme.benefit_amount = payload.benefit_amount
+        if payload.official_portal_url is not None:
+            cleaned_url = payload.official_portal_url.strip()
+            scheme.official_portal_url = cleaned_url or None
         if payload.is_active is not None:
             scheme.is_active = 1 if payload.is_active else 0
 
@@ -454,6 +471,7 @@ async def update_scheme(
             "ministry": scheme.ministry,
             "is_active": _bool_int(scheme.is_active),
             "benefit_amount": scheme.benefit_amount,
+            "official_portal_url": scheme.official_portal_url,
             "updated_at": scheme.updated_at,
         }
     except Exception as e:

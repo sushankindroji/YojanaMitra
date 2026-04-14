@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useAuthStore } from './store/authStore'
@@ -13,24 +13,24 @@ import AdminLayout from './components/admin/AdminLayout'
 import AppShell from './components/layout/AppShell'
 
 // Pages
-import Landing from './pages/Landing'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Dashboard from './pages/Dashboard'
-import Onboarding from './pages/Onboarding'
-import Profile from './pages/Profile'
-import Schemes from './pages/Schemes'
-import SchemeDetail from './pages/SchemeDetail'
-import Apply from './pages/Apply'
-import Eligibility from './pages/Eligibility'
-import Applications from './pages/Applications'
-import UploadDocuments from './pages/UploadDocuments'
+const Landing = lazy(() => import('./pages/Landing'))
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Schemes = lazy(() => import('./pages/Schemes'))
+const SchemeDetail = lazy(() => import('./pages/SchemeDetail'))
+const Apply = lazy(() => import('./pages/Apply'))
+const Eligibility = lazy(() => import('./pages/Eligibility'))
+const Applications = lazy(() => import('./pages/Applications'))
+const UploadDocuments = lazy(() => import('./pages/UploadDocuments'))
 
 // Admin Pages
-import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminUsers from './pages/admin/AdminUsers'
-import AdminSchemes from './pages/admin/AdminSchemes'
-import AdminApplications from './pages/admin/AdminApplications'
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
+const AdminSchemes = lazy(() => import('./pages/admin/AdminSchemes'))
+const AdminApplications = lazy(() => import('./pages/admin/AdminApplications'))
 
 // Layout wrapper for admin routes
 const AdminShell = () => (
@@ -49,9 +49,10 @@ function App() {
     const refreshToken = localStorage.getItem('refresh_token')
     const userRole = localStorage.getItem('user_role')
     const userId = localStorage.getItem('user_id')
+    const onboardingIncomplete = localStorage.getItem('onboarding_incomplete')
     
     if (token && refreshToken) {
-      setTokens(token, refreshToken, userRole, userId)
+      setTokens(token, refreshToken, userRole, userId, onboardingIncomplete === null ? null : onboardingIncomplete === 'true')
     }
   }, [setTokens])
 
@@ -60,9 +61,10 @@ function App() {
       <BrowserRouter>
         <ToastContainer
           position="top-right"
-          autoClose={3000}
+          autoClose={4000}
           hideProgressBar={false}
           newestOnTop={true}
+          limit={3}
           closeOnClick
           rtl={false}
           pauseOnFocusLoss
@@ -70,69 +72,71 @@ function App() {
           pauseOnHover
         />
 
-        <Routes>
-          {/* Public Routes (no navbar) */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/schemes" element={<Schemes />} />
-          <Route path="/schemes/:schemeId" element={<SchemeDetail />} />
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-body-sm text-stone-600">Loading...</div>}>
+          <Routes>
+            {/* Public Routes (no navbar) */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/schemes" element={<Schemes />} />
+            <Route path="/schemes/:schemeId" element={<SchemeDetail />} />
 
-          {/* Protected Routes - Onboarding (special layout, no navbar) */}
-          <Route
-            path="/onboarding"
-            element={
-              <ProtectedRoute>
-                <OnboardingRouteGuard requireComplete={false}>
-                  <Onboarding />
-                </OnboardingRouteGuard>
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Routes - Onboarding (special layout, no navbar) */}
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <OnboardingRouteGuard requireComplete={false}>
+                    <Onboarding />
+                  </OnboardingRouteGuard>
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Protected Routes - Apply (special layout, no navbar) */}
-          <Route
-            path="/apply/:schemeId"
-            element={
-              <ProtectedRoute>
-                <OnboardingRouteGuard requireComplete>
-                  <Apply />
-                </OnboardingRouteGuard>
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Routes - Apply (special layout, no navbar) */}
+            <Route
+              path="/apply/:schemeId"
+              element={
+                <ProtectedRoute>
+                  <OnboardingRouteGuard requireComplete>
+                    <Apply />
+                  </OnboardingRouteGuard>
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Admin Routes (with dedicated admin shell) */}
-          <Route path="/admin" element={<AdminShell />}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="schemes" element={<AdminSchemes />} />
-            <Route path="applications" element={<AdminApplications />} />
-            <Route path="settings" element={<Navigate to="/admin/dashboard" replace />} />
-          </Route>
+            {/* Admin Routes (with dedicated admin shell) */}
+            <Route path="/admin" element={<AdminShell />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="schemes" element={<AdminSchemes />} />
+              <Route path="applications" element={<AdminApplications />} />
+              <Route path="settings" element={<Navigate to="/admin/dashboard" replace />} />
+            </Route>
 
-          {/* Protected Routes (with navbar + footer) */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <OnboardingRouteGuard requireComplete>
-                  <AppShell />
-                </OnboardingRouteGuard>
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/eligibility" element={<Eligibility />} />
-            <Route path="/applications" element={<Applications />} />
-            <Route path="/documents" element={<UploadDocuments />} />
-            <Route path="/upload" element={<UploadDocuments />} />
-          </Route>
+            {/* Protected Routes (with navbar + footer) */}
+            <Route
+              element={
+                <ProtectedRoute>
+                  <OnboardingRouteGuard requireComplete>
+                    <AppShell />
+                  </OnboardingRouteGuard>
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/eligibility" element={<Eligibility />} />
+              <Route path="/applications" element={<Applications />} />
+              <Route path="/documents" element={<UploadDocuments />} />
+              <Route path="/upload" element={<UploadDocuments />} />
+            </Route>
 
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </ErrorBoundary>
   )

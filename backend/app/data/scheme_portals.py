@@ -470,8 +470,15 @@ def get_ministry_helpline(ministry: str | None, scheme_code: str | None = None) 
 
 
 def get_csc_name_by_state(state: str | None) -> str:
-    # Keep wording simple and consistent for users across all Indian states.
-    return CSC_NAMES_BY_STATE["DEFAULT"]
+    state_name = str(state or "").strip()
+    if not state_name:
+        return CSC_NAMES_BY_STATE["DEFAULT"]
+
+    if state_name in CSC_NAMES_BY_STATE:
+        return CSC_NAMES_BY_STATE[state_name]
+
+    lowered_map = {key.lower(): value for key, value in CSC_NAMES_BY_STATE.items() if key != "DEFAULT"}
+    return lowered_map.get(state_name.lower(), CSC_NAMES_BY_STATE["DEFAULT"])
 
 
 def get_state_service_helpline(state: str | None) -> str | None:

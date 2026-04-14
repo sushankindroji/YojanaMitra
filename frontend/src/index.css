@@ -21,6 +21,21 @@ body {
   font-family: 'Inter', 'Noto Sans', system-ui, sans-serif;
 }
 
+b,
+strong {
+  font-weight: 500;
+}
+
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a.no-underline:hover,
+.no-underline a:hover {
+  text-decoration: none;
+}
+
 h1 {
   font-size: var(--text-h1);
   font-weight: var(--font-medium);
@@ -119,6 +134,21 @@ textarea:focus-visible {
   box-shadow: var(--shadow-focus);
 }
 
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-neutral-900);
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  box-shadow: 0 0 0px 1000px #ffffff inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 .animate-shimmer {
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
   background-size: 400% 100%;
@@ -137,4 +167,13 @@ textarea:focus-visible {
 ::selection {
   background: var(--color-primary-200);
   color: var(--color-neutral-900);
+}
+
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+  }
 }

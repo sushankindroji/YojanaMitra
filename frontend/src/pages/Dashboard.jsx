@@ -13,7 +13,31 @@ import PageHeader from '../components/ui/PageHeader'
 const formatCurrency = (value) => {
   const amount = Number(value || 0)
   if (amount <= 0) return 'Not specified'
-  return `Rs ${amount.toLocaleString('en-IN')}`
+  return `₹${amount.toLocaleString('en-IN')}`
+}
+
+const formatCount = (value) => Number(value || 0).toLocaleString('en-IN')
+
+const formatDateLong = (date) =>
+  date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+
+const getRelativeTime = (isoValue) => {
+  if (!isoValue) return 'Never checked'
+  const date = new Date(isoValue)
+  if (Number.isNaN(date.getTime())) return 'Never checked'
+
+  const diffMs = Date.now() - date.getTime()
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
@@ -180,9 +204,11 @@ export default function Dashboard() {
   }
 
   const greetingName = dashboard?.greeting_name || ''
-  const welcomeTitle = greetingName
-    ? `${t('dashboard.welcomeBack', { defaultValue: 'Welcome back' })}, ${greetingName}!`
-    : `${t('dashboard.welcomeBack', { defaultValue: 'Welcome back' })}!`
+  const fullName = String(greetingName || dashboard?.profile_name || '').trim()
+  const firstName = fullName ? fullName.split(/\s+/)[0] : ''
+  const currentHour = new Date().getHours()
+  const dayGreeting = currentHour < 12 ? 'Good morning' : currentHour < 17 ? 'Good afternoon' : 'Good evening'
+  const welcomeTitle = firstName ? `${dayGreeting}, ${firstName}` : dayGreeting
 
   const completeness = Number(dashboard?.profile_completeness?.pct || 0)
   const missingFields = Array.isArray(dashboard?.profile_completeness?.missing_fields)
@@ -202,6 +228,29 @@ export default function Dashboard() {
     ? dashboard.featured_schemes
     : []
 
+  const statCards = [
+    {
+      label: 'Eligible Schemes',
+      value: formatCount(dashboard?.total_eligible_count || 0),
+      icon: 'EL',
+    },
+    {
+      label: 'Highest Benefit',
+      value: formatCurrency(topScheme?.benefit),
+      icon: 'INR',
+    },
+    {
+      label: 'Applications',
+      value: formatCount(applicationsCount),
+      icon: 'APP',
+    },
+    {
+      label: 'One Step Away',
+      value: formatCount(quickStats?.one_step_away || partialMatchCount),
+      icon: 'PEN',
+    },
+  ]
+
   if (loading) {
     return <div className="flex min-h-[40vh] items-center justify-center">{t('common.loading')}</div>
   }
@@ -210,7 +259,7 @@ export default function Dashboard() {
     <div className="space-y-5">
       <PageHeader
         title={welcomeTitle}
-        description="Your dashboard is personalized from verified profile data and latest eligibility results."
+        description={formatDateLong(new Date())}
         actions={
           <Button onClick={() => navigate('/schemes')}>
             {t('dashboard.viewSchemes', { defaultValue: 'View Schemes' })}
@@ -219,6 +268,18 @@ export default function Dashboard() {
         }
       />
 
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {statCards.map((card) => (
+          <Card key={card.label} className="border border-stone-200 transition-all duration-150 hover:border-stone-300">
+            <p className="text-caption font-medium uppercase tracking-wider text-stone-500">{card.label}</p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="text-h2 font-medium text-stone-900">{card.value}</p>
+              <span className="rounded-lg bg-stone-100 px-2 py-1 text-body-sm text-stone-600">{card.icon}</span>
+            </div>
+          </Card>
+        ))}
+      </section>
+
       <section className="grid gap-4">
         <Card variant="elevated" className="!bg-blue-950 !text-white border-blue-900">
           <p className="text-micro font-medium uppercase tracking-wider text-blue-200">Matched Schemes (Full + High)</p>
@@ -226,6 +287,7 @@ export default function Dashboard() {
           <p className="mt-2 text-body-sm text-blue-100">{insight.headline || 'No eligibility run found yet.'}</p>
           <p className="mt-2 text-caption text-blue-200">{insight.highlight || 'Run eligibility check to see personalized scheme insight.'}</p>
           <p className="mt-2 text-caption text-blue-300">Last checked (IST): {formatDateTimeIST(dashboard?.last_checked)}</p>
+          <p className="mt-1 text-caption text-blue-300">Last checked: {getRelativeTime(dashboard?.last_checked)}</p>
           <p className="mt-2 text-caption text-blue-300">Fully Eligible is a stricter subset of this total.</p>
           {(fullyEligibleCount > 0 || highlyEligibleCount > 0) ? (
             <p className="mt-2 text-caption text-blue-200">

@@ -19,7 +19,7 @@ import PageHeader from '../components/ui/PageHeader'
 import Skeleton from '../components/ui/Skeleton'
 
 const statusColors = {
-  saved: 'bg-blue-50 border-blue-200 text-blue-700',
+  saved: 'bg-stone-100 border-stone-200 text-stone-700',
   started: 'bg-amber-50 border-amber-200 text-amber-700',
   submitted: 'bg-indigo-50 border-indigo-200 text-indigo-700',
   acknowledged: 'bg-green-50 border-green-200 text-green-700',
@@ -42,7 +42,13 @@ const statusCards = [
   { key: 'total_rejected', label: 'Rejected', tone: 'danger' },
 ]
 
-const statusFilterOptions = ['all', 'saved', 'started', 'submitted', 'acknowledged', 'rejected']
+const statusTabs = [
+  { key: 'saved', label: 'Saved', countKey: 'total_saved', empty: 'Browse schemes and save the ones you want to apply for' },
+  { key: 'submitted', label: 'Submitted', countKey: 'total_submitted', empty: "You haven't submitted any applications yet" },
+  { key: 'started', label: 'Under Review', countKey: 'total_started', empty: 'No applications are under review' },
+  { key: 'acknowledged', label: 'Approved', countKey: 'total_acknowledged', empty: 'No approved applications yet' },
+  { key: 'rejected', label: 'Rejected', countKey: 'total_rejected', empty: 'No rejected applications' },
+]
 
 export default function Applications() {
   const navigate = useNavigate()
@@ -97,6 +103,12 @@ export default function Applications() {
     }
   }
 
+  const formatRupees = (value) => {
+    const amount = Number(value || 0)
+    if (!Number.isFinite(amount) || amount <= 0) return 'Not specified'
+    return `₹${Math.round(amount).toLocaleString('en-IN')}`
+  }
+
   const handleStatusChange = async (applicationId, newStatus) => {
     try {
       await applicationService.updateApplication(applicationId, { status: newStatus })
@@ -149,17 +161,27 @@ export default function Applications() {
       <Card className="border border-stone-200 p-0">
         <div className="border-b border-stone-200 p-3">
           <div className="flex flex-wrap gap-2">
-            {statusFilterOptions.map((status) => (
+            <button
+              onClick={() => setFilter('all')}
+              className={`rounded-full px-3 py-1.5 text-caption font-medium uppercase tracking-[0.08em] transition ${
+                filter === 'all'
+                  ? 'bg-stone-900 text-white'
+                  : 'border border-stone-300 text-stone-700 hover:bg-stone-100'
+              }`}
+            >
+              All
+            </button>
+            {statusTabs.map((status) => (
               <button
-                key={status}
-                onClick={() => setFilter(status)}
+                key={status.key}
+                onClick={() => setFilter(status.key)}
                 className={`rounded-full px-3 py-1.5 text-caption font-medium uppercase tracking-[0.08em] transition ${
-                  filter === status
+                  filter === status.key
                     ? 'bg-stone-900 text-white'
                     : 'border border-stone-300 text-stone-700 hover:bg-stone-100'
                 }`}
               >
-                {status}
+                {status.label} ({stats?.[status.countKey] || 0})
               </button>
             ))}
           </div>
@@ -178,7 +200,7 @@ export default function Applications() {
               <p className="mt-3 text-body-sm text-stone-600">
                 {applications.length === 0
                   ? 'No applications yet. Check eligibility and save schemes!'
-                  : `No ${filter} applications`}
+                  : statusTabs.find((tab) => tab.key === filter)?.empty || `No ${filter} applications`}
               </p>
               <Button
                 onClick={() => navigate('/eligibility')}
@@ -219,24 +241,38 @@ export default function Applications() {
                         {app.scheme_ministry || 'N/A'}
                       </td>
                       <td className="px-5 py-4 text-body-sm font-medium text-stone-900">
-                        {app.scheme_benefit_amount ? `Rs ${(app.scheme_benefit_amount / 100000).toFixed(1)}L+` : 'N/A'}
+                        {formatRupees(app.scheme_benefit_amount)}
                       </td>
                       <td className="px-5 py-4 text-body-sm text-stone-600">
                         {new Date(app.saved_at).toLocaleDateString()}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-center gap-3">
-                          <select
-                            value={app.status}
-                            onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                            className="h-8 rounded-md border border-stone-300 px-2 text-caption focus:outline-none focus:ring-2 focus:ring-orange-300"
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/schemes/${app.scheme_id}`)}
+                            className="rounded-md border border-stone-200 px-2 py-1 text-caption text-stone-700 hover:bg-stone-50"
                           >
-                            <option value="saved">Saved</option>
-                            <option value="started">Started</option>
-                            <option value="submitted">Submitted</option>
-                            <option value="acknowledged">Acknowledged</option>
-                            <option value="rejected">Rejected</option>
-                          </select>
+                            View details
+                          </button>
+                          {(app.status === 'submitted' || app.status === 'acknowledged') ? (
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(app.id, 'saved')}
+                              className="rounded-md border border-amber-200 px-2 py-1 text-caption text-amber-700 hover:bg-amber-50"
+                            >
+                              Withdraw
+                            </button>
+                          ) : null}
+                          {app.status === 'rejected' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(app.id, 'started')}
+                              className="rounded-md border border-blue-200 px-2 py-1 text-caption text-blue-700 hover:bg-blue-50"
+                            >
+                              Re-apply
+                            </button>
+                          ) : null}
                           <button
                             onClick={() => handleDelete(app.id)}
                             className="rounded-lg p-2 text-red-600 transition hover:bg-red-50"

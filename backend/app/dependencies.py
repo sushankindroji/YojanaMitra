@@ -1,14 +1,45 @@
 """
 FastAPI dependencies.
 """
+from datetime import datetime
+import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.security import verify_token
-from app.models import User
+from app.models import User, Profile
 
 security = HTTPBearer(auto_error=False)
+
+
+def _ensure_profile_and_flags(db: Session, user: User) -> User:
+    """Backfill legacy profile row and align onboarding flags for authenticated users."""
+    profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+    needs_commit = False
+
+    if profile is None:
+        profile = Profile(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            onboarding_complete=0,
+            onboarding_step=1,
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+        )
+        db.add(profile)
+        needs_commit = True
+
+    expected_onboarding_incomplete = 0 if int(profile.onboarding_complete or 0) == 1 else 1
+    if int(user.onboarding_incomplete or 0) != expected_onboarding_incomplete:
+        user.onboarding_incomplete = expected_onboarding_incomplete
+        needs_commit = True
+
+    if needs_commit:
+        db.commit()
+        db.refresh(user)
+
+    return user
 
 
 async def get_current_user(
@@ -48,8 +79,15 @@ async def get_current_user(
             detail="User not found or inactive",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    return user
+
+    try:
+        return _ensure_profile_and_flags(db, user)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not prepare user profile state",
+        )
 
 
 async def get_admin_user(
@@ -86,5 +124,9 @@ async def get_current_user_optional(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None or not user.is_active:
         return None
-    
-    return user
+
+    try:
+        return _ensure_profile_and_flags(db, user)
+    except Exception:
+        db.rollback()
+        return None

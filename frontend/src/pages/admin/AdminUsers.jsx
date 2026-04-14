@@ -1,16 +1,4 @@
-// frontend/src/pages/admin/AdminUsers.jsx
-/**
- * Admin Users Management - CRUD operations for users
- * Features:
- * - List all users with search/filter
- * - View user details
- * - Deactivate/ban users
- * - Reset user passwords
- * - View user activity logs
- */
-
-import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import {
   AlertCircle,
@@ -18,10 +6,10 @@ import {
   Calendar,
   Eye,
   Mail,
-  MoreVertical,
-  Phone,
   RefreshCw,
   Search,
+  Shield,
+  UserX,
 } from 'lucide-react'
 import api from '../../services/api'
 import Button from '../../components/ui/Button'
@@ -29,117 +17,127 @@ import Card from '../../components/ui/Card'
 import PageHeader from '../../components/ui/PageHeader'
 import Skeleton from '../../components/ui/Skeleton'
 
+const PAGE_SIZE = 20
+
+const getStatusPillClass = (status) => {
+  if (status === 'active') return 'border-green-200 bg-green-100 text-green-800'
+  if (status === 'inactive') return 'border-stone-200 bg-stone-100 text-stone-700'
+  if (status === 'banned') return 'border-red-200 bg-red-100 text-red-800'
+  return 'border-blue-200 bg-blue-100 text-blue-800'
+}
+
 export default function AdminUsers() {
-  const { t } = useTranslation()
   const [users, setUsers] = useState([])
-  const [filteredUsers, setFilteredUsers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all') // all, active, inactive, banned
-  const [selectedUser, setSelectedUser] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('registered_desc')
+  const [page, setPage] = useState(1)
   const [actionInProgress, setActionInProgress] = useState(false)
-
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  useEffect(() => {
-    filterUsers()
-  }, [users, searchQuery, filterStatus])
+  const [selectedUser, setSelectedUser] = useState(null)
 
   const fetchUsers = async () => {
     try {
       setIsLoading(true)
-      const res = await api.get('/admin/users', {
-        params: { limit: 1000 },
-      })
-      setUsers(res.data.users || [])
-    } catch (err) {
-      console.error('Error fetching users:', err)
-      toast.error(t('admin.fetchError') || 'Failed to load users')
+      const response = await api.get('/admin/users', { params: { limit: 1000 } })
+      setUsers(Array.isArray(response.data?.users) ? response.data.users : [])
+    } catch {
+      toast.error('Failed to load users')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const filterUsers = () => {
-    let filtered = users
+  useEffect(() => {
+    fetchUsers()
+  }, [])
 
-    // Apply search
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (user) =>
-          user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.phone?.includes(searchQuery)
-      )
+  const filteredUsers = useMemo(() => {
+    let output = [...users]
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase()
+      output = output.filter((user) => {
+        const name = String(user.full_name || '').toLowerCase()
+        const email = String(user.email || '').toLowerCase()
+        return name.includes(query) || email.includes(query)
+      })
     }
 
-    // Apply status filter
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter((user) => user.status === filterStatus)
+    if (statusFilter !== 'all') {
+      output = output.filter((user) => String(user.status || '') === statusFilter)
     }
 
-    setFilteredUsers(filtered)
-  }
+    if (roleFilter !== 'all') {
+      output = output.filter((user) => String(user.role || 'user') === roleFilter)
+    }
 
-  const handleDeactivateUser = async (userId) => {
-    if (!window.confirm('Are you sure? This will deactivate the user account.')) return
+    if (sortBy === 'name_asc') {
+      output.sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || '')))
+    } else if (sortBy === 'email_asc') {
+      output.sort((a, b) => String(a.email || '').localeCompare(String(b.email || '')))
+    } else {
+      output.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    }
+
+    return output
+  }, [users, searchQuery, statusFilter, roleFilter, sortBy])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery, statusFilter, roleFilter, sortBy])
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pagedUsers = filteredUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  const patchUserRole = async (user, role) => {
+    const actionText = role === 'admin' ? 'promote' : 'demote'
+    const confirmed = window.confirm(`Are you sure you want to ${actionText} this user?`)
+    if (!confirmed) return
 
     try {
       setActionInProgress(true)
-      await api.patch(`/admin/users/${userId}/deactivate`)
-      toast.success('User deactivated successfully')
-      fetchUsers()
-    } catch (err) {
-      console.error('Error deactivating user:', err)
-      toast.error('Failed to deactivate user')
+      await api.patch(`/admin/users/${user.id}/role`, { role })
+      toast.success(role === 'admin' ? 'User promoted to admin' : 'User changed to standard role')
+      await fetchUsers()
+    } catch {
+      toast.error('Failed to update role')
     } finally {
       setActionInProgress(false)
     }
   }
 
-  const handleBanUser = async (userId) => {
-    if (!window.confirm('Are you sure? This will ban the user permanently.')) return
+  const patchUserStatus = async (user, action) => {
+    const actionConfig = {
+      deactivate: {
+        path: `/admin/users/${user.id}/deactivate`,
+        confirm: 'Are you sure you want to deactivate this account?',
+        success: 'User deactivated',
+      },
+      ban: {
+        path: `/admin/users/${user.id}/ban`,
+        confirm: 'Are you sure you want to ban this account?',
+        success: 'User banned',
+      },
+    }
+
+    const config = actionConfig[action]
+    if (!config) return
+
+    const confirmed = window.confirm(config.confirm)
+    if (!confirmed) return
 
     try {
       setActionInProgress(true)
-      await api.patch(`/admin/users/${userId}/ban`)
-      toast.success('User banned successfully')
-      fetchUsers()
-    } catch (err) {
-      console.error('Error banning user:', err)
-      toast.error('Failed to ban user')
+      await api.patch(config.path)
+      toast.success(config.success)
+      await fetchUsers()
+    } catch {
+      toast.error('Failed to update user status')
     } finally {
       setActionInProgress(false)
-    }
-  }
-
-  const handleResetPassword = async (userId) => {
-    if (!window.confirm('Send password reset email to this user?')) return
-
-    try {
-      setActionInProgress(true)
-      await api.post(`/admin/users/${userId}/reset-password`)
-      toast.success('Password reset email sent')
-    } catch (err) {
-      console.error('Error resetting password:', err)
-      toast.error('Failed to reset password')
-    } finally {
-      setActionInProgress(false)
-    }
-  }
-
-  const getStatusBadgeColor = (status) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'inactive':
-        return 'bg-stone-100 text-stone-700 border-stone-200'
-      case 'banned':
-        return 'bg-red-100 text-red-800 border-red-200'
-      default:
-        return 'bg-blue-100 text-blue-800 border-blue-200'
     }
   }
 
@@ -147,173 +145,156 @@ export default function AdminUsers() {
     <div className="space-y-5">
       <PageHeader
         title="User Management"
-        description="Manage platform users, account status, and security actions"
+        description="Search, filter, and manage platform users"
       />
 
       <Card className="border border-stone-200">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 text-stone-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search by name, email, or phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-orange-300"
-              />
-            </div>
+        <div className="flex flex-col gap-3 lg:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-stone-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search by name or email"
+              className="h-10 w-full rounded-lg border border-stone-300 py-2 pl-9 pr-3 text-body-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+            />
+          </div>
 
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            className="rounded-lg border border-stone-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="banned">Banned</option>
-            </select>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="h-10 rounded-lg border border-stone-300 px-3 text-body-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="banned">Banned</option>
+          </select>
 
-          <Button
-              onClick={fetchUsers}
-            variant="secondary"
-            >
-              <RefreshCw size={18} />
-              Refresh
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+            className="h-10 rounded-lg border border-stone-300 px-3 text-body-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+          >
+            <option value="all">All Roles</option>
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            className="h-10 rounded-lg border border-stone-300 px-3 text-body-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+          >
+            <option value="registered_desc">Newest Registered</option>
+            <option value="name_asc">Name A-Z</option>
+            <option value="email_asc">Email A-Z</option>
+          </select>
+
+          <Button variant="secondary" onClick={fetchUsers}>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
           </Button>
-          </div>
+        </div>
 
-        <div className="mt-4 text-body-sm text-stone-600">
-            Showing {filteredUsers.length} of {users.length} users
-          </div>
+        <p className="mt-3 text-body-sm text-stone-600">
+          Showing {filteredUsers.length.toLocaleString('en-IN')} users
+        </p>
       </Card>
 
-      <Card className="border border-stone-200 p-0 overflow-hidden">
-          {isLoading ? (
+      <Card className="overflow-hidden border border-stone-200 p-0">
+        {isLoading ? (
           <div className="space-y-2 p-5">
             <Skeleton className="h-10 rounded-lg" />
             <Skeleton className="h-10 rounded-lg" />
             <Skeleton className="h-10 rounded-lg" />
-            </div>
-          ) : filteredUsers.length === 0 ? (
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <div className="p-8 text-center">
-            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-stone-400" />
-            <p className="text-stone-600">No users found</p>
-            </div>
-          ) : (
+            <AlertCircle className="mx-auto mb-3 h-10 w-10 text-stone-400" />
+            <p className="text-body-sm text-stone-600">No users found for current filters.</p>
+          </div>
+        ) : (
+          <>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b border-stone-200 bg-stone-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
-                      Phone
-                    </th>
-                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
-                      Joined
-                    </th>
-                    <th className="px-6 py-3 text-left text-label font-medium tracking-wide text-stone-900">
-                      Profile
-                    </th>
-                    <th className="px-6 py-3 text-center text-label font-medium tracking-wide text-stone-900">
-                      Actions
-                    </th>
+                    <th className="px-4 py-3 text-left text-label font-medium tracking-wide text-stone-900">Name</th>
+                    <th className="px-4 py-3 text-left text-label font-medium tracking-wide text-stone-900">Email</th>
+                    <th className="px-4 py-3 text-left text-label font-medium tracking-wide text-stone-900">Registered date</th>
+                    <th className="px-4 py-3 text-left text-label font-medium tracking-wide text-stone-900">Profile complete %</th>
+                    <th className="px-4 py-3 text-left text-label font-medium tracking-wide text-stone-900">Applications count</th>
+                    <th className="px-4 py-3 text-left text-label font-medium tracking-wide text-stone-900">Role</th>
+                    <th className="px-4 py-3 text-center text-label font-medium tracking-wide text-stone-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr
-                      key={user.id}
-                    className="border-b border-stone-100 transition hover:bg-stone-50"
-                    >
-                      <td className="px-6 py-4">
-                      <div className="font-medium text-stone-900">{user.full_name}</div>
-                      <div className="text-caption text-stone-500">{user.id.substring(0, 8)}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                        <Mail size={16} className="text-stone-400" />
-                        <span className="text-body-sm text-stone-600">{user.email}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                        <Phone size={16} className="text-stone-400" />
-                        <span className="text-body-sm text-stone-600">
-                            {user.phone || 'N/A'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                        className={`inline-block rounded-full border px-3 py-1 text-caption font-medium ${getStatusBadgeColor(
-                            user.status
-                          )}`}
-                        >
-                          {user.status?.toUpperCase()}
+                  {pagedUsers.map((user) => (
+                    <tr key={user.id} className="border-b border-stone-100 hover:bg-stone-50">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-stone-900">{user.full_name || 'N/A'}</p>
+                        <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-caption font-medium ${getStatusPillClass(user.status)}`}>
+                          {String(user.status || '').toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3" title={user.email}>
                         <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-stone-400" />
-                        <span className="text-body-sm text-stone-600">
-                            {user.created_at
-                              ? new Date(user.created_at).toLocaleDateString()
-                              : 'N/A'}
-                          </span>
+                          <Mail className="h-4 w-4 text-stone-400" />
+                          <span className="max-w-[16rem] truncate text-body-sm text-stone-700">{user.email}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span
-                        className={`inline-block rounded px-2 py-1 text-caption font-medium ${
-                            user.profile_complete
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                        >
-                          {user.profile_complete ? '✓ Complete' : '○ Incomplete'}
+                      <td className="px-4 py-3 text-body-sm text-stone-700">
+                        <div className="inline-flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-stone-400" />
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString('en-GB') : 'N/A'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-body-sm text-stone-700">{user.profile_completion_pct || 0}%</td>
+                      <td className="px-4 py-3 text-body-sm text-stone-700">{Number(user.applications_count || 0).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-100 px-2 py-1 text-caption font-medium text-stone-700">
+                          <Shield className="h-3.5 w-3.5" />
+                          {String(user.role || 'user').toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
                           <button
+                            type="button"
+                            className="rounded-md p-1.5 text-blue-700 hover:bg-blue-50"
                             onClick={() => setSelectedUser(user)}
-                          className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50"
-                            title="View Details"
+                            title="View user"
                           >
-                            <Eye size={18} />
+                            <Eye className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleResetPassword(user.id)}
-                            disabled={actionInProgress}
-                          className="rounded-lg p-2 text-orange-600 transition hover:bg-orange-50 disabled:opacity-50"
-                            title="Reset Password"
-                          >
-                            <RefreshCw size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDeactivateUser(user.id)}
+                            type="button"
+                            className="rounded-md p-1.5 text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+                            onClick={() => patchUserStatus(user, 'deactivate')}
                             disabled={actionInProgress || user.status === 'inactive'}
-                          className="rounded-lg p-2 text-stone-600 transition hover:bg-stone-100 disabled:opacity-50"
                             title="Deactivate"
                           >
-                            <MoreVertical size={18} />
+                            <UserX className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleBanUser(user.id)}
-                            disabled={actionInProgress || user.status === 'banned'}
-                          className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                            title="Ban User"
+                            type="button"
+                            className="rounded-md p-1.5 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+                            onClick={() => patchUserRole(user, user.role === 'admin' ? 'user' : 'admin')}
+                            disabled={actionInProgress}
+                            title={user.role === 'admin' ? 'Demote to user' : 'Promote to admin'}
                           >
-                            <Ban size={18} />
+                            <Shield className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-md p-1.5 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            onClick={() => patchUserStatus(user, 'ban')}
+                            disabled={actionInProgress || user.status === 'banned'}
+                            title="Ban user"
+                          >
+                            <Ban className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -322,106 +303,46 @@ export default function AdminUsers() {
                 </tbody>
               </table>
             </div>
-          )}
-      </Card>
 
-      {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="sticky top-0 flex items-center justify-between border-b border-stone-200 bg-white p-6">
-              <h3 className="text-h3 font-medium text-stone-900">User Details</h3>
-                <button
-                  onClick={() => setSelectedUser(null)}
-                className="text-h2 text-stone-500 hover:text-stone-700"
-                >
-                  ✕
-                </button>
-              </div>
-
-            <div className="space-y-4 p-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                  <p className="text-label text-stone-600">Full Name</p>
-                  <p className="font-medium text-stone-900">{selectedUser.full_name}</p>
-                  </div>
-                  <div>
-                  <p className="text-label text-stone-600">Email</p>
-                  <p className="font-medium text-stone-900">{selectedUser.email}</p>
-                  </div>
-                  <div>
-                  <p className="text-label text-stone-600">Phone</p>
-                  <p className="font-medium text-stone-900">{selectedUser.phone || 'N/A'}</p>
-                  </div>
-                  <div>
-                  <p className="text-label text-stone-600">Status</p>
-                  <p className="font-medium text-stone-900">
-                      {selectedUser.status?.toUpperCase()}
-                    </p>
-                  </div>
-                  <div>
-                  <p className="text-label text-stone-600">Joined</p>
-                  <p className="font-medium text-stone-900">
-                      {new Date(selectedUser.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                  <p className="text-label text-stone-600">Last Login</p>
-                  <p className="font-medium text-stone-900">
-                      {selectedUser.last_login
-                        ? new Date(selectedUser.last_login).toLocaleDateString()
-                        : 'Never'}
-                    </p>
-                  </div>
-                  <div>
-                  <p className="text-label text-stone-600">Profile Completion</p>
-                  <p className="font-medium text-stone-900">
-                      {selectedUser.profile_completion_pct || 0}%
-                    </p>
-                  </div>
-                  <div>
-                  <p className="text-label text-stone-600">Email Verified</p>
-                  <p className="font-medium text-stone-900">
-                      {selectedUser.email_verified ? '✓ Yes' : '✗ No'}
-                    </p>
-                  </div>
-                </div>
-
-              <div className="border-t border-stone-200 pt-4">
-                <p className="mb-2 text-label text-stone-600">Quick Actions</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        handleResetPassword(selectedUser.id)
-                        setSelectedUser(null)
-                      }}
-                    className="rounded-lg bg-orange-100 px-4 py-2 text-body-sm font-medium text-orange-700 hover:bg-orange-200"
-                    >
-                      Reset Password
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleDeactivateUser(selectedUser.id)
-                        setSelectedUser(null)
-                      }}
-                    className="rounded-lg bg-stone-100 px-4 py-2 text-body-sm font-medium text-stone-700 hover:bg-stone-200"
-                    >
-                      Deactivate
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleBanUser(selectedUser.id)
-                        setSelectedUser(null)
-                      }}
-                    className="rounded-lg bg-red-100 px-4 py-2 text-body-sm font-medium text-red-700 hover:bg-red-200"
-                    >
-                      Ban User
-                    </button>
-                  </div>
-                </div>
+            <div className="flex items-center justify-between border-t border-stone-200 px-4 py-3 text-body-sm text-stone-600">
+              <p>Page {safePage} of {totalPages}</p>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" disabled={safePage <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
+                  Previous
+                </Button>
+                <Button variant="ghost" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
+                  Next
+                </Button>
               </div>
             </div>
+          </>
+        )}
+      </Card>
+
+      {selectedUser ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
+              <h3 className="text-h3 font-medium text-stone-900">User profile</h3>
+              <button
+                type="button"
+                className="rounded-md px-2 py-1 text-stone-500 hover:bg-stone-100"
+                onClick={() => setSelectedUser(null)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="grid gap-3 p-5 sm:grid-cols-2">
+              <p className="text-body-sm text-stone-700"><span className="font-medium text-stone-900">Name:</span> {selectedUser.full_name || 'N/A'}</p>
+              <p className="text-body-sm text-stone-700"><span className="font-medium text-stone-900">Email:</span> {selectedUser.email || 'N/A'}</p>
+              <p className="text-body-sm text-stone-700"><span className="font-medium text-stone-900">Phone:</span> {selectedUser.phone || 'N/A'}</p>
+              <p className="text-body-sm text-stone-700"><span className="font-medium text-stone-900">Role:</span> {selectedUser.role || 'user'}</p>
+              <p className="text-body-sm text-stone-700"><span className="font-medium text-stone-900">Registered:</span> {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleDateString('en-GB') : 'N/A'}</p>
+              <p className="text-body-sm text-stone-700"><span className="font-medium text-stone-900">Profile completion:</span> {selectedUser.profile_completion_pct || 0}%</p>
+            </div>
+          </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

@@ -20,7 +20,8 @@ import Card from '../ui/Card'
 import Select from '../ui/Select'
 import Skeleton from '../ui/Skeleton'
 
-const ITEMS_PER_PAGE = 20
+const ITEMS_PER_PAGE_DEFAULT = 20
+const PAGE_SIZE_OPTIONS = [10, 20, 50]
 
 const getPaginationItems = (currentPage, totalPages) => {
   if (totalPages <= 7) {
@@ -47,6 +48,7 @@ export default function SchemeResults({
   onSortChange = () => {},
   isAuthenticated = false,
   accessToken = null,
+  onLoadingChange = () => {},
 }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -56,9 +58,12 @@ export default function SchemeResults({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE_DEFAULT)
+  const [pageInput, setPageInput] = useState('1')
   const [totalCount, setTotalCount] = useState(0)
   const [didTriggerEligibilityRefresh, setDidTriggerEligibilityRefresh] = useState(false)
   const [didHydrateMissingEligibility, setDidHydrateMissingEligibility] = useState(false)
+  const listTopRef = useRef(null)
   const storedAccessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
   const effectiveAuthenticated = Boolean(isAuthenticated || accessToken || storedAccessToken)
 
@@ -101,7 +106,26 @@ export default function SchemeResults({
     }
 
     fetchSchemes()
-  }, [currentPage, filters, i18n?.language, i18n?.resolvedLanguage, isAuthenticated, sortBy])
+  }, [currentPage, pageSize, filters, i18n?.language, i18n?.resolvedLanguage, isAuthenticated, sortBy])
+
+  useEffect(() => {
+    setPageInput(String(currentPage))
+  }, [currentPage])
+
+  useEffect(() => {
+    if (!isLoading) return
+    onLoadingChange(true)
+  }, [isLoading, onLoadingChange])
+
+  useEffect(() => {
+    if (isLoading) return
+    onLoadingChange(false)
+  }, [isLoading, onLoadingChange])
+
+  useEffect(() => {
+    if (!listTopRef.current) return
+    listTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [currentPage, pageSize])
 
   const fetchSchemes = async () => {
     try {
@@ -109,12 +133,14 @@ export default function SchemeResults({
       setError(null)
 
       const authToken = accessToken || localStorage.getItem('access_token') || null
+      const normalizedSearch = String(filters.search || '').trim()
+      const querySearch = normalizedSearch.length >= 2 ? normalizedSearch : ''
       const requestParams = {
-        search: filters.search || '',
+        search: querySearch,
         sector: filters.sectors?.join(',') || '',
         state: filters.states?.join(',') || '',
-        skip: (currentPage - 1) * ITEMS_PER_PAGE,
-        limit: ITEMS_PER_PAGE,
+        skip: (currentPage - 1) * pageSize,
+        limit: pageSize,
         lang: (i18n?.resolvedLanguage || i18n?.language || 'en').split('-')[0],
       }
 
@@ -241,8 +267,8 @@ export default function SchemeResults({
   }
 
   // Pagination
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
-  const startIdx = totalCount === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE
+  const totalPages = Math.ceil(totalCount / pageSize)
+  const startIdx = totalCount === 0 ? 0 : (currentPage - 1) * pageSize
   const paginationItems = getPaginationItems(currentPage, totalPages)
 
   const handleViewDetails = (schemeId) => {
@@ -280,12 +306,22 @@ export default function SchemeResults({
 
   // No results state
   if (totalCount === 0) {
+    const hasSearch = String(filters.search || '').trim().length >= 2
+    const hasAnyFilters = (filters.sectors?.length || 0) > 0 || (filters.states?.length || 0) > 0
     return (
       <Card className="flex flex-col items-center justify-center border border-stone-200 bg-stone-50 py-14 text-center">
         <SearchX className="h-9 w-9 text-stone-500" />
-        <p className="mt-3 font-medium text-stone-700">{t('schemes.noResults', { defaultValue: 'No schemes found' })}</p>
+        <p className="mt-3 font-medium text-stone-700">
+          {hasSearch
+            ? `No results for '${filters.search}'`
+            : hasAnyFilters
+              ? 'No schemes match your filters'
+              : t('schemes.noResults', { defaultValue: 'No schemes found' })}
+        </p>
         <p className="mt-1 text-body-sm text-stone-500">
-          {t('schemes.tryAdjustingFilters', { defaultValue: 'Try adjusting your filters' })}
+          {hasSearch
+            ? 'Try different keywords'
+            : t('schemes.tryAdjustingFilters', { defaultValue: 'Try adjusting your filters' })}
         </p>
       </Card>
     )
@@ -294,7 +330,7 @@ export default function SchemeResults({
   return (
     <div>
       {/* Results Header */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+      <div ref={listTopRef} className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:gap-4">
         <div>
           <h2 className="text-h2 font-medium text-stone-900">
             {t('schemes.availableSchemes', { defaultValue: 'Available Schemes' })}
@@ -343,6 +379,7 @@ export default function SchemeResults({
           <SchemeCard
             key={scheme.id || scheme.scheme_id}
             scheme={scheme}
+            searchTerm={filters.search || ''}
             isAuthenticated={effectiveAuthenticated}
             isEligible={
               effectiveAuthenticated
@@ -405,6 +442,46 @@ export default function SchemeResults({
           >
             {t('common.next', { defaultValue: 'Next' })}
           </Button>
+
+          <div className="ml-2 flex items-center gap-2 text-body-sm text-stone-700">
+            <span>Page</span>
+            <input
+              type="number"
+              min={1}
+              max={Math.max(totalPages, 1)}
+              value={pageInput}
+              onChange={(event) => setPageInput(event.target.value)}
+              onBlur={() => {
+                const parsed = Number(pageInput)
+                if (!Number.isFinite(parsed)) {
+                  setPageInput(String(currentPage))
+                  return
+                }
+                const nextPage = Math.min(Math.max(1, Math.round(parsed)), Math.max(totalPages, 1))
+                setCurrentPage(nextPage)
+              }}
+              className="h-9 w-16 rounded-lg border border-stone-300 px-2 text-body-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+              aria-label="Go to page"
+            />
+          </div>
+
+          <div className="ml-2 flex items-center gap-2 text-body-sm text-stone-700">
+            <span>Page size</span>
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                const nextPageSize = Number(event.target.value) || ITEMS_PER_PAGE_DEFAULT
+                setPageSize(nextPageSize)
+                setCurrentPage(1)
+              }}
+              className="h-9 rounded-lg border border-stone-300 bg-white px-2 text-body-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+              aria-label="Page size"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
@@ -413,7 +490,7 @@ export default function SchemeResults({
         {totalCount > 0
           ? t('schemes.showingRange', {
               from: startIdx + 1,
-              to: Math.min(startIdx + ITEMS_PER_PAGE, totalCount),
+              to: Math.min(startIdx + pageSize, totalCount),
               total: totalCount,
               defaultValue: 'Showing {{from}}-{{to}} of {{total}}',
             })

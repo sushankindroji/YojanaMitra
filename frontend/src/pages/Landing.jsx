@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Languages, ShieldCheck, Sparkles } from 'lucide-react'
@@ -6,10 +7,61 @@ import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 
 const quickStats = [
-  { label: 'Total Schemes Indexed', value: '4,504+' },
-  { label: 'Languages Supported', value: '7' },
-  { label: 'API Endpoints', value: '26+' },
+  { label: 'Government Schemes Indexed', value: 4504, suffix: '' },
+  { label: 'Languages Supported', value: 8, suffix: '' },
+  { label: 'Service Centres Covered', value: 1200, suffix: '+' },
 ]
+
+function AnimatedCounter({ end = 0, suffix = '' }) {
+  const ref = useRef(null)
+  const [hasStarted, setHasStarted] = useState(false)
+  const [value, setValue] = useState(0)
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node || hasStarted) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return
+        setHasStarted(true)
+        observer.disconnect()
+      },
+      { threshold: 0.35 }
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasStarted])
+
+  useEffect(() => {
+    if (!hasStarted) return
+
+    let frameId = null
+    const durationMs = 900
+    const start = performance.now()
+
+    const tick = (now) => {
+      const progress = Math.min(1, (now - start) / durationMs)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setValue(Math.round(end * eased))
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(tick)
+      }
+    }
+
+    frameId = window.requestAnimationFrame(tick)
+    return () => {
+      if (frameId) window.cancelAnimationFrame(frameId)
+    }
+  }, [end, hasStarted])
+
+  return (
+    <p ref={ref} className="mt-1 text-h2 font-medium text-stone-900">
+      {value.toLocaleString('en-IN')}{suffix}
+    </p>
+  )
+}
 
 export default function Landing() {
   const { t, i18n } = useTranslation()
@@ -24,6 +76,14 @@ export default function Landing() {
       bn: 'নমস্কার',
       kn: 'ನಮಸ್ಕಾರ',
     }[language] || 'Namaste'
+
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = 'YojanaMitra — Apni Yojana, Apna Haq'
+    return () => {
+      document.title = previousTitle
+    }
+  }, [])
 
   return (
     <div className="min-h-screen pb-12">
@@ -68,24 +128,24 @@ export default function Landing() {
             <p className="relative mt-4 max-w-2xl text-body-lg text-stone-600 md:text-body-lg">
               {t('landing.heroDesc', {
                 defaultValue:
-                  'YojanaMitra maps your profile to verified central and state schemes so you can discover, compare, and apply with confidence.',
+                  'YojanaMitra helps you quickly find the government schemes you can actually use.',
               })}
             </p>
 
-            <div className="relative mt-6 flex flex-wrap gap-3">
-              <Link to="/schemes">
-                <Button variant="secondary" size="lg">
+            <div className="relative mt-6 grid gap-3 sm:flex sm:flex-wrap">
+              <Link to="/schemes" className="w-full sm:w-auto">
+                <Button variant="secondary" size="lg" className="min-h-12 w-full sm:w-auto">
                   {t('landing.browseSchemes', { defaultValue: 'Browse Schemes' })}
                 </Button>
               </Link>
-              <Link to="/register">
-                <Button size="lg">
+              <Link to="/register" className="w-full sm:w-auto">
+                <Button size="lg" className="min-h-12 w-full sm:w-auto">
                   {t('landing.getStarted', { defaultValue: 'Get Started' })}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link to="/login">
-                <Button variant="secondary" size="lg">
+              <Link to="/login" className="w-full sm:w-auto">
+                <Button variant="ghost" size="lg" className="min-h-12 w-full border border-stone-300 bg-white sm:w-auto">
                   {t('landing.alreadyMember', { defaultValue: 'I already have an account' })}
                 </Button>
               </Link>
@@ -95,15 +155,15 @@ export default function Landing() {
           <div className="space-y-4">
             <Card variant="elevated" className="!bg-blue-950 !text-white border-blue-900">
               <p className="mb-1 text-label font-medium text-blue-100">Trust & Security</p>
-              <h2 className="text-h3 font-medium">Built for citizen-first privacy and transparent eligibility checks.</h2>
+              <h2 className="text-h3 font-medium">Your details stay protected, and you always see why a scheme matches.</h2>
               <ul className="mt-4 space-y-2 text-body-sm text-blue-50">
                 <li className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4" />
-                  Encrypted document processing pipeline
+                  We keep your documents secure
                 </li>
                 <li className="flex items-center gap-2">
                   <Languages className="h-4 w-4" />
-                  Multilingual interface and explainers
+                  You can use the app in your preferred language
                 </li>
               </ul>
             </Card>
@@ -112,7 +172,7 @@ export default function Landing() {
               {quickStats.map((stat) => (
                 <Card key={stat.label} className="p-4">
                   <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{stat.label}</p>
-                  <p className="mt-1 text-h2 font-medium text-stone-900">{stat.value}</p>
+                  <AnimatedCounter end={stat.value} suffix={stat.suffix} />
                 </Card>
               ))}
             </div>

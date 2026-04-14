@@ -4,6 +4,7 @@ Save, track, and manage scheme applications.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import json
 
 from app.dependencies import get_db, get_current_user
@@ -117,9 +118,15 @@ async def get_applications(
     total = query.count()
     applications = query.order_by(SavedApplication.saved_at.desc()).offset(offset).limit(limit).all()
 
+    scheme_ids = [app.scheme_id for app in applications]
+    scheme_map = {
+        scheme.id: scheme
+        for scheme in db.query(Scheme).filter(Scheme.id.in_(scheme_ids)).all()
+    } if scheme_ids else {}
+
     result = []
     for app in applications:
-        scheme = db.query(Scheme).filter(Scheme.id == app.scheme_id).first()
+        scheme = scheme_map.get(app.scheme_id)
         result.append(_to_application_response(app, scheme))
     
     return ApplicationListResponse(total=total, applications=result)
@@ -143,13 +150,15 @@ async def get_application_stats(
         "total_rejected": query.filter(SavedApplication.status == "rejected").count(),
     }
 
-    # Calculate total benefit value of submitted applications
-    submitted_apps = query.filter(SavedApplication.status == "submitted").all()
-    total_benefit = 0
-    for app in submitted_apps:
-        scheme = db.query(Scheme).filter(Scheme.id == app.scheme_id).first()
-        if scheme and scheme.benefit_amount:
-            total_benefit += scheme.benefit_amount
+    total_benefit = (
+        db.query(func.coalesce(func.sum(Scheme.benefit_amount), 0))
+        .join(SavedApplication, Scheme.id == SavedApplication.scheme_id)
+        .filter(
+            SavedApplication.user_id == current_user.id,
+            SavedApplication.status == "submitted",
+        )
+        .scalar()
+    ) or 0
 
     stats["total_benefit_value"] = total_benefit
 

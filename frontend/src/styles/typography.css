@@ -14,7 +14,7 @@
   /* UI labels */
   --text-label: 0.8125rem;   /* 13px - form labels, helper text, card metadata */
   --text-caption: 0.75rem;   /* 12px - timestamps, footnotes, badges */
-  --text-micro: 0.6875rem;   /* 11px - ALL CAPS section labels only */
+  --text-micro: 0.75rem;    /* 12px - ALL CAPS section labels only */
 
   /* Font weights */
   --font-regular: 400;       /* body text, descriptions, secondary info */
