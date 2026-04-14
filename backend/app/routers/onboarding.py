@@ -1,15 +1,16 @@
 """Onboarding router for document-first profile construction."""
-from __future__ import annotations
-
 import json
 from datetime import datetime
 from typing import Any, Dict, Tuple
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.agents.agent_orchestrator import clear_cached_pipeline_result, run_full_eligibility_pipeline
 from app.agents.job_store import create_job, get_latest_job, update_job
+from app.config import settings
+from app.core.rate_limiter import limiter, get_rate_limit
+from app.core.upload_security import validate_upload
 from app.database import SessionLocal
 from app.dependencies import get_current_user, get_db
 from app.models import Document, Profile, User
@@ -20,16 +21,6 @@ from app.services.storage_service import storage_service
 
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
-
-ALLOWED_CONTENT_TYPES = {
-    "image/jpeg",
-    "image/png",
-    "image/jpg",
-    "image/webp",
-    "application/pdf",
-}
-
-MAX_FILE_SIZE = 50 * 1024 * 1024
 
 INCOME_EVIDENCE_DOC_TYPES = {"income_certificate", "income_declaration_manual"}
 
@@ -357,14 +348,6 @@ def _apply_document_to_profile(profile: Profile, doc_type: str, data: Dict[str, 
             profile.age = age
 
 
-def _validate_upload(file: UploadFile, file_bytes: bytes) -> None:
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPG, PNG, WEBP, or PDF files are allowed")
-
-    if len(file_bytes) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 50MB)")
-
-
 async def _run_pipeline_job(job_id: str, user_id: str) -> None:
     db = SessionLocal()
     try:
@@ -437,22 +420,23 @@ async def onboarding_status(
 
 
 @router.post("/upload-aadhaar")
+@limiter.limit(get_rate_limit("upload"))
 async def upload_aadhaar(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    file_bytes = await file.read()
-    _validate_upload(file, file_bytes)
+    file_bytes, safe_filename = await validate_upload(file, max_size_mb=settings.MAX_UPLOAD_SIZE_MB)
 
     result = ocr_service.extract_document(file_bytes, "aadhaar")
 
     try:
-        storage_path = await storage_service.save_file(file_bytes, file.filename, current_user.id)
+        storage_path = await storage_service.save_file(file_bytes, safe_filename, current_user.id)
         doc = Document(
             user_id=current_user.id,
             doc_type="aadhaar",
-            file_name=file.filename,
+            file_name=safe_filename,
             storage_path=storage_path,
             extraction_status="completed" if result["status"] == "completed" else "failed",
             extracted_data=json.dumps(result.get("data", {})),
@@ -531,7 +515,9 @@ async def confirm_aadhaar(
 
 
 @router.post("/upload-document")
+@limiter.limit(get_rate_limit("upload"))
 async def upload_optional_document(
+    request: Request,
     file: UploadFile = File(...),
     doc_type: str = Form(...),
     current_user: User = Depends(get_current_user),
@@ -541,17 +527,16 @@ async def upload_optional_document(
     if normalized_doc_type == "aadhaar":
         raise HTTPException(status_code=400, detail="Use /upload-aadhaar for Aadhaar uploads")
 
-    file_bytes = await file.read()
-    _validate_upload(file, file_bytes)
+    file_bytes, safe_filename = await validate_upload(file, max_size_mb=settings.MAX_UPLOAD_SIZE_MB)
 
     result = ocr_service.extract_document(file_bytes, normalized_doc_type)
 
     try:
-        storage_path = await storage_service.save_file(file_bytes, file.filename, current_user.id)
+        storage_path = await storage_service.save_file(file_bytes, safe_filename, current_user.id)
         doc = Document(
             user_id=current_user.id,
             doc_type=normalized_doc_type,
-            file_name=file.filename,
+            file_name=safe_filename,
             storage_path=storage_path,
             extraction_status="completed" if result["status"] == "completed" else "failed",
             extracted_data=json.dumps(result.get("data", {})),

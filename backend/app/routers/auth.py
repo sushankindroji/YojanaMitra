@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
-@limiter.limit(get_rate_limit("auth"))
+@limiter.limit(get_rate_limit("register"))
 async def register(request: Request, user_data: UserRegister, db: Session = Depends(get_db)):
     """Register a new user."""
     # Check if user already exists
@@ -62,7 +62,7 @@ async def register(request: Request, user_data: UserRegister, db: Session = Depe
 
 
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit(get_rate_limit("auth"))
+@limiter.limit(get_rate_limit("login"))
 async def login(request: Request, credentials: UserLogin, db: Session = Depends(get_db)):
     """Login user with email/phone and password."""
     try:

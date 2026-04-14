@@ -1,16 +1,41 @@
-"""
-FastAPI dependencies.
-"""
-from datetime import datetime
-import uuid
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.core.security import verify_token
-from app.models import User, Profile
+"""FastAPI dependency providers and auth guards."""
 
+from datetime import datetime
+import logging
+import uuid
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.database import SessionLocal
+from app.models import Profile, User
+
+logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
+
+
+def get_db():
+    """Yield a DB session with rollback-on-error semantics."""
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception as exc:
+        db.rollback()
+        logger.error("Database dependency error: %s", exc)
+        raise
+    finally:
+        db.close()
+
+
+def verify_token(token: str) -> dict | None:
+    """Decode JWT token payload and return None when invalid/expired."""
+    try:
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return None
 
 
 def _ensure_profile_and_flags(db: Session, user: User) -> User:
@@ -42,87 +67,71 @@ def _ensure_profile_and_flags(db: Session, user: User) -> User:
     return user
 
 
-async def get_current_user(
+def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User:
-    """Get current authenticated user from JWT token."""
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    """Resolve the currently authenticated user from bearer token."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Session expired. Please sign in again.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
-    token = credentials.credentials
-    payload = verify_token(token)
-    
+    if credentials is None:
+        raise credentials_exception
+
+    payload = verify_token(credentials.credentials)
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
+        raise credentials_exception
+
     user_id = payload.get("sub")
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
+    if not user_id:
+        raise credentials_exception
+
     user = db.query(User).filter(User.id == user_id).first()
-    if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if user is None or int(user.is_active or 0) != 1:
+        raise credentials_exception
 
     try:
         return _ensure_profile_and_flags(db, user)
-    except Exception:
+    except Exception as exc:
         db.rollback()
+        logger.exception("Could not prepare profile flags for user_id=%s: %s", user_id, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Could not prepare user profile state",
         )
 
 
-async def get_admin_user(
-    current_user: User = Depends(get_current_user),
-) -> User:
-    """Ensure user has admin role."""
+def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """Ensure currently authenticated user has admin privileges."""
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            detail="Admin access required.",
         )
     return current_user
 
 
-# ✅ OPTIONAL AUTH FIXED PROPERLY
-async def get_current_user_optional(
+def get_current_user_optional(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User | None:
-    """Get current user if authenticated, otherwise None."""
+    """Resolve user when token is present and valid; otherwise return None."""
     if credentials is None:
         return None
-    
-    token = credentials.credentials
-    payload = verify_token(token)
-    
+
+    payload = verify_token(credentials.credentials)
     if payload is None:
         return None
-    
+
     user_id = payload.get("sub")
-    if user_id is None:
+    if not user_id:
         return None
-    
+
     user = db.query(User).filter(User.id == user_id).first()
-    if user is None or not user.is_active:
+    if user is None or int(user.is_active or 0) != 1:
         return None
 
     try:

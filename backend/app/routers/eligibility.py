@@ -1,13 +1,13 @@
 """Eligibility router with multi-agent pipeline and backward-compatible endpoints."""
-from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.agents.agent_orchestrator import get_cached_pipeline_result, run_full_eligibility_pipeline
 from app.agents.job_store import create_job, get_job, update_job
+from app.core.rate_limiter import limiter, get_rate_limit
 from app.database import SessionLocal
 from app.dependencies import get_current_user, get_db
 from app.models import User
@@ -71,7 +71,9 @@ def _to_compat_result(result: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.post("/run")
+@limiter.limit(get_rate_limit("eligibility_run"))
 async def run_eligibility_job(
+    request: Request,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
 ):

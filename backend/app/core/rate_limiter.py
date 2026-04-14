@@ -13,10 +13,13 @@ limiter = Limiter(
 
 # Rate limit policies
 RATE_LIMIT_POLICIES = {
-    "auth": "5/minute",           # Strict limit for auth endpoints
-    "upload": "10/hour",          # Document upload limit
-    "search": "30/minute",        # Search queries
-    "default": "100/hour",        # Default rate limit
+    "register": "5/minute",
+    "login": "10/minute",
+    "auth": "10/minute",
+    "upload": "20/minute",
+    "eligibility_run": "5/minute",
+    "search": "30/minute",
+    "default": "100/hour",
 }
 
 

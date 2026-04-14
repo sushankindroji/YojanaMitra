@@ -5,7 +5,7 @@
  * Uses stored role when available and falls back to /auth/me for stale sessions
  */
 
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useEffect, useMemo, useState } from 'react'
 import authService from '../../services/authService'
@@ -26,7 +26,9 @@ function getRoleFromStoredUser() {
 }
 
 export default function ProtectedAdminRoute({ children }) {
+  const location = useLocation()
   const token = useAuthStore((state) => state.accessToken)
+  const refreshToken = useAuthStore((state) => state.refreshToken)
   const userRole = useAuthStore((state) => state.userRole)
   const setUserRole = useAuthStore((state) => state.setUserRole)
   const setTokens = useAuthStore((state) => state.setTokens)
@@ -63,8 +65,10 @@ export default function ProtectedAdminRoute({ children }) {
   )
 
   const effectiveToken = token || (hasStoredToken ? localStorage.getItem('access_token') : null)
+  const effectiveRefreshToken = refreshToken || (hasStoredToken ? localStorage.getItem('refresh_token') : null)
   const effectiveRole = userRole || persistedRole
-  const needsRoleResolution = Boolean(effectiveToken) && !effectiveRole
+  const hasValidSession = isValidToken(effectiveToken) && isValidToken(effectiveRefreshToken)
+  const needsRoleResolution = hasValidSession && !effectiveRole
 
   useEffect(() => {
     if (!effectiveToken) return
@@ -109,8 +113,8 @@ export default function ProtectedAdminRoute({ children }) {
     return <LoadingSpinner />
   }
 
-  if (!effectiveToken) {
-    return <Navigate to="/login" replace />
+  if (!hasValidSession) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
   }
 
   if (isCheckingRole || needsRoleResolution) {

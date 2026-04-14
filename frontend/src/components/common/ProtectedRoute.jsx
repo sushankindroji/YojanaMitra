@@ -7,26 +7,38 @@ const isValidToken = (value) =>
 
 export default function ProtectedRoute({ children }) {
   const location = useLocation()
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const refreshToken = useAuthStore((state) => state.refreshToken)
   const setTokens = useAuthStore((state) => state.setTokens)
   const [isLoading, setIsLoading] = useState(true)
-  const [hasToken, setHasToken] = useState(false)
+  const [hasSession, setHasSession] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    const refreshToken = localStorage.getItem('refresh_token')
+    const token = accessToken || localStorage.getItem('access_token')
+    const storedRefreshToken = refreshToken || localStorage.getItem('refresh_token')
     const userRole = localStorage.getItem('user_role')
     const userId = localStorage.getItem('user_id')
-    
-    if (isValidToken(token) && isValidToken(refreshToken)) {
-      setTokens(token, refreshToken, userRole, userId)
-      setHasToken(true)
+    const onboardingIncomplete = localStorage.getItem('onboarding_incomplete')
+
+    if (isValidToken(token) && isValidToken(storedRefreshToken)) {
+      setTokens(
+        token,
+        storedRefreshToken,
+        userRole,
+        userId,
+        onboardingIncomplete === null ? null : onboardingIncomplete === 'true'
+      )
+      setHasSession(true)
     } else {
-      setHasToken(false)
+      setHasSession(false)
     }
+
     setIsLoading(false)
-  }, [setTokens])
+  }, [accessToken, refreshToken, setTokens])
 
   if (isLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>
 
-  return hasToken ? children : <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+  return hasSession
+    ? children
+    : <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
 }

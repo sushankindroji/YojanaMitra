@@ -1,19 +1,29 @@
-"""
-Application configuration and settings.
-"""
+"""Application configuration and settings."""
+
 import json
+import logging
 import platform
+import sys
 from typing import List, Optional
+
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_DEV_SECRET = "dev-only-secret-change-me"
-_PROD_SECRET_PLACEHOLDER = "generate-with-openssl-rand-hex-32"
+logger = logging.getLogger(__name__)
 
 if platform.system() == "Windows":
     _DEFAULT_TESSERACT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 else:
     _DEFAULT_TESSERACT = "/usr/bin/tesseract"
+
+_INSECURE_SECRET_VALUES = {
+    "secret",
+    "changeme",
+    "your-secret-key",
+    "mysecret",
+    "dev-only-secret-change-me",
+    "generate-with-openssl-rand-hex-32",
+}
 
 
 class Settings(BaseSettings):
@@ -34,44 +44,45 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_TYPE: str = "postgresql"
-    DATABASE_URL: str = "postgresql://postgres:root@localhost:5432/yojanamitra"
+    DATABASE_URL: str
 
     # Pooling
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_TIMEOUT: int = 30
-    DB_POOL_RECYCLE: int = 1800
+    DB_POOL_RECYCLE: int = 3600
     DB_ECHO: bool = False
 
     # JWT
-    SECRET_KEY: str = _DEV_SECRET
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # API
-    API_BASE_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:5173"
-    ALLOWED_ORIGINS: str = "http://localhost:5173"
+    API_BASE_URL: str = ""
+    FRONTEND_URL: str = ""
+    ALLOWED_ORIGINS: str = "http://127.0.0.1:5173"
 
     # AI Services
-    GEMINI_API_KEY: Optional[str] = None
-    BHASHINI_USER_ID: Optional[str] = None
-    BHASHINI_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = ""
+    BHASHINI_USER_ID: Optional[str] = ""
+    BHASHINI_API_KEY: Optional[str] = ""
 
     # Encryption
-    ENCRYPTION_KEY: Optional[str] = None
+    ENCRYPTION_KEY: Optional[str] = ""
 
     # Email
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
-    SMTP_USER: Optional[str] = None
-    SMTP_PASSWORD: Optional[str] = None
+    SMTP_USER: Optional[str] = ""
+    SMTP_PASSWORD: Optional[str] = ""
     FROM_EMAIL: str = "noreply@yojanamitra.in"
 
     # File Storage
     UPLOAD_DIR: str = "uploads"
-    MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024
+    MAX_UPLOAD_SIZE_MB: int = 10
+    MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
 
     # OCR
     TESSERACT_PATH: str = _DEFAULT_TESSERACT
@@ -83,16 +94,51 @@ class Settings(BaseSettings):
     RATE_LIMIT_REQUESTS: int = 100
     RATE_LIMIT_PERIOD: int = 3600
 
+    # Cache
+    REDIS_URL: str = ""
+
     @field_validator("ENVIRONMENT")
     @classmethod
     def normalize_environment(cls, value: str) -> str:
-        return value.strip().lower()
+        return (value or "development").strip().lower()
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, value: str) -> str:
+        candidate = (value or "").strip()
+        if len(candidate) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters")
+        if candidate.lower() in _INSECURE_SECRET_VALUES:
+            raise ValueError(
+                "SECRET_KEY is insecure/default. Generate with: openssl rand -hex 32"
+            )
+        return candidate
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def validate_database_url(cls, value: str) -> str:
+        candidate = (value or "").strip()
+        if not candidate:
+            raise ValueError("DATABASE_URL is not set")
+        return candidate
+
+    @model_validator(mode="after")
+    def finalize_validations(self):
+        self.MAX_UPLOAD_SIZE = int(max(self.MAX_UPLOAD_SIZE_MB, 1) * 1024 * 1024)
+
+        if self.is_production and self.DEBUG:
+            raise ValueError("DEBUG must be false in production")
+
+        if self.is_production and "localhost" in (self.DATABASE_URL or "").lower():
+            logger.warning("DATABASE_URL points to localhost in production environment")
+
+        return self
 
     @property
-    def cors_allowed_origins(self) -> List[str]:
+    def allowed_origins_list(self) -> List[str]:
         raw_value = (self.ALLOWED_ORIGINS or "").strip()
         if not raw_value:
-            return ["http://localhost:5173"]
+            return []
 
         if raw_value.startswith("["):
             try:
@@ -100,44 +146,22 @@ class Settings(BaseSettings):
                 if isinstance(parsed, list):
                     return [str(origin).strip() for origin in parsed if str(origin).strip()]
             except Exception:
-                pass
+                return []
 
         return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+
+    @property
+    def cors_allowed_origins(self) -> List[str]:
+        return self.allowed_origins_list
 
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
 
-    @model_validator(mode="after")
-    def validate_production_required_settings(self):
-        if not self.is_production:
-            return self
 
-        missing = []
-        if not self.DATABASE_URL:
-            missing.append("DATABASE_URL")
-
-        if not self.SECRET_KEY:
-            missing.append("SECRET_KEY")
-        else:
-            lowered_secret = self.SECRET_KEY.lower()
-            if "generate-with" in lowered_secret or len(self.SECRET_KEY) < 32:
-                raise ValueError(
-                    "Invalid production SECRET_KEY: must be at least 32 characters and must not contain placeholder text"
-                )
-
-        if not self.ENCRYPTION_KEY:
-            missing.append("ENCRYPTION_KEY")
-
-        if missing:
-            raise ValueError(
-                "Missing required production environment variables: " + ", ".join(missing)
-            )
-
-        if self.DEBUG:
-            raise ValueError("DEBUG must be false in production")
-
-        return self
-
-
-settings = Settings()
+try:
+    settings = Settings()
+except Exception as exc:
+    logger.critical("Configuration error: %s", exc)
+    logger.critical("Copy backend/.env.example to backend/.env and provide required values")
+    sys.exit(1)

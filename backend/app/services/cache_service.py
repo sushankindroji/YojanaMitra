@@ -23,9 +23,10 @@ class CacheService:
         # Redis caching is intentionally disabled in this project.
         self.enabled = False
         self.client = None
-        if self.enabled and REDIS_AVAILABLE:
+        redis_url = str(getattr(settings, "REDIS_URL", "") or "").strip()
+        if self.enabled and REDIS_AVAILABLE and redis_url:
             try:
-                self.client = redis.from_url("redis://localhost:6379/0", decode_responses=True)
+                self.client = redis.from_url(redis_url, decode_responses=True)
                 self.client.ping()
                 logger.info("Redis cache connected")
             except Exception as e:

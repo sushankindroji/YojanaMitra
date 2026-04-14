@@ -2,10 +2,12 @@
 Documents router - upload, OCR, extraction, download.
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body, BackgroundTasks, Response
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body, BackgroundTasks, Response, Request
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.dependencies import get_current_user, get_db
+from app.core.rate_limiter import limiter, get_rate_limit
+from app.core.upload_security import validate_upload
 from app.models import User, Document, Profile
 from app.services.storage_service import storage_service
 from app.services.ocr_service import ocr_service
@@ -20,9 +22,6 @@ import uuid
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-# Max 50MB per file
-MAX_FILE_SIZE = settings.MAX_UPLOAD_SIZE
 
 DOC_TYPE_ALLOWED_FIELDS = {
     "aadhaar": {
@@ -409,7 +408,9 @@ def _apply_profile_patch(profile: Profile, patch: dict):
 
 
 @router.post("/upload")
+@limiter.limit(get_rate_limit("upload"))
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     doc_type: str = Form(None),
     background_tasks: BackgroundTasks = None,
@@ -417,26 +418,11 @@ async def upload_document(
     db: Session = Depends(get_db),
 ):
     """Upload a document and trigger async OCR processing."""
-    allowed_content_types = {
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "application/pdf",
-    }
-    if not file.content_type or (
-        not file.content_type.startswith("image/")
-        and file.content_type not in allowed_content_types
-    ):
-        raise HTTPException(status_code=400, detail="Only JPG, PNG, WEBP, or PDF files are allowed")
-
-    # Read file
-    file_bytes = await file.read()
-    if len(file_bytes) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 50MB)")
+    file_bytes, safe_filename = await validate_upload(file, max_size_mb=settings.MAX_UPLOAD_SIZE_MB)
 
     try:
         # Save file (encrypted)
-        storage_path = await storage_service.save_file(file_bytes, file.filename, current_user.id)
+        storage_path = await storage_service.save_file(file_bytes, safe_filename, current_user.id)
         normalized_doc_type = _normalize_doc_type(doc_type)
 
         # Create document record
@@ -444,7 +430,7 @@ async def upload_document(
             id=str(uuid.uuid4()),
             user_id=current_user.id,
             doc_type=normalized_doc_type,
-            file_name=file.filename,
+            file_name=safe_filename,
             storage_path=storage_path,
             extraction_status="pending",
         )
@@ -470,7 +456,7 @@ async def upload_document(
         "doc_id": doc.id,
         "status": "uploading",
         "message": "Document uploaded. Processing OCR...",
-        "filename": file.filename,
+        "filename": safe_filename,
     }
 
 

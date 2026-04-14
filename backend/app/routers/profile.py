@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.dependencies import get_current_user, get_db
+from app.core.sanitizers import sanitize_profile
 from app.models import User, Profile
 from app.schemas.profile import ProfileUpdate, ProfileResponse, ProfileCompleteness
 from app.core.audit import log_audit
@@ -28,7 +29,7 @@ async def get_profile(
     sync_profile_aliases(profile)
     completeness_pct, _, _, _ = calculate_profile_completeness(profile)
     profile.profile_complete_pct = completeness_pct
-    return profile
+    return ProfileResponse(**sanitize_profile(profile))
 
 
 @router.put("/", response_model=ProfileResponse)
@@ -60,7 +61,7 @@ async def update_profile(
 
         log_audit(db, "profile_update", "profile", profile.id, current_user.id)
 
-        return profile
+        return ProfileResponse(**sanitize_profile(profile))
     except HTTPException:
         raise
     except Exception:
@@ -150,7 +151,7 @@ async def update_optional_questions(
 
         log_audit(db, "profile_optional_questions", "profile", profile.id, current_user.id)
 
-        return {"message": "Optional questions updated", "profile": ProfileResponse.from_orm(profile)}
+        return {"message": "Optional questions updated", "profile": ProfileResponse(**sanitize_profile(profile))}
     except HTTPException:
         raise
     except Exception:

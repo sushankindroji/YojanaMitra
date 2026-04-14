@@ -41,6 +41,9 @@ const AdminShell = () => (
   </ProtectedAdminRoute>
 )
 
+const isValidToken = (value) =>
+  typeof value === 'string' && value.trim().length > 0 && value !== 'undefined' && value !== 'null'
+
 function App() {
   const setTokens = useAuthStore((state) => state.setTokens)
 
@@ -50,9 +53,15 @@ function App() {
     const userRole = localStorage.getItem('user_role')
     const userId = localStorage.getItem('user_id')
     const onboardingIncomplete = localStorage.getItem('onboarding_incomplete')
-    
-    if (token && refreshToken) {
-      setTokens(token, refreshToken, userRole, userId, onboardingIncomplete === null ? null : onboardingIncomplete === 'true')
+
+    if (isValidToken(token) && isValidToken(refreshToken)) {
+      setTokens(
+        token,
+        refreshToken,
+        userRole,
+        userId,
+        onboardingIncomplete === null ? null : onboardingIncomplete === 'true'
+      )
     }
   }, [setTokens])
 

@@ -1,7 +1,7 @@
 const normalizeApiBaseUrl = (rawValue) => {
 	const value = (rawValue || '').trim()
 	if (!value) {
-		return '/api/v1'
+		return ''
 	}
 
 	const stripped = value.replace(/\/+$/, '')
@@ -9,25 +9,7 @@ const normalizeApiBaseUrl = (rawValue) => {
 		return stripped
 	}
 
-	if (stripped === '/api' || stripped.startsWith('/api/')) {
-		return '/api/v1'
-	}
-
 	return `${stripped}/api/v1`
-}
-
-const getFallbackApiBaseUrl = () => {
-	if (typeof window === 'undefined') {
-		return '/api/v1'
-	}
-
-	const host = window.location.hostname
-	if (host === 'localhost' || host === '127.0.0.1') {
-		return '/api/v1'
-	}
-
-	// Production fallback for hosted frontend when env vars are missing.
-	return 'https://yojanamitra-backend.onrender.com/api/v1'
 }
 
 const runtimeBaseUrl =
@@ -36,5 +18,9 @@ const runtimeBaseUrl =
 		: undefined
 
 export const API_BASE_URL = normalizeApiBaseUrl(
-	runtimeBaseUrl || import.meta.env.VITE_API_BASE_URL || getFallbackApiBaseUrl()
+	runtimeBaseUrl || import.meta.env.VITE_API_BASE_URL
 )
+
+if (!API_BASE_URL) {
+	console.error('VITE_API_BASE_URL is not set. Copy frontend/.env.example to frontend/.env')
+}
