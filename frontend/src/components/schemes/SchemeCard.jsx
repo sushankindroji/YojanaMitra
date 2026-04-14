@@ -18,33 +18,91 @@ import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
 
-export default function SchemeCard({ scheme, isEligible = true, onViewDetails }) {
+export default function SchemeCard({ scheme, isEligible = null, onViewDetails, isAuthenticated }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
   const { addApplication } = useApplicationStore()
-  const isLoggedIn = Boolean(localStorage.getItem('access_token'))
+  const isLoggedIn = typeof isAuthenticated === 'boolean'
+    ? isAuthenticated
+    : Boolean(localStorage.getItem('access_token'))
   const schemeId = scheme.id || scheme.scheme_id
   const schemeName = scheme.name || scheme.name_en || scheme.scheme_name || t('schemes.schemeLabel', { defaultValue: 'Scheme' })
   const schemeDescription = scheme.description || scheme.description_en || ''
-  const benefitAmount = Number(scheme.benefit_amount || 0)
-  const rawScore = Number(scheme.eligibility_percentage ?? scheme.eligibility_score ?? 0)
-  const eligibilityPercentage = rawScore > 0 && rawScore <= 1 ? Math.round(rawScore * 100) : Math.round(rawScore)
+  const rawBenefitAmount = scheme.benefit_amount
+  const parsedBenefitAmount = Number(rawBenefitAmount)
+  const benefitAmount = Number.isFinite(parsedBenefitAmount) ? parsedBenefitAmount : null
+  const scoreCandidate = scheme.eligibility_percentage ?? scheme.eligibility_score
+  const hasEligibilityScore = scoreCandidate !== undefined && scoreCandidate !== null && scoreCandidate !== ''
+  const rawScore = hasEligibilityScore ? Number(scoreCandidate) : 0
+  const normalizedRawScore = Number.isFinite(rawScore) ? rawScore : 0
+  const eligibilityPercentage = normalizedRawScore > 0 && normalizedRawScore <= 1
+    ? Math.round(normalizedRawScore * 100)
+    : Math.round(normalizedRawScore)
   const officialPortalUrl = scheme.official_portal_url || scheme.official_website
-  const conditionResults = Array.isArray(scheme.condition_results)
-    ? scheme.condition_results
-    : typeof scheme.condition_results === 'string'
-      ? (() => {
-          try {
-            return JSON.parse(scheme.condition_results)
-          } catch {
-            return []
-          }
-        })()
+
+  const normalizedConditionPayload = (() => {
+    if (Array.isArray(scheme.condition_results)) {
+      return { list: scheme.condition_results }
+    }
+
+    if (typeof scheme.condition_results === 'string') {
+      try {
+        const parsed = JSON.parse(scheme.condition_results)
+        return typeof parsed === 'object' && parsed !== null ? parsed : { list: [] }
+      } catch {
+        return { list: [] }
+      }
+    }
+
+    if (typeof scheme.condition_results === 'object' && scheme.condition_results !== null) {
+      return scheme.condition_results
+    }
+
+    return { list: [] }
+  })()
+
+  const conditionResults = (() => {
+    if (Array.isArray(normalizedConditionPayload.list)) {
+      return normalizedConditionPayload.list
+    }
+
+    const matched = Array.isArray(normalizedConditionPayload.matched_conditions)
+      ? normalizedConditionPayload.matched_conditions
+      : []
+    const failed = Array.isArray(normalizedConditionPayload.failed_conditions)
+      ? normalizedConditionPayload.failed_conditions
+      : []
+    const unknown = Array.isArray(normalizedConditionPayload.unknown_conditions)
+      ? normalizedConditionPayload.unknown_conditions
       : []
 
-  const eligibilityTone = isEligible ? 'success' : 'warning'
+    const toLabel = (value) => String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase())
+
+    return [
+      ...matched.map((field) => ({ status: 'PASS', label_en: toLabel(field), is_mandatory: true })),
+      ...failed.map((field) => ({ status: 'FAIL', label_en: toLabel(field), is_mandatory: true })),
+      ...unknown.map((field) => ({ status: 'UNKNOWN', label_en: toLabel(field), is_mandatory: false })),
+    ]
+  })()
+
+  const fallbackCriteriaConditions = Array.isArray(scheme.eligibility_criteria_list)
+    ? scheme.eligibility_criteria_list
+        .filter((criterion) => criterion && (criterion.label || criterion.value))
+        .map((criterion) => ({
+          status: 'UNKNOWN',
+          label_en: criterion.value
+            ? `${criterion.label || 'Condition'}: ${criterion.value}`
+            : criterion.label || 'Condition',
+          is_mandatory: true,
+        }))
+    : []
+
+  const displayConditionResults = conditionResults.length > 0 ? conditionResults : fallbackCriteriaConditions
+
+  const eligibilityKnown = typeof isEligible === 'boolean'
+  const eligibilityTone = !eligibilityKnown ? 'neutral' : isEligible ? 'success' : 'warning'
 
   const handleApplyClick = () => {
     if (onViewDetails) {
@@ -77,7 +135,26 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
 
   // Format benefit amount
   const formatAmount = (amount) => {
-    if (!amount) return t('common.na', { defaultValue: 'N/A' })
+    if (!Number.isFinite(amount) || amount <= 0) {
+      const normalizedState = String(scheme.state || '').trim().toLowerCase()
+      const normalizedMode = String(scheme.application_mode || '').trim().toLowerCase()
+      const isCentralMultiState =
+        normalizedState.includes('central') ||
+        normalizedState.includes('all india') ||
+        normalizedState.includes('pan india') ||
+        normalizedState.includes('national')
+
+      if (isCentralMultiState) {
+        return t('schemes.amountVariesByState', { defaultValue: 'Varies by state' })
+      }
+
+      if (normalizedMode.includes('department')) {
+        return t('schemes.amountContactDepartment', { defaultValue: 'Contact department' })
+      }
+
+      return t('schemes.amountNotSpecified', { defaultValue: 'Not specified' })
+    }
+
     const rs = t('common.currencyRs', { defaultValue: 'Rs' })
     if (amount >= 100000) return `${rs} ${(amount / 100000).toFixed(1)}L+`
     return `${rs} ${amount.toLocaleString()}`
@@ -95,13 +172,23 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
           <p className="mt-3 text-body-sm leading-relaxed text-stone-600">{schemeDescription || t('schemes.noDescription', { defaultValue: 'No description available.' })}</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {isEligible ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <ShieldAlert className="h-5 w-5 text-amber-600" />}
-          <Badge variant={eligibilityTone}>{isEligible ? t('schemes.eligible', { defaultValue: 'Eligible' }) : t('schemes.partiallyEligible', { defaultValue: 'Partially Eligible' })}</Badge>
-        </div>
+        {isLoggedIn ? (
+          <div className="flex items-center gap-2">
+            {eligibilityKnown && isEligible
+              ? <CheckCircle2 className="h-5 w-5 text-green-600" />
+              : <ShieldAlert className={`h-5 w-5 ${eligibilityKnown ? 'text-amber-600' : 'text-stone-500'}`} />}
+            <Badge variant={eligibilityTone}>
+              {!eligibilityKnown
+                ? t('schemes.eligibilityPending', { defaultValue: 'Checking eligibility' })
+                : isEligible
+                  ? t('schemes.eligible', { defaultValue: 'Eligible' })
+                  : t('schemes.partiallyEligible', { defaultValue: 'Partially Eligible' })}
+            </Badge>
+          </div>
+        ) : null}
       </div>
 
-      <div className="mt-4 grid gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`mt-4 grid gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3 ${isLoggedIn ? 'sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-3'}`}>
         <div>
           <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{t('schemes.benefitAmount', { defaultValue: 'Benefit Amount' })}</p>
           <p className="mt-1 flex items-center gap-1 text-body-sm font-medium text-stone-900">
@@ -120,78 +207,98 @@ export default function SchemeCard({ scheme, isEligible = true, onViewDetails })
           <p className="mt-1 text-body-sm font-medium text-stone-800">{scheme.benefit_frequency || t('schemes.oneTime', { defaultValue: 'One-time' })}</p>
         </div>
 
-        <div>
-          <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{t('schemes.matchScore', { defaultValue: 'Match Score' })}</p>
-          <p className="mt-1 text-body-sm font-medium text-green-700">{eligibilityPercentage || 100}%</p>
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          className="inline-flex items-center gap-2 text-body-sm font-medium text-orange-700 hover:text-orange-800"
-        >
-          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          {t('schemes.eligibilityDetails', { defaultValue: 'Eligibility Details' })}
-        </button>
-
-        {expanded ? (
-          <div className="mt-3 space-y-2 rounded-lg border border-stone-200 bg-white p-3">
-            {conditionResults.length > 0 ? (
-              conditionResults.map((condition, idx) => {
-                const passed = condition.status === 'PASS'
-                return (
-                  <div key={idx} className="flex items-start gap-2 text-body-sm">
-                    <span
-                      className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-caption font-medium text-white ${
-                        passed ? 'bg-green-600' : 'bg-amber-600'
-                      }`}
-                    >
-                      {passed ? 'Y' : 'N'}
-                    </span>
-                    <div>
-                      <p className={passed ? 'text-green-800' : 'text-amber-800'}>{condition.label_en || condition.field}</p>
-                      {condition.is_mandatory ? (
-                        <p className="text-caption text-stone-500">{t('schemes.mandatoryRequirement', { defaultValue: 'Mandatory requirement' })}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                )
-              })
-            ) : (
-              <p className="text-body-sm text-stone-500">{t('schemes.noConditions', { defaultValue: 'No specific conditions available.' })}</p>
-            )}
+        {isLoggedIn ? (
+          <div>
+            <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{t('schemes.matchScore', { defaultValue: 'Match Score' })}</p>
+            <p className="mt-1 text-body-sm font-medium text-green-700">
+              {hasEligibilityScore
+                ? `${eligibilityPercentage}%`
+                : t('schemes.matchScorePending', { defaultValue: 'Computing...' })}
+            </p>
           </div>
         ) : null}
       </div>
 
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-        <Button className="flex-1" onClick={handleApplyClick}>
+      {isLoggedIn ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="inline-flex items-center gap-2 text-body-sm font-medium text-orange-700 hover:text-orange-800"
+          >
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {t('schemes.eligibilityDetails', { defaultValue: 'Eligibility Details' })}
+          </button>
+
+          {expanded ? (
+            <div className="mt-3 space-y-2 rounded-lg border border-stone-200 bg-white p-3">
+              {displayConditionResults.length > 0 ? (
+                displayConditionResults.map((condition, idx) => {
+                  const status = String(condition.status || '').toUpperCase()
+                  const passed = status === 'PASS'
+                  const unknown = status === 'UNKNOWN'
+                  return (
+                    <div key={idx} className="flex items-start gap-2 text-body-sm">
+                      <span
+                        className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-caption font-medium text-white ${
+                          passed ? 'bg-green-600' : unknown ? 'bg-stone-500' : 'bg-amber-600'
+                        }`}
+                      >
+                        {passed ? 'Y' : unknown ? '?' : 'N'}
+                      </span>
+                      <div>
+                        <p className={passed ? 'text-green-800' : unknown ? 'text-stone-700' : 'text-amber-800'}>
+                          {condition.label_en || condition.label || condition.field}
+                        </p>
+                        {condition.is_mandatory ? (
+                          <p className="text-caption text-stone-500">{t('schemes.mandatoryRequirement', { defaultValue: 'Mandatory requirement' })}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <p className="text-body-sm text-stone-500">{t('schemes.noConditions', { defaultValue: 'No specific conditions available.' })}</p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className={`mt-5 gap-2 ${isLoggedIn ? 'flex flex-col sm:flex-row' : 'grid grid-cols-2'}`}>
+        <Button className={isLoggedIn ? 'flex-1' : 'w-full'} onClick={handleApplyClick}>
           {t('common.viewDetails', { defaultValue: 'View Details' })}
           <ExternalLink className="h-4 w-4" />
         </Button>
 
-        <Button variant="ghost" className="flex-1" onClick={handleSaveApplication} loading={saving}>
-          <BookmarkPlus className="h-4 w-4" />
-          {saving
-            ? t('common.saving', { defaultValue: 'Saving...' })
-            : isLoggedIn
-              ? t('schemes.saveScheme', { defaultValue: 'Save Scheme' })
-              : t('schemes.loginToSave', { defaultValue: 'Login to Save' })}
-        </Button>
+        {isLoggedIn ? (
+          <Button variant="ghost" className="flex-1" onClick={handleSaveApplication} loading={saving}>
+            <BookmarkPlus className="h-4 w-4" />
+            {saving
+              ? t('common.saving', { defaultValue: 'Saving...' })
+              : t('schemes.saveScheme', { defaultValue: 'Save Scheme' })}
+          </Button>
+        ) : null}
 
         {officialPortalUrl ? (
           <a
             href={officialPortalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-10 min-w-[6rem] flex-1 items-center justify-center gap-2 rounded-full bg-green-700 px-4 text-body-sm font-medium text-white transition-all duration-150 hover:bg-green-800"
+            className={`inline-flex h-10 min-w-[6rem] items-center justify-center gap-2 rounded-full bg-green-700 px-4 text-body-sm font-medium text-white transition-all duration-150 hover:bg-green-800 ${isLoggedIn ? 'flex-1' : 'w-full'}`}
           >
             {t('schemes.officialPortal', { defaultValue: 'Official Portal' })}
             <ExternalLink className="h-4 w-4" />
           </a>
-        ) : null}
+        ) : (
+          <button
+            type="button"
+            disabled
+            className={`inline-flex h-10 min-w-[6rem] items-center justify-center gap-2 rounded-full bg-stone-200 px-4 text-body-sm font-medium text-stone-500 ${isLoggedIn ? 'flex-1' : 'w-full'}`}
+          >
+            {t('schemes.officialPortal', { defaultValue: 'Official Portal' })}
+          </button>
+        )}
       </div>
 
       <p className="mt-3 text-caption text-stone-500">

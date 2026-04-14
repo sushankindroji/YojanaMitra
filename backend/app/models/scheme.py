@@ -1,11 +1,15 @@
 """
 Scheme model.
 """
-from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Index
+from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Index, Boolean, JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
 import uuid
+
+
+JSON_FIELD = JSON().with_variant(JSONB(astext_type=Text()), "postgresql")
 
 
 class Scheme(Base):
@@ -50,12 +54,14 @@ class Scheme(Base):
     
     # Rules & Requirements
     eligibility_rules = Column(Text, nullable=True)  # JSON string
-    required_documents = Column(Text, nullable=True)  # JSON string
-    application_steps = Column(Text, nullable=True)  # JSON string
+    required_documents = Column(JSON_FIELD, nullable=True)
+    application_steps = Column(JSON_FIELD, nullable=True)
     
     # Application
     application_mode = Column(String, nullable=True)  # Online, Offline, Both
     official_portal_url = Column(String, nullable=True)
+    state_portal_url = Column(String(500), nullable=True)
+    myscheme_fallback = Column(Boolean, default=False)
     application_deadline = Column(String, nullable=True)
     
     # Dates
@@ -63,7 +69,21 @@ class Scheme(Base):
     scheme_end_date = Column(String, nullable=True)
     
     # Details
-    target_beneficiaries = Column(String, nullable=True)
+    full_description = Column(Text, nullable=True)
+    benefits_description = Column(Text, nullable=True)
+    target_beneficiaries = Column(Text, nullable=True)
+    helpline_number = Column(String(30), nullable=True)
+    helpline_hours = Column(String(100), nullable=True)
+    alternate_helpline = Column(String(30), nullable=True)
+    csc_applicable = Column(Boolean, default=True)
+    bank_applicable = Column(Boolean, default=False)
+    gram_panchayat_applicable = Column(Boolean, default=False)
+    processing_time = Column(String(100), nullable=True)
+    validity_period = Column(String(100), nullable=True)
+    scheme_tags = Column(JSON_FIELD, nullable=True)
+    faq = Column(JSON_FIELD, nullable=True)
+    last_date = Column(String(100), nullable=True)
+    language_notes = Column(Text, nullable=True)
     
     # Status
     is_active = Column(Integer, default=1)

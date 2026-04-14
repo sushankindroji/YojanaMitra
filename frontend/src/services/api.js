@@ -2,13 +2,18 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 import { API_BASE_URL } from './constants'
 
-const api = axios.create({
+const baseApiConfig = {
   baseURL: API_BASE_URL,
   timeout: 30000,  // Increased from 10s to 30s (bcrypt is slow)
   headers: {
     'Content-Type': 'application/json',
   },
-})
+}
+
+const api = axios.create(baseApiConfig)
+
+// Public client without auth interceptors for guest browsing.
+const publicApi = axios.create(baseApiConfig)
 
 const clearAuthStorage = () => {
   localStorage.removeItem('access_token')
@@ -84,9 +89,29 @@ api.interceptors.response.use(
       })
     }
 
+    if (status === 422) {
+      toast.error('Some fields are invalid. Please review and try again.', {
+        toastId: 'api-validation-error',
+      })
+    }
+
+    if (status === 429) {
+      const retryAfter = error.response?.data?.retry_after
+      const suffix = retryAfter ? ` Please retry in ${retryAfter}s.` : ''
+      toast.error(`Too many requests.${suffix}`, {
+        toastId: 'api-rate-limit',
+      })
+    }
+
     if (status >= 500) {
       toast.error('Server error. Please try again in a moment.', {
         toastId: 'api-server-error',
+      })
+    }
+
+    if (!error.response) {
+      toast.error('Network error. Please check your internet connection.', {
+        toastId: 'api-network-error',
       })
     }
 
@@ -95,3 +120,4 @@ api.interceptors.response.use(
 )
 
 export default api
+export { publicApi }

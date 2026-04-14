@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 
@@ -11,7 +11,7 @@ LATEST_JOB_BY_USER: Dict[str, str] = {}
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
 def create_job(user_id: str, stage: str = "queued") -> str:

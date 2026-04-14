@@ -73,6 +73,11 @@ export default function Landing() {
             </p>
 
             <div className="relative mt-6 flex flex-wrap gap-3">
+              <Link to="/schemes">
+                <Button variant="secondary" size="lg">
+                  {t('landing.browseSchemes', { defaultValue: 'Browse Schemes' })}
+                </Button>
+              </Link>
               <Link to="/register">
                 <Button size="lg">
                   {t('landing.getStarted', { defaultValue: 'Get Started' })}

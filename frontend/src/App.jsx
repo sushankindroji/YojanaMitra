@@ -126,6 +126,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/eligibility" element={<Eligibility />} />
             <Route path="/applications" element={<Applications />} />
+            <Route path="/documents" element={<UploadDocuments />} />
             <Route path="/upload" element={<UploadDocuments />} />
           </Route>
 

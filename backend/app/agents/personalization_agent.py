@@ -1,7 +1,7 @@
 """Personalization agent to build user-specific dashboard payloads."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from app.services.profile_completeness import calculate_profile_completeness
@@ -130,7 +130,7 @@ class PersonalizationAgent:
             },
             "featured_schemes": top_3,
             "sector_breakdown": sector_breakdown,
-            "last_checked": last_checked or datetime.utcnow().isoformat(),
+            "last_checked": last_checked or datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         }
 
         return payload

@@ -1,53 +1,95 @@
-// frontend/src/pages/SchemeDetail.jsx
-/**
- * SchemeDetail - Full scheme details page
- * Features:
- * - Display complete scheme information
- * - Show eligibility conditions & summary
- * - Application guide steps
- * - "How to Apply" button
- * - Related schemes
- */
-
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import {
   AlertCircle,
   ArrowLeft,
-  Award,
   CheckCircle2,
   Circle,
   ExternalLink,
-  FileWarning,
+  HelpCircle,
   Loader,
   MapPin,
-  ShieldCheck,
-  Zap,
+  PhoneCall,
+  Square,
+  XCircle,
 } from 'lucide-react'
-import EligibilityBadges from '../components/schemes/EligibilityBadges'
-import EligibilitySummary from '../components/schemes/EligibilitySummary'
-import schemeService from '../services/schemeService'
+
 import applicationService from '../services/applicationService'
-import Badge from '../components/ui/Badge'
+import schemeService from '../services/schemeService'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import PageHeader from '../components/ui/PageHeader'
 import Skeleton from '../components/ui/Skeleton'
 
+const DEFAULT_CSC_NAME = 'CSC / Jan Seva Kendra'
+
+const statusStyle = {
+  met: {
+    icon: CheckCircle2,
+    rowClass: 'border-emerald-200 bg-emerald-50',
+    textClass: 'text-emerald-900',
+    label: 'You meet this',
+  },
+  not_met: {
+    icon: XCircle,
+    rowClass: 'border-rose-200 bg-rose-50',
+    textClass: 'text-rose-900',
+    label: 'You do not meet this',
+  },
+  unknown: {
+    icon: HelpCircle,
+    rowClass: 'border-amber-200 bg-amber-50',
+    textClass: 'text-amber-900',
+    label: 'We need more details',
+  },
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function formatCurrencyINR(amount) {
+  const numeric = Number(amount || 0)
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return 'Varies by state'
+  }
+  return `₹${Math.round(numeric).toLocaleString('en-IN')}`
+}
+
+function derivePaymentMethod(benefitType) {
+  const text = normalizeText(benefitType)
+  if (text.includes('cash') || text.includes('bank')) return 'Direct bank transfer'
+  if (text.includes('subsid')) return 'Reimbursement'
+  if (text.includes('free') || text.includes('service') || text.includes('training')) return 'In kind'
+  return 'Direct bank transfer'
+}
+
+function safeText(value, fallback) {
+  const text = String(value || '').trim()
+  return text || fallback
+}
+
 export default function SchemeDetail() {
   const { t, i18n } = useTranslation()
-  const params = useParams()
   const navigate = useNavigate()
+  const params = useParams()
 
   const [scheme, setScheme] = useState(null)
-  const [eligibility, setEligibility] = useState(null)
+  const [eligibilityData, setEligibilityData] = useState(null)
   const [applyInfo, setApplyInfo] = useState(null)
-  const [isApplyInfoLoading, setIsApplyInfoLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isApplyInfoLoading, setIsApplyInfoLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('overview') // overview, eligibility, howToApply
+  const [activeTab, setActiveTab] = useState('overview')
+
+  const authToken = localStorage.getItem('access_token')
+  const isLoggedIn = Boolean(authToken)
+  const schemeId = params.schemeId || params.id
 
   const tabs = [
     { id: 'overview', label: t('schemes.tabOverview', { defaultValue: 'Overview' }) },
@@ -55,53 +97,65 @@ export default function SchemeDetail() {
     { id: 'howToApply', label: t('schemes.tabHowToApply', { defaultValue: 'How to Apply' }) },
   ]
 
-  // Fetch scheme details
   useEffect(() => {
-    const schemeId = params.schemeId || params.id
     if (!schemeId) return
 
-    const fetchSchemeDetails = async () => {
+    const fetchDetails = async () => {
       try {
         setIsLoading(true)
         setIsApplyInfoLoading(true)
         setError(null)
-        setEligibility(null)
-        setApplyInfo(null)
+
+        const fetchWithOptionalToken = async (withTokenRequest, publicRequest) => {
+          if (!authToken) {
+            return publicRequest()
+          }
+
+          try {
+            return await withTokenRequest(authToken)
+          } catch (requestError) {
+            const status = requestError?.response?.status
+            if ([401, 403].includes(status)) {
+              return publicRequest()
+            }
+            throw requestError
+          }
+        }
 
         const languageCode = (i18n?.resolvedLanguage || i18n?.language || 'en').split('-')[0]
-
-        // Fetch scheme details
-        const schemeResponse = await schemeService.getSchemeDetail(schemeId, { lang: languageCode })
+        const schemeResponse = await schemeService.getPublicSchemeDetail(schemeId, { lang: languageCode })
         setScheme(schemeResponse.data)
 
-        try {
-          const applyInfoResponse = await schemeService.getApplyInfo(schemeId)
-          if (applyInfoResponse?.data) {
-            setApplyInfo(applyInfoResponse.data)
-          }
-        } catch (applyInfoError) {
-          const status = applyInfoError?.response?.status
+        const [applyResult, eligibilityResult] = await Promise.allSettled([
+          fetchWithOptionalToken(
+            (token) => schemeService.getPublicApplyInfo(schemeId, undefined, token),
+            () => schemeService.getPublicApplyInfo(schemeId)
+          ),
+          fetchWithOptionalToken(
+            (token) => schemeService.getPublicSchemeEligibility(schemeId, token),
+            () => schemeService.getPublicSchemeEligibility(schemeId)
+          ),
+        ])
+
+        if (applyResult.status === 'fulfilled') {
+          setApplyInfo(applyResult.value?.data || null)
+        } else {
+          const status = applyResult.reason?.response?.status
           if (![401, 403, 404].includes(status)) {
-            console.warn('Error fetching application info:', applyInfoError)
+            console.warn('Failed to load apply info', applyResult.reason)
           }
-        } finally {
-          setIsApplyInfoLoading(false)
         }
 
-        // Eligibility is optional here. Many schemes may not have computed eligibility yet.
-        try {
-          const eligibilityResponse = await schemeService.getSchemeEligibility?.(schemeId)
-          if (eligibilityResponse?.data) {
-            setEligibility(eligibilityResponse.data)
-          }
-        } catch (eligibilityError) {
-          const status = eligibilityError?.response?.status
+        if (eligibilityResult.status === 'fulfilled') {
+          setEligibilityData(eligibilityResult.value?.data || null)
+        } else {
+          const status = eligibilityResult.reason?.response?.status
           if (![401, 403, 404].includes(status)) {
-            console.warn('Error fetching scheme eligibility:', eligibilityError)
+            console.warn('Failed to load eligibility data', eligibilityResult.reason)
           }
         }
-      } catch (err) {
-        console.error('Error fetching scheme details:', err)
+      } catch (fetchError) {
+        console.error('Error loading scheme detail', fetchError)
         setError(t('schemes.fetchError', { defaultValue: 'Failed to load scheme details' }))
       } finally {
         setIsLoading(false)
@@ -109,16 +163,93 @@ export default function SchemeDetail() {
       }
     }
 
-    fetchSchemeDetails()
-  }, [i18n?.language, i18n?.resolvedLanguage, params.id, params.schemeId, t])
+    fetchDetails()
+  }, [authToken, schemeId, i18n?.language, i18n?.resolvedLanguage, t])
+
+  const schemeName = scheme?.name || scheme?.name_en || t('schemes.schemeLabel', { defaultValue: 'Scheme' })
+  const overviewDescription =
+    safeText(scheme?.full_description, '') ||
+    safeText(scheme?.description, '') ||
+    safeText(scheme?.description_en, 'Information not available. Please call the helpline or visit your nearest service centre.')
+
+  const officialPortalUrl =
+    applyInfo?.portal_url ||
+    scheme?.official_portal_url ||
+    scheme?.state_portal_url ||
+    null
+
+  const localCscName = safeText(applyInfo?.local_csc_name || scheme?.state_service_center, DEFAULT_CSC_NAME)
+  const requiredDocuments = Array.isArray(applyInfo?.required_documents) ? applyInfo.required_documents : []
+  const faqItems = Array.isArray(applyInfo?.faq) ? applyInfo.faq : Array.isArray(scheme?.faq) ? scheme.faq : []
+
+  const documentsUserHasSet = useMemo(() => {
+    const docs = Array.isArray(applyInfo?.documents_user_has) ? applyInfo.documents_user_has : []
+    return new Set(docs.map((doc) => normalizeText(doc)))
+  }, [applyInfo?.documents_user_has])
+
+  const eligibilityCriteria =
+    eligibilityData?.criteria ||
+    scheme?.eligibility_criteria_list ||
+    []
+
+  const eligibilityConditions =
+    eligibilityData?.conditions ||
+    eligibilityCriteria.map((item) => ({
+      key: item.key,
+      label: item.label,
+      value: item.value,
+      status: 'unknown',
+    }))
+
+  const criteriaUnavailable =
+    eligibilityData?.criteria_unavailable ||
+    eligibilityCriteria.length === 0
+
+  const userResult = eligibilityData?.user_result || {}
+  const metCount = Number.isFinite(userResult?.met_count)
+    ? userResult.met_count
+    : eligibilityConditions.filter((item) => item.status === 'met').length
+  const totalCount = Number.isFinite(userResult?.total_count)
+    ? userResult.total_count
+    : eligibilityConditions.length
+  const unmetCriteria = Array.isArray(userResult?.unmet_criteria) ? userResult.unmet_criteria : []
+  const actionHints = Array.isArray(userResult?.action_hints) ? userResult.action_hints : []
+
+  const whatYouGet = {
+    amount: formatCurrencyINR(scheme?.benefit_amount),
+    type: safeText(scheme?.benefit_type, 'Cash support / free service (as per scheme rules)'),
+    frequency: safeText(scheme?.benefit_frequency, 'As per scheme schedule'),
+    paymentMethod: derivePaymentMethod(scheme?.benefit_type),
+  }
+
+  const keyDetails = [
+    {
+      label: 'Scheme level',
+      value:
+        safeText(scheme?.state, '').toLowerCase() === 'central'
+          ? 'Central scheme'
+          : safeText(scheme?.state, 'Central / State as per scheme') + ' scheme',
+    },
+    { label: 'Ministry', value: safeText(scheme?.ministry, 'Relevant government department') },
+    {
+      label: 'Last date to apply',
+      value: safeText(scheme?.last_date || scheme?.application_deadline, 'No deadline - apply anytime'),
+    },
+    {
+      label: 'Processing time',
+      value: safeText(scheme?.processing_time || applyInfo?.processing_time, 'Usually 15-30 working days'),
+    },
+    {
+      label: 'Validity',
+      value: safeText(scheme?.validity_period || applyInfo?.validity_period, 'As per scheme guidelines'),
+    },
+  ]
 
   const handleApply = () => {
     if (!isLoggedIn) {
       navigate(`/login?next=/schemes/${scheme?.id || scheme?.scheme_id}`)
       return
     }
-
-    // Navigate to application with scheme ID
     navigate(`/apply/${scheme?.id || scheme?.scheme_id}`)
   }
 
@@ -130,9 +261,9 @@ export default function SchemeDetail() {
 
     try {
       await applicationService.saveApplication(scheme?.id || scheme?.scheme_id)
-      toast.success(t('schemes.saved') || 'Scheme saved to your favorites')
-    } catch (error) {
-      toast.error(t('schemes.saveError') || 'Failed to save scheme')
+      toast.success(t('schemes.saved', { defaultValue: 'Scheme saved to your list.' }))
+    } catch {
+      toast.error(t('schemes.saveError', { defaultValue: 'Could not save this scheme right now.' }))
     }
   }
 
@@ -141,7 +272,6 @@ export default function SchemeDetail() {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -149,7 +279,7 @@ export default function SchemeDetail() {
         <Skeleton className="h-56 rounded-2xl" />
         <div className="flex items-center justify-center gap-2 text-body-sm text-stone-500">
           <Loader className="h-4 w-4 animate-spin" />
-          {t('common.loading')}
+          {t('common.loading', { defaultValue: 'Loading' })}
         </div>
       </div>
     )
@@ -169,20 +299,11 @@ export default function SchemeDetail() {
     )
   }
 
-  const schemeName = scheme.name || scheme.name_en || t('schemes.schemeLabel', { defaultValue: 'Scheme' })
-  const schemeDescription = scheme.description || scheme.description_en
-  const isLoggedIn = Boolean(localStorage.getItem('access_token'))
-  const requiredDocuments = applyInfo?.required_documents || []
-  const documentsUserHas = applyInfo?.documents_user_has || []
-  const documentsUserMissing = applyInfo?.documents_user_missing || []
-  const normalizedDocumentsUserHas = new Set(documentsUserHas.map((doc) => String(doc).toLowerCase()))
-  const isReadyToApply = Boolean(applyInfo?.is_ready_to_apply) || documentsUserMissing.length === 0
-
   return (
     <div className="space-y-5">
       <PageHeader
         title={schemeName}
-        description={schemeDescription || t('schemes.detailDescriptionFallback', { defaultValue: 'Detailed scheme information and eligibility guidance.' })}
+        description={safeText(scheme?.description || scheme?.description_en, 'Government scheme details in simple language.')}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="ghost" onClick={() => navigate('/schemes')}>
@@ -195,9 +316,7 @@ export default function SchemeDetail() {
                 : t('schemes.loginToSave', { defaultValue: 'Login to Save' })}
             </Button>
             <Button onClick={handleApply}>
-              {isLoggedIn
-                ? t('schemes.applyNow', { defaultValue: 'Apply Now' })
-                : t('schemes.checkEligibilityLogin', { defaultValue: 'Check Eligibility (Login)' })}
+              {isLoggedIn ? t('schemes.applyNow', { defaultValue: 'Apply Now' }) : 'Sign in to apply'}
               <ExternalLink className="h-4 w-4" />
             </Button>
           </div>
@@ -207,7 +326,7 @@ export default function SchemeDetail() {
       {!isLoggedIn ? (
         <Card className="border border-blue-200 bg-blue-50">
           <p className="text-body-sm font-medium text-blue-900">
-            {t('schemes.publicBrowseNotice', { defaultValue: 'You are browsing as a guest. Sign in to save schemes, check personalized eligibility, and start applications.' })}
+            You are viewing as a guest. Sign in to see if you personally qualify and to track your documents.
           </p>
           <div className="mt-3">
             <Button variant="secondary" onClick={() => navigate(`/login?next=/schemes/${scheme?.id || scheme?.scheme_id}`)}>
@@ -217,33 +336,9 @@ export default function SchemeDetail() {
         </Card>
       ) : null}
 
-      <Card className="border border-stone-200">
-        <div className="flex flex-wrap gap-2">
-          {scheme.sector ? (
-            <Badge variant="info">
-              <Zap className="h-3.5 w-3.5" />
-              {scheme.sector}
-            </Badge>
-          ) : null}
-          {scheme.state ? (
-            <Badge variant="success">
-              <MapPin className="h-3.5 w-3.5" />
-              {scheme.state}
-            </Badge>
-          ) : null}
-          {scheme.benefit_amount ? (
-            <Badge variant="warning">
-              <Award className="h-3.5 w-3.5" />
-              {(scheme.currency || 'Rs') + ' ' + scheme.benefit_amount}
-            </Badge>
-          ) : null}
-          {scheme.ministry ? <Badge variant="neutral">{t('schemes.ministry', { defaultValue: 'Ministry' })}: {scheme.ministry}</Badge> : null}
-        </div>
-      </Card>
-
       <Card className="border border-stone-200 p-0">
         <div className="border-b border-stone-200 px-2">
-          <div className="flex flex-wrap gap-1 p-2" role="tablist" aria-label={t('schemes.detailTabsAria', { defaultValue: 'Scheme detail tabs' })}>
+          <div className="flex flex-wrap gap-1 p-2" role="tablist" aria-label="Scheme detail tabs">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -252,9 +347,7 @@ export default function SchemeDetail() {
                 aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`rounded-lg px-4 py-2 text-body-sm font-medium transition ${
-                  activeTab === tab.id
-                    ? 'bg-orange-600 text-white'
-                    : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                  activeTab === tab.id ? 'bg-orange-600 text-white' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
                 }`}
               >
                 {tab.label}
@@ -265,90 +358,149 @@ export default function SchemeDetail() {
 
         <div className="p-5">
           {activeTab === 'overview' ? (
-            <div className="space-y-5">
-              {schemeDescription ? (
-                <div>
-                  <h2 className="text-h3 font-medium text-stone-900">{t('schemes.aboutScheme', { defaultValue: 'About This Scheme' })}</h2>
-                  <p className="mt-2 whitespace-pre-line text-body-sm leading-relaxed text-stone-700">{schemeDescription}</p>
-                </div>
-              ) : null}
+            <div className="space-y-6">
+              <section>
+                <h2 className="text-h3 font-medium text-stone-900">About this scheme</h2>
+                <p className="mt-2 whitespace-pre-line text-body-sm leading-relaxed text-stone-700">
+                  {overviewDescription}
+                </p>
+              </section>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {scheme.eligibility_criteria ? (
-                  <Card className="h-full border border-stone-200 bg-stone-50">
-                    <h3 className="font-medium text-stone-900">{t('schemes.eligibilityCriteria', { defaultValue: 'Eligibility Criteria' })}</h3>
-                    <p className="mt-2 whitespace-pre-line text-body-sm text-stone-700">{scheme.eligibility_criteria}</p>
-                  </Card>
-                ) : null}
-
-                {scheme.benefits ? (
-                  <Card className="h-full border border-stone-200 bg-stone-50">
-                    <h3 className="font-medium text-stone-900">{t('schemes.benefits', { defaultValue: 'Benefits' })}</h3>
-                    <p className="mt-2 whitespace-pre-line text-body-sm text-stone-700">{scheme.benefits}</p>
-                  </Card>
-                ) : null}
-              </div>
-
-              {scheme.application_deadline ? (
-                <Card className="border border-amber-200 bg-amber-50">
-                  <p className="text-body-sm font-medium text-amber-900">{t('schemes.deadline', { defaultValue: 'Deadline' })}: {scheme.application_deadline}</p>
+              <section>
+                <h2 className="text-h3 font-medium text-stone-900">What you will get</h2>
+                <Card className="mt-3 border border-emerald-200 bg-emerald-50">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <p className="text-body-sm text-emerald-900"><span className="font-medium">Benefit amount:</span> {whatYouGet.amount}</p>
+                    <p className="text-body-sm text-emerald-900"><span className="font-medium">Benefit type:</span> {whatYouGet.type}</p>
+                    <p className="text-body-sm text-emerald-900"><span className="font-medium">Frequency:</span> {whatYouGet.frequency}</p>
+                    <p className="text-body-sm text-emerald-900"><span className="font-medium">Payment method:</span> {whatYouGet.paymentMethod}</p>
+                  </div>
+                  {safeText(scheme?.benefits_description, '') ? (
+                    <p className="mt-3 text-body-sm text-emerald-900/90">{scheme.benefits_description}</p>
+                  ) : null}
                 </Card>
-              ) : null}
+              </section>
+
+              <section>
+                <h2 className="text-h3 font-medium text-stone-900">Who is this for</h2>
+                <p className="mt-2 text-body-sm text-stone-700">
+                  {safeText(scheme?.target_beneficiaries, 'This scheme is for eligible families as per government rules.')}
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-h3 font-medium text-stone-900">Key details</h2>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {keyDetails.map((item) => (
+                    <div key={item.label} className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
+                      <p className="text-caption uppercase tracking-wider text-stone-500">{item.label}</p>
+                      <p className="mt-1 text-body-sm font-medium text-stone-900">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
           ) : null}
 
           {activeTab === 'eligibility' ? (
-            <div className="space-y-6">
-              {eligibility?.conditions && eligibility.conditions.length > 0 ? (
-                <>
-                  <EligibilityBadges conditions={eligibility.conditions} title={t('schemes.yourEligibilityStatus', { defaultValue: 'Your Eligibility Status' })} />
-                  <EligibilitySummary
-                    explanation={eligibility.explanation}
-                    explanationUserLang={eligibility.explanation_user_lang}
-                    missingDocuments={eligibility.missing_documents}
-                    eligibilityPercentage={eligibility.eligibility_percentage}
-                  />
-                </>
-              ) : (
-                <div className="flex flex-col items-center py-8 text-center">
-                  <AlertCircle className="h-10 w-10 text-stone-400" />
-                  <p className="mt-3 text-body-sm text-stone-600">
-                    {eligibility
-                      ? t('schemes.eligibilityNotAvailable', { defaultValue: 'Eligibility information not available' })
-                      : t('schemes.unableDetermineEligibility', { defaultValue: 'Unable to determine eligibility' })}
+            <div className="space-y-5">
+              <h2 className="text-h3 font-medium text-stone-900">Who can apply for this scheme?</h2>
+
+              {criteriaUnavailable ? (
+                <Card className="border border-amber-200 bg-amber-50">
+                  <p className="text-body-sm text-amber-900">
+                    Eligibility criteria for this scheme are not available in our database yet. Please visit the official portal or your nearest CSC / Jan Seva Kendra for details.
                   </p>
-                </div>
-              )}
+                  <p className="mt-2 text-body-sm font-medium text-amber-900">
+                    Helpline: {safeText(applyInfo?.helpline || scheme?.helpline_number, '1800-11-0001')}
+                  </p>
+                </Card>
+              ) : null}
+
+              {!criteriaUnavailable && !isLoggedIn ? (
+                <Card className="border border-stone-200">
+                  <div className="space-y-3">
+                    {eligibilityCriteria.map((item) => (
+                      <p key={item.key} className="text-body-sm text-stone-700">
+                        <span className="mr-2 font-medium text-emerald-700">✓</span>
+                        <span className="font-medium">{item.label}:</span> {item.value}
+                      </p>
+                    ))}
+                  </div>
+                  <div className="mt-5">
+                    <Button onClick={() => navigate(`/login?next=/schemes/${scheme?.id || scheme?.scheme_id}`)}>
+                      Sign in to check if YOU are eligible
+                    </Button>
+                  </div>
+                </Card>
+              ) : null}
+
+              {!criteriaUnavailable && isLoggedIn ? (
+                <>
+                  <div className="space-y-3">
+                    {eligibilityConditions.map((condition) => {
+                      const tone = statusStyle[condition.status] || statusStyle.unknown
+                      const Icon = tone.icon
+                      return (
+                        <div key={`${condition.key}-${condition.label}`} className={`rounded-lg border px-4 py-3 ${tone.rowClass}`}>
+                          <div className="flex items-start gap-2">
+                            <Icon className={`mt-0.5 h-5 w-5 ${tone.textClass}`} />
+                            <div className="min-w-0">
+                              <p className={`text-body-sm font-medium ${tone.textClass}`}>
+                                {condition.label}: {condition.value}
+                              </p>
+                              <p className={`text-caption ${tone.textClass}`}>{tone.label}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <Card className="border border-blue-200 bg-blue-50">
+                    <p className="text-body-sm font-medium text-blue-900">You meet {metCount} out of {totalCount} criteria</p>
+
+                    {unmetCriteria.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-body-sm text-blue-900"><span className="font-medium">You are missing:</span> {unmetCriteria.join(', ')}</p>
+                        {actionHints.length > 0 ? (
+                          <div>
+                            <p className="text-body-sm font-medium text-blue-900">How to qualify:</p>
+                            <ul className="mt-1 space-y-1">
+                              {actionHints.map((hint) => (
+                                <li key={hint} className="text-body-sm text-blue-900">- {hint}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </Card>
+                </>
+              ) : null}
             </div>
           ) : null}
 
           {activeTab === 'howToApply' ? (
             <div className="space-y-5">
               <Card className="border border-blue-200 bg-blue-50">
-                <h2 className="text-h3 font-medium text-blue-900">{t('schemes.tabHowToApply', { defaultValue: 'How to Apply' })}</h2>
+                <h2 className="text-h3 font-medium text-blue-900">How to apply</h2>
                 <p className="mt-2 text-body-sm text-blue-900/90">
-                  {t('schemes.applyGuidanceIntro', { defaultValue: 'Use the official portal whenever possible. If online application is unavailable, visit your nearest CSC.' })}
+                  Visit your nearest <span className="font-medium">{localCscName}</span> if you need help.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    onClick={() => openPortalLink(applyInfo?.portal_url)}
-                    disabled={!applyInfo?.portal_url || isApplyInfoLoading}
-                  >
-                    {t('schemes.applyOnOfficialPortal', { defaultValue: 'Apply on Official Portal' })}
+                  <Button onClick={() => openPortalLink(officialPortalUrl)} disabled={!officialPortalUrl || isApplyInfoLoading}>
+                    Apply on Official Portal
                     <ExternalLink className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => openPortalLink(applyInfo?.csc_url)}
-                    disabled={!applyInfo?.csc_url || isApplyInfoLoading}
-                  >
-                    {t('schemes.findNearestCsc', { defaultValue: 'Find Nearest CSC' })}
+                  <Button variant="secondary" onClick={() => openPortalLink(applyInfo?.csc_url)} disabled={!applyInfo?.csc_url || isApplyInfoLoading}>
+                    Find nearest {localCscName}
                     <MapPin className="h-4 w-4" />
                   </Button>
                 </div>
-                {!isLoggedIn ? (
-                  <p className="mt-3 text-body-sm text-blue-900/80">
-                    {t('schemes.signInForReadiness', { defaultValue: 'Sign in to see personalized document readiness and eligibility context.' })}
+                {applyInfo?.myscheme_fallback ? (
+                  <p className="mt-3 text-body-sm text-blue-900/90">
+                    Information not available for direct portal - please call helpline or visit your nearest {localCscName}.
                   </p>
                 ) : null}
               </Card>
@@ -356,97 +508,109 @@ export default function SchemeDetail() {
               {isApplyInfoLoading ? (
                 <div className="flex items-center gap-2 text-body-sm text-stone-600">
                   <Loader className="h-4 w-4 animate-spin" />
-                  {t('schemes.preparingGuidance', { defaultValue: 'Preparing application guidance...' })}
+                  Preparing scheme-specific application steps...
                 </div>
               ) : null}
 
-              {isLoggedIn && !isApplyInfoLoading ? (
-                <Card className={isReadyToApply ? 'border border-emerald-200 bg-emerald-50' : 'border border-amber-200 bg-amber-50'}>
-                  <div className="flex items-start gap-3">
-                    {isReadyToApply ? (
-                      <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-700" />
-                    ) : (
-                      <FileWarning className="mt-0.5 h-5 w-5 text-amber-700" />
-                    )}
-                    <div>
-                      <p className={isReadyToApply ? 'text-body-sm font-medium text-emerald-900' : 'text-body-sm font-medium text-amber-900'}>
-                        {isReadyToApply
-                          ? t('schemes.readyToApply', { defaultValue: 'You are ready to apply for this scheme.' })
-                          : t('schemes.docsStillMissing', { defaultValue: 'Some required documents are still missing.' })}
-                      </p>
-                      {!isReadyToApply ? (
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span className="text-body-sm text-amber-900">
-                            {t('schemes.missingLabel', { defaultValue: 'Missing' })}: {documentsUserMissing.join(', ')}
-                          </span>
-                          <Button variant="ghost" onClick={() => navigate('/upload')}>
-                            {t('dashboard.uploadDocuments', { defaultValue: 'Upload Documents' })}
-                          </Button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </Card>
-              ) : null}
-
               <Card className="border border-stone-200">
-                <h3 className="font-medium text-stone-900">{t('schemes.stepByStep', { defaultValue: 'Step-by-Step Instructions' })}</h3>
-                {applyInfo?.steps?.length > 0 ? (
-                  <ol className="mt-3 space-y-3">
+                <h3 className="font-medium text-stone-900">Step-by-step application process</h3>
+                {Array.isArray(applyInfo?.steps) && applyInfo.steps.length > 0 ? (
+                  <div className="mt-3 space-y-3">
                     {applyInfo.steps.map((step, index) => (
-                      <li key={`${step}-${index}`} className="flex items-start gap-3">
-                        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-100 text-body-sm font-medium text-orange-700">
-                          {index + 1}
-                        </span>
-                        <p className="text-body-sm text-stone-700">{step}</p>
-                      </li>
+                      <div key={`${step}-${index}`} className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
+                        <p className="text-body-sm font-medium text-orange-700">Step {index + 1}</p>
+                        <p className="mt-1 text-body-sm text-stone-700">{step}</p>
+                      </div>
                     ))}
-                  </ol>
-                ) : scheme.application_procedure ? (
-                  <p className="mt-2 whitespace-pre-line text-body-sm leading-relaxed text-stone-700">
-                    {scheme.application_procedure}
-                  </p>
+                  </div>
                 ) : (
-                  <p className="mt-2 text-body-sm text-stone-600">{t('schemes.stepsUpdating', { defaultValue: 'Application steps are being updated.' })}</p>
+                  <p className="mt-2 text-body-sm text-stone-700">
+                    Information not available - please call {safeText(applyInfo?.helpline, '1800-11-0001')} or visit your nearest {localCscName}.
+                  </p>
                 )}
               </Card>
 
               <Card className="border border-stone-200">
-                <h3 className="font-medium text-stone-900">{t('schemes.requiredDocuments', { defaultValue: 'Required Documents' })}</h3>
+                <h3 className="font-medium text-stone-900">Documents you will need</h3>
                 {requiredDocuments.length > 0 ? (
                   <div className="mt-3 space-y-2">
                     {requiredDocuments.map((doc) => {
-                      const normalizedDoc = String(doc).toLowerCase()
-                      const hasDoc = normalizedDocumentsUserHas.has(normalizedDoc)
+                      const normalizedDoc = normalizeText(doc)
+                      const hasDoc = Array.from(documentsUserHasSet).some(
+                        (uploadedDoc) => uploadedDoc.includes(normalizedDoc) || normalizedDoc.includes(uploadedDoc),
+                      )
+
+                      if (!isLoggedIn) {
+                        return (
+                          <div key={doc} className="flex items-center gap-2 rounded-lg border border-stone-200 px-3 py-2">
+                            <Square className="h-4 w-4 text-stone-500" />
+                            <span className="text-body-sm text-stone-700">{doc}</span>
+                          </div>
+                        )
+                      }
+
                       return (
                         <div key={doc} className="flex items-center justify-between rounded-lg border border-stone-200 px-3 py-2">
                           <span className="text-body-sm text-stone-700">{doc}</span>
-                          <span className={hasDoc ? 'inline-flex items-center gap-1 text-emerald-700' : 'inline-flex items-center gap-1 text-stone-500'}>
-                            {hasDoc ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                            {hasDoc
-                              ? t('schemes.documentAvailable', { defaultValue: 'Available' })
-                              : t('schemes.documentMissing', { defaultValue: 'Missing' })}
-                          </span>
+                          {hasDoc ? (
+                            <span className="inline-flex items-center gap-1 text-body-sm font-medium text-emerald-700">
+                              <CheckCircle2 className="h-4 w-4" />
+                              Uploaded
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => navigate('/upload')}
+                              className="inline-flex items-center gap-1 text-body-sm font-medium text-stone-600 hover:text-stone-900"
+                            >
+                              <Circle className="h-4 w-4" />
+                              Upload
+                            </button>
+                          )}
                         </div>
                       )
                     })}
                   </div>
                 ) : (
-                  <p className="mt-2 text-body-sm text-stone-600">{t('schemes.documentChecklistUnavailable', { defaultValue: 'Document checklist is currently unavailable for this scheme.' })}</p>
+                  <p className="mt-2 text-body-sm text-stone-700">
+                    Information not available - please call {safeText(applyInfo?.helpline, '1800-11-0001')} or visit your nearest {localCscName}.
+                  </p>
                 )}
               </Card>
 
-              {applyInfo?.helpline ? (
-                <Card className="border border-indigo-200 bg-indigo-50">
-                  <p className="text-body-sm font-medium text-indigo-900">{t('schemes.helpline', { defaultValue: 'Helpline' })}</p>
-                  <p className="mt-1 text-body-sm text-indigo-800">{applyInfo.helpline}</p>
+              {faqItems.length > 0 ? (
+                <Card className="border border-stone-200">
+                  <h3 className="font-medium text-stone-900">Frequently asked questions</h3>
+                  <div className="mt-3 space-y-3">
+                    {faqItems.slice(0, 3).map((faq, index) => (
+                      <div key={`${faq.q || faq.question}-${index}`} className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
+                        <p className="text-body-sm font-medium text-stone-900">{faq.q || faq.question}</p>
+                        <p className="mt-1 text-body-sm text-stone-700">{faq.a || faq.answer}</p>
+                      </div>
+                    ))}
+                  </div>
                 </Card>
               ) : null}
 
+              <Card className="border border-indigo-200 bg-indigo-50">
+                <h3 className="text-h3 font-medium text-indigo-900">Need help?</h3>
+                <p className="mt-2 inline-flex items-center gap-2 text-body-sm text-indigo-900">
+                  <PhoneCall className="h-4 w-4" />
+                  Call: {safeText(applyInfo?.helpline || scheme?.helpline_number, '1800-11-0001')} (Free, {safeText(applyInfo?.helpline_hours || scheme?.helpline_hours, 'Monday-Friday 9AM to 6PM')})
+                </p>
+                {safeText(applyInfo?.state_service_helpline, '') ? (
+                  <p className="mt-1 text-body-sm text-indigo-900">
+                    {localCscName} help: {applyInfo.state_service_helpline}
+                  </p>
+                ) : null}
+                {safeText(applyInfo?.alternate_helpline || scheme?.alternate_helpline, '') ? (
+                  <p className="mt-1 text-body-sm text-indigo-900">Alternate: {applyInfo?.alternate_helpline || scheme?.alternate_helpline}</p>
+                ) : null}
+                <p className="mt-2 text-body-sm text-indigo-900">Or visit your nearest {localCscName}</p>
+              </Card>
+
               <Button className="w-full" onClick={handleApply}>
-                {isLoggedIn
-                  ? t('schemes.proceedToApply', { defaultValue: 'Proceed to Apply' })
-                  : t('schemes.applyNowLogin', { defaultValue: 'Apply Now (Login)' })}
+                {isLoggedIn ? 'Proceed to apply' : 'Sign in to apply'}
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </div>

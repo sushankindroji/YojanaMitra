@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Compass, SlidersHorizontal } from 'lucide-react'
 import SchemeFilter from '../components/schemes/SchemeFilter'
 import SchemeResults from '../components/schemes/SchemeResults'
 import Badge from '../components/ui/Badge'
 import PageHeader from '../components/ui/PageHeader'
+import { useAuthStore } from '../store/authStore'
 
 export default function Schemes() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useTranslation()
-  const isLoggedIn = Boolean(localStorage.getItem('access_token'))
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const storedAccessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+  const effectiveAuthenticated = Boolean(isAuthenticated || accessToken || storedAccessToken)
   const [filters, setFilters] = useState({})
   const [sortBy, setSortBy] = useState('name')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
@@ -26,6 +31,14 @@ export default function Schemes() {
 
   const handleClearFilters = () => {
     setFilters({})
+  }
+
+  const handleBack = () => {
+    if (location.key !== 'default') {
+      navigate(-1)
+      return
+    }
+    navigate('/')
   }
 
   useEffect(() => {
@@ -44,20 +57,30 @@ export default function Schemes() {
   }, [])
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-[118rem] space-y-4 sm:space-y-5">
+      <button
+        type="button"
+        onClick={handleBack}
+        className="inline-flex items-center text-body-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
+      >
+        {t('common.back', { defaultValue: '← Back' })}
+      </button>
+
       <PageHeader
         title={t('schemes.title', { defaultValue: 'Find Schemes' })}
-        description={t('schemes.subtitle', { defaultValue: 'Discover government schemes you are eligible for' })}
+        description={effectiveAuthenticated
+          ? t('schemes.subtitle', { defaultValue: 'Discover government schemes you are eligible for' })
+          : t('schemes.publicSubtitle', { defaultValue: 'Browse government schemes and official details' })}
         actions={
-          <div className="flex items-center gap-2">
-            <Badge variant="neutral">{t('schemes.shortcutSearch', { defaultValue: 'Ctrl/Cmd + K search' })}</Badge>
+          <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
+            <Badge variant="neutral" className="hidden md:inline-flex">{t('schemes.shortcutSearch', { defaultValue: 'Ctrl/Cmd + K search' })}</Badge>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-3 py-2 text-body-sm font-medium text-stone-700 hover:bg-stone-100"
-              onClick={() => navigate(isLoggedIn ? '/dashboard' : '/login')}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-stone-300 px-3 py-2 text-body-sm font-medium text-stone-700 hover:bg-stone-100 sm:w-auto"
+              onClick={() => navigate(effectiveAuthenticated ? '/dashboard' : '/login')}
             >
               <Compass className="h-4 w-4" />
-              {isLoggedIn
+              {effectiveAuthenticated
                 ? t('nav.dashboard', { defaultValue: 'Dashboard' })
                 : t('auth.login', { defaultValue: 'Login' })}
             </button>
@@ -65,7 +88,7 @@ export default function Schemes() {
         }
       />
 
-      <div className="space-y-4 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-4 lg:space-y-0 xl:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className="space-y-4 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:gap-5 lg:space-y-0 xl:grid-cols-[19rem_minmax(0,1fr)] 2xl:grid-cols-[20rem_minmax(0,1fr)] 2xl:gap-6">
         <div className="lg:hidden">
           <button
             type="button"
@@ -82,7 +105,7 @@ export default function Schemes() {
           </button>
 
           {mobileFiltersOpen ? (
-            <div className="mt-3">
+            <div className="mt-3 max-h-[70vh] overflow-y-auto">
               <SchemeFilter
                 filters={filters}
                 onFilterChange={handleFilterChange}
@@ -107,6 +130,8 @@ export default function Schemes() {
             filters={filters}
             sortBy={sortBy}
             onSortChange={setSortBy}
+            isAuthenticated={effectiveAuthenticated}
+            accessToken={accessToken}
           />
         </div>
       </div>

@@ -56,6 +56,8 @@ class Settings(BaseSettings):
 
     # AI Services
     GEMINI_API_KEY: Optional[str] = None
+    BHASHINI_USER_ID: Optional[str] = None
+    BHASHINI_API_KEY: Optional[str] = None
 
     # Encryption
     ENCRYPTION_KEY: Optional[str] = None

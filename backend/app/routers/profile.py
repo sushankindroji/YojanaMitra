@@ -4,8 +4,7 @@ Profile router - get, update, completeness.
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_db
 from app.models import User, Profile
 from app.schemas.profile import ProfileUpdate, ProfileResponse, ProfileCompleteness
 from app.core.audit import log_audit

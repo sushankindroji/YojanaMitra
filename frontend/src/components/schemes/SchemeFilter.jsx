@@ -101,13 +101,13 @@ export default function SchemeFilter({
       : t('schemes.activeFilterPlural', { count: activeFilterCount, defaultValue: '{{count}} active filters' })
 
   return (
-    <Card className="w-full border border-stone-200">
+    <Card className="w-full border border-stone-200 p-4 sm:p-5">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-5 flex items-start justify-between gap-2 sm:mb-6 sm:items-center">
         <h3 className="text-h3 font-medium text-stone-900">
           {t('schemes.filter', { defaultValue: 'Filter' })}
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Badge variant="neutral">{activeCountLabel}</Badge>
           {activeFilterCount > 0 ? (
             <button
@@ -131,7 +131,7 @@ export default function SchemeFilter({
       )}
 
       {/* Search */}
-      <div className="mb-6">
+      <div className="mb-5 sm:mb-6">
         <button
           onClick={() => toggleSection('search')}
           className="w-full flex items-center justify-between py-3 px-4 bg-stone-50 hover:bg-stone-100 rounded-lg font-medium text-stone-900 transition-colors mb-3"
@@ -152,7 +152,7 @@ export default function SchemeFilter({
       </div>
 
       {/* Sector Filter */}
-      <div className="mb-6">
+      <div className="mb-5 sm:mb-6">
         <button
           onClick={() => toggleSection('sector')}
           className="w-full flex items-center justify-between py-3 px-4 bg-stone-50 hover:bg-stone-100 rounded-lg font-medium text-stone-900 transition-colors"
@@ -193,7 +193,7 @@ export default function SchemeFilter({
         </button>
 
         {expandedSections.state && (
-          <div className="mt-3 space-y-2 max-h-56 overflow-y-auto md:max-h-80">
+          <div className="mt-3 space-y-2 max-h-52 overflow-y-auto sm:max-h-60 md:max-h-72 lg:max-h-[22rem]">
             {STATES.map((state) => (
               <label key={state} className="flex items-center gap-3 cursor-pointer rounded-lg border border-transparent p-2 hover:border-orange-200 hover:bg-orange-50">
                 <input

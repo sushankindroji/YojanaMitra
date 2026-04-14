@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ PIPELINE_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
 def get_cached_pipeline_result(user_id: str) -> Dict[str, Any] | None:

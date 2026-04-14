@@ -13,6 +13,8 @@ import {
   RefreshCcw,
   Trash2,
   UploadCloud,
+  WifiOff,
+  XCircle,
 } from 'lucide-react'
 import documentService from '../services/documentService'
 import profileService from '../services/profileService'
@@ -77,6 +79,10 @@ const REQUIRED_LABELS = {
   aadhaar: 'Aadhaar',
   income_certificate: 'Income Certificate',
   caste_certificate: 'Caste Certificate',
+}
+
+const OPTIONAL_DOC_UNLOCK_COUNTS = {
+  caste_certificate: 'Unlocks 340 SC/ST schemes',
 }
 
 const getApiErrorMessage = (error, fallback) => {
@@ -374,28 +380,84 @@ const getConfidenceStyle = (confidence) => {
 
 const getStatusBadge = (doc) => {
   if (doc.extraction_status === 'failed') {
-    return { label: 'Manual Entry', cls: 'bg-red-100 text-red-700 border-red-200' }
+    return {
+      label: 'Upload Failed',
+      cls: 'bg-red-100 text-red-700 border-red-200',
+      icon: XCircle,
+      iconClass: 'text-red-600',
+    }
   }
 
   if (doc.extraction_status === 'processing' || doc.extraction_status === 'pending') {
-    return { label: 'Extracting', cls: 'bg-blue-100 text-blue-700 border-blue-200' }
+    return {
+      label: 'Extracting',
+      cls: 'bg-blue-100 text-blue-700 border-blue-200',
+      icon: Loader2,
+      iconClass: 'animate-spin text-blue-600',
+    }
   }
 
   if (doc.extraction_status === 'completed' && Number(doc.is_verified || 0) === 1) {
-    return { label: 'Extracted', cls: 'bg-green-100 text-green-700 border-green-200' }
+    return {
+      label: 'Details Extracted',
+      cls: 'bg-green-100 text-green-700 border-green-200',
+      icon: CheckCircle2,
+      iconClass: 'text-green-600',
+    }
   }
 
   if (doc.extraction_status === 'completed') {
-    return { label: 'Needs Review', cls: 'bg-amber-100 text-amber-700 border-amber-200' }
+    return {
+      label: 'Please Review',
+      cls: 'bg-amber-100 text-amber-700 border-amber-200',
+      icon: AlertTriangle,
+      iconClass: 'text-amber-600',
+    }
   }
 
-  return { label: 'Pending', cls: 'bg-stone-100 text-stone-700 border-stone-200' }
+  return {
+    label: 'Pending',
+    cls: 'bg-stone-100 text-stone-700 border-stone-200',
+    icon: AlertTriangle,
+    iconClass: 'text-stone-500',
+  }
 }
 
 const getDocTypeMeta = (docType) => DOCUMENT_TYPES.find((item) => item.id === docType)
 
+const getLatestDocumentForType = (docType, uploadedDocs) => {
+  const docs = (uploadedDocs || [])
+    .filter((doc) => doc.doc_type === docType)
+    .sort((a, b) => String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || '')))
+
+  return docs[0] || null
+}
+
 const getChecklistStatus = (docType, uploadedDocs) => {
-  return uploadedDocs.some((doc) => doc.doc_type === docType && doc.extraction_status === 'completed')
+  const latestDoc = getLatestDocumentForType(docType, uploadedDocs)
+  if (!latestDoc) {
+    return { status: 'not_uploaded', latestDoc: null }
+  }
+
+  const extractionStatus = String(latestDoc.extraction_status || '').toLowerCase()
+
+  if (extractionStatus === 'failed') {
+    return { status: 'failed', latestDoc }
+  }
+
+  if (extractionStatus === 'processing' || extractionStatus === 'pending') {
+    return { status: 'processing', latestDoc }
+  }
+
+  if (extractionStatus === 'completed' && Number(latestDoc.is_verified || 0) === 1) {
+    return { status: 'completed_verified', latestDoc }
+  }
+
+  if (extractionStatus === 'completed') {
+    return { status: 'completed_review', latestDoc }
+  }
+
+  return { status: 'uploaded', latestDoc }
 }
 
 export default function UploadDocuments() {
@@ -419,6 +481,7 @@ export default function UploadDocuments() {
   const [uploadedDocs, setUploadedDocs] = useState([])
   const [isLoadingDocs, setIsLoadingDocs] = useState(true)
   const [profile, setProfile] = useState(null)
+  const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false)
 
   const selectedDocMeta = getDocTypeMeta(selectedDocType)
 
@@ -451,6 +514,30 @@ export default function UploadDocuments() {
     init()
   }, [])
 
+  useEffect(() => {
+    const handleOffline = () => {
+      setIsOffline(true)
+      toast.error(tr('documents.offlineMessage', 'You are offline. Reconnect and try again.'), {
+        toastId: 'documents-offline',
+      })
+    }
+
+    const handleOnline = () => {
+      setIsOffline(false)
+      toast.success(tr('documents.onlineMessage', 'Connection restored.'), {
+        toastId: 'documents-online',
+      })
+    }
+
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline)
+
+    return () => {
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [t])
+
   const resetCurrentUploadState = () => {
     setSelectedFile(null)
     setUploadProgress(0)
@@ -458,6 +545,35 @@ export default function UploadDocuments() {
     setActiveDocId(null)
     setExtractedData({})
     setEditingField(null)
+  }
+
+  const focusUploadForDocType = (docType) => {
+    setSelectedDocType(docType)
+    resetCurrentUploadState()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const shouldOfferManualEntry = (message) => {
+    const lowered = String(message || '').toLowerCase()
+    return (
+      lowered.includes('tesseract')
+      || lowered.includes('ocr engine unavailable')
+      || lowered.includes('pytesseract')
+    )
+  }
+
+  const openManualEntryFallback = (docId, docType, message) => {
+    setSelectedDocType(docType)
+    setActiveDocId(docId)
+    setExtractedData(withExpectedReviewFields({}, docType))
+    setExtractionState('needs_review')
+    setEditingField(null)
+    setSelectedFile(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    toast.warn(
+      message || tr('documents.manualEntryFallback', 'Auto extraction is unavailable. Please enter details manually.'),
+      { toastId: `manual-${docId}` }
+    )
   }
 
   const onSelectFile = (file) => {
@@ -503,8 +619,8 @@ export default function UploadDocuments() {
           const reviewReady = withExpectedReviewFields(normalized, docType)
 
           if (!hasMeaningfulExtractedData(reviewReady)) {
-            setExtractionState('failed')
-            toast.error(doc.error_message || tr('documents.extractionFailed', 'Extraction failed. Please try re-upload.'))
+            const fallbackMessage = doc.error_message || tr('documents.extractionSparse', 'Extraction is incomplete. Please review manually.')
+            openManualEntryFallback(doc.id, docType, fallbackMessage)
           } else {
             setExtractedData(reviewReady)
             const hasLowConfidence = Object.values(reviewReady).some((field) => Number(field?.confidence || 0) < 60)
@@ -517,8 +633,13 @@ export default function UploadDocuments() {
         }
 
         if (doc.extraction_status === 'failed') {
-          setExtractionState('failed')
-          toast.error(doc.error_message || tr('documents.extractionFailed', 'Extraction failed. Please try re-upload.'))
+          const failureMessage = doc.error_message || tr('documents.extractionFailed', 'Extraction failed. Please try re-upload.')
+          if (shouldOfferManualEntry(failureMessage)) {
+            openManualEntryFallback(doc.id, docType, tr('documents.manualEntryFallback', 'OCR unavailable. Please enter details manually.'))
+          } else {
+            setExtractionState('failed')
+            toast.error(failureMessage)
+          }
           await loadUploadedDocs()
           return
         }
@@ -527,14 +648,26 @@ export default function UploadDocuments() {
           setTimeout(check, 2000)
         } else {
           setExtractionState('failed')
-          toast.error(tr('documents.extractionTimeout', 'Extraction timed out. Please try again.'))
+          toast.error(tr('documents.networkTimeout', 'Network timeout while checking extraction. Please retry.'))
         }
       } catch (error) {
         if (attempts < maxAttempts) {
           setTimeout(check, 2000)
         } else {
           setExtractionState('failed')
-          toast.error(getApiErrorMessage(error, tr('documents.statusError', 'Failed to check extraction status')))
+          const isOfflineNow = typeof navigator !== 'undefined' && !navigator.onLine
+          const code = String(error?.code || '').toLowerCase()
+          const status = Number(error?.response?.status || 0)
+
+          if (isOfflineNow || code === 'err_network') {
+            toast.error(tr('documents.offlineMessage', 'You are offline. Reconnect and try again.'))
+          } else if (code === 'econnaborted' || /timeout/i.test(String(error?.message || ''))) {
+            toast.error(tr('documents.networkTimeout', 'Network timeout while checking extraction. Please retry.'))
+          } else if (status >= 500) {
+            toast.error(tr('documents.serverRetryMessage', 'Server error while checking status. Please retry.'))
+          } else {
+            toast.error(getApiErrorMessage(error, tr('documents.statusError', 'Failed to check extraction status')))
+          }
         }
       }
     }
@@ -543,6 +676,11 @@ export default function UploadDocuments() {
   }
 
   const handleUploadAndExtract = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.error(tr('documents.offlineMessage', 'You are offline. Reconnect and try again.'))
+      return
+    }
+
     if (!selectedDocType) {
       toast.error(tr('documents.validationError.docTypeRequired', 'Please select document type first.'))
       return
@@ -578,7 +716,43 @@ export default function UploadDocuments() {
     } catch (error) {
       setIsUploading(false)
       setExtractionState('failed')
-      toast.error(getApiErrorMessage(error, tr('documents.uploadFailed', 'Upload failed')))
+      const code = String(error?.code || '').toLowerCase()
+      const status = Number(error?.response?.status || 0)
+      const isOfflineNow = typeof navigator !== 'undefined' && !navigator.onLine
+
+      if (isOfflineNow || code === 'err_network') {
+        toast.error(tr('documents.offlineMessage', 'You are offline. Reconnect and try again.'))
+      } else if (code === 'econnaborted' || /timeout/i.test(String(error?.message || ''))) {
+        toast.error(tr('documents.networkTimeout', 'Network timeout during upload. Please retry.'))
+      } else if (status >= 500) {
+        toast.error(tr('documents.serverRetryMessage', 'Server error during upload. Please retry.'))
+      } else {
+        toast.error(getApiErrorMessage(error, tr('documents.uploadFailed', 'Upload failed')))
+      }
+    }
+  }
+
+  const handleRetryExtraction = async (doc) => {
+    if (!doc?.id) return
+
+    try {
+      setSelectedDocType(doc.doc_type)
+      setActiveDocId(doc.id)
+      setExtractionState('extracting')
+      setExtractedData({})
+      setEditingField(null)
+
+      await documentService.reprocessDocument(doc.id)
+      toast.info(tr('documents.retryStarted', 'Retry started. Extracting again...'))
+      await pollExtractionStatus(doc.id, doc.doc_type)
+    } catch (error) {
+      setExtractionState('failed')
+      const status = Number(error?.response?.status || 0)
+      if (status >= 500) {
+        toast.error(tr('documents.serverRetryMessage', 'Server error while retrying extraction. Please retry.'))
+        return
+      }
+      toast.error(getApiErrorMessage(error, tr('documents.retryFailed', 'Failed to retry extraction')))
     }
   }
 
@@ -677,12 +851,17 @@ export default function UploadDocuments() {
     const casteRequired = ['sc', 'st', 'obc'].includes(socialCategory)
 
     return REQUIRED_CHECKLIST_ORDER.map((docType) => {
+      const statusInfo = getChecklistStatus(docType, uploadedDocs)
+
       if (docType === 'caste_certificate') {
         return {
           docType,
           label: REQUIRED_LABELS[docType],
           required: casteRequired,
-          uploaded: getChecklistStatus(docType, uploadedDocs),
+          uploaded: statusInfo.status !== 'not_uploaded' && statusInfo.status !== 'failed',
+          status: statusInfo.status,
+          latestDoc: statusInfo.latestDoc,
+          unlockHint: !casteRequired ? OPTIONAL_DOC_UNLOCK_COUNTS[docType] : '',
         }
       }
 
@@ -690,10 +869,31 @@ export default function UploadDocuments() {
         docType,
         label: REQUIRED_LABELS[docType],
         required: true,
-        uploaded: getChecklistStatus(docType, uploadedDocs),
+        uploaded: statusInfo.status !== 'not_uploaded' && statusInfo.status !== 'failed',
+        status: statusInfo.status,
+        latestDoc: statusInfo.latestDoc,
+        unlockHint: '',
       }
     })
   }, [profile, uploadedDocs])
+
+  const aadhaarChecklistItem = checklistItems.find((item) => item.docType === 'aadhaar')
+  const isAadhaarUploaded = Boolean(
+    aadhaarChecklistItem
+    && ['processing', 'completed_verified', 'completed_review', 'uploaded'].includes(aadhaarChecklistItem.status)
+  )
+
+  const allDocumentTypeItems = useMemo(() => {
+    return DOCUMENT_TYPES.map((docMeta) => {
+      const statusInfo = getChecklistStatus(docMeta.id, uploadedDocs)
+      return {
+        ...docMeta,
+        status: statusInfo.status,
+        latestDoc: statusInfo.latestDoc,
+        unlockHint: OPTIONAL_DOC_UNLOCK_COUNTS[docMeta.id] || '',
+      }
+    })
+  }, [uploadedDocs])
 
   const extractionIndicator = (() => {
     if (extractionState === 'extracting' || extractionState === 'uploading') {
@@ -735,6 +935,54 @@ export default function UploadDocuments() {
     onSelectFile(file)
   }
 
+  const getChecklistStatusMeta = (status) => {
+    if (status === 'completed_verified') {
+      return {
+        label: 'Details extracted',
+        tone: 'text-green-700',
+        icon: <CheckCircle2 className="h-4 w-4 text-green-600" />,
+      }
+    }
+
+    if (status === 'completed_review') {
+      return {
+        label: 'Please review',
+        tone: 'text-amber-700',
+        icon: <AlertTriangle className="h-4 w-4 text-amber-600" />,
+      }
+    }
+
+    if (status === 'failed') {
+      return {
+        label: 'Upload failed',
+        tone: 'text-red-700',
+        icon: <XCircle className="h-4 w-4 text-red-600" />,
+      }
+    }
+
+    if (status === 'processing') {
+      return {
+        label: 'Extracting',
+        tone: 'text-blue-700',
+        icon: <Loader2 className="h-4 w-4 animate-spin text-blue-600" />,
+      }
+    }
+
+    if (status === 'uploaded') {
+      return {
+        label: 'Uploaded',
+        tone: 'text-blue-700',
+        icon: <CheckCircle2 className="h-4 w-4 text-blue-600" />,
+      }
+    }
+
+    return {
+      label: 'Not uploaded',
+      tone: 'text-stone-600',
+      icon: <AlertTriangle className="h-4 w-4 text-stone-500" />,
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -743,21 +991,90 @@ export default function UploadDocuments() {
         actions={<Button variant="ghost" onClick={() => navigate('/dashboard')}>{tr('common.back', 'Back')}</Button>}
       />
 
-      <Card className="border border-stone-200 bg-gradient-to-r from-orange-50 via-white to-green-50">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-h3 font-medium text-stone-900">Upload these documents to unlock more scheme matches</h2>
-            <p className="mt-1 text-body-sm text-stone-600">Required and recommended checklist based on your profile.</p>
+      {isOffline ? (
+        <Card className="border border-amber-300 bg-amber-50">
+          <div className="flex items-start gap-2 text-body-sm text-amber-900">
+            <WifiOff className="mt-0.5 h-4 w-4" />
+            <p>{tr('documents.offlineMessage', 'You are offline. Reconnect and try again.')}</p>
           </div>
+        </Card>
+      ) : null}
+
+      <Card className="border border-stone-200 bg-gradient-to-r from-orange-50 via-white to-green-50">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-h3 font-medium text-stone-900">Upload these documents to unlock more scheme matches</h2>
+              <p className="mt-1 text-body-sm text-stone-600">Required and recommended checklist based on your profile.</p>
+            </div>
+
+            <div className="flex flex-col items-start gap-2 lg:items-end">
+              <Button onClick={() => navigate('/eligibility')} disabled={!isAadhaarUploaded}>
+                Continue
+              </Button>
+              {!isAadhaarUploaded ? (
+                <p className="text-caption text-stone-600">Upload Aadhaar first to continue.</p>
+              ) : null}
+            </div>
+          </div>
+
           <div className="grid gap-2 sm:grid-cols-3">
-            {checklistItems.map((item) => (
-              <div key={item.docType} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-body-sm">
-                <p className="font-medium text-stone-900">{item.label}</p>
-                <p className="text-caption text-stone-600">
-                  {item.required ? 'Required' : 'If applicable'} {item.uploaded ? '✅' : '⏳ Pending'}
-                </p>
-              </div>
-            ))}
+            {checklistItems.map((item) => {
+              const statusMeta = getChecklistStatusMeta(item.status)
+              return (
+                <div key={item.docType} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-body-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-stone-900">{item.label}</p>
+                    <span className="text-caption text-stone-500">{item.required ? 'Required' : 'Optional'}</span>
+                  </div>
+
+                  <div className={`mt-1 inline-flex items-center gap-1 text-caption font-medium ${statusMeta.tone}`}>
+                    {statusMeta.icon}
+                    <span>{statusMeta.label}</span>
+                  </div>
+
+                  {item.unlockHint ? (
+                    <p className="mt-1 text-caption text-stone-600">{item.unlockHint}</p>
+                  ) : null}
+
+                  {item.status === 'failed' && item.latestDoc?.error_message ? (
+                    <p className="mt-1 line-clamp-2 text-caption text-red-700">{item.latestDoc.error_message}</p>
+                  ) : null}
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {item.status === 'not_uploaded' ? (
+                      <button
+                        type="button"
+                        className="rounded-md border border-blue-200 px-2 py-1 text-caption font-medium text-blue-700 hover:bg-blue-50"
+                        onClick={() => focusUploadForDocType(item.docType)}
+                      >
+                        Upload
+                      </button>
+                    ) : null}
+
+                    {item.status === 'failed' && item.latestDoc ? (
+                      <button
+                        type="button"
+                        className="rounded-md border border-red-200 px-2 py-1 text-caption font-medium text-red-700 hover:bg-red-50"
+                        onClick={() => handleRetryExtraction(item.latestDoc)}
+                      >
+                        Retry
+                      </button>
+                    ) : null}
+
+                    {item.status === 'completed_review' && item.latestDoc ? (
+                      <button
+                        type="button"
+                        className="rounded-md border border-amber-200 px-2 py-1 text-caption font-medium text-amber-700 hover:bg-amber-50"
+                        onClick={() => handleViewExtractedData(item.latestDoc)}
+                      >
+                        Review
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </Card>
@@ -929,6 +1246,71 @@ export default function UploadDocuments() {
 
         <div className="space-y-5">
           <Card className="border border-stone-200">
+            <h3 className="text-h3 font-medium text-stone-900">Document checklist</h3>
+            <p className="mt-1 text-body-sm text-stone-600">Each document type with current status.</p>
+
+            <div className="mt-4 max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+              {allDocumentTypeItems.map((item) => {
+                const statusMeta = getChecklistStatusMeta(item.status)
+                return (
+                  <div key={item.id} className="rounded-lg border border-stone-200 bg-white px-3 py-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-body-sm font-medium text-stone-900">{item.name}</p>
+                        <p className="text-caption text-stone-500">{item.category}</p>
+                      </div>
+                      <div className={`inline-flex items-center gap-1 text-caption font-medium ${statusMeta.tone}`}>
+                        {statusMeta.icon}
+                        <span>{statusMeta.label}</span>
+                      </div>
+                    </div>
+
+                    {item.unlockHint ? (
+                      <p className="mt-1 text-caption text-stone-600">{item.unlockHint}</p>
+                    ) : null}
+
+                    {item.status === 'failed' && item.latestDoc?.error_message ? (
+                      <p className="mt-1 line-clamp-2 text-caption text-red-700">{item.latestDoc.error_message}</p>
+                    ) : null}
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {item.status === 'not_uploaded' ? (
+                        <button
+                          type="button"
+                          className="rounded-md border border-blue-200 px-2 py-1 text-caption font-medium text-blue-700 hover:bg-blue-50"
+                          onClick={() => focusUploadForDocType(item.id)}
+                        >
+                          Upload
+                        </button>
+                      ) : null}
+
+                      {item.status === 'failed' && item.latestDoc ? (
+                        <button
+                          type="button"
+                          className="rounded-md border border-red-200 px-2 py-1 text-caption font-medium text-red-700 hover:bg-red-50"
+                          onClick={() => handleRetryExtraction(item.latestDoc)}
+                        >
+                          Retry
+                        </button>
+                      ) : null}
+
+                      {item.status === 'completed_review' && item.latestDoc ? (
+                        <button
+                          type="button"
+                          className="rounded-md border border-amber-200 px-2 py-1 text-caption font-medium text-amber-700 hover:bg-amber-50"
+                          onClick={() => handleViewExtractedData(item.latestDoc)}
+                        >
+                          Review
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+
+          <Card className="border border-stone-200">
             <h3 className="text-h3 font-medium text-stone-900">Uploaded documents</h3>
             <p className="mt-1 text-body-sm text-stone-600">Grouped by category with extraction status and actions.</p>
 
@@ -956,7 +1338,10 @@ export default function UploadDocuments() {
                         {docs.map((doc) => {
                           const meta = getDocTypeMeta(doc.doc_type)
                           const statusBadge = getStatusBadge(doc)
-                          const canView = Boolean(parseDocumentExtractedData(doc) && Object.keys(parseDocumentExtractedData(doc)).length)
+                          const extractedPayload = parseDocumentExtractedData(doc)
+                          const canView = Boolean(extractedPayload && Object.keys(extractedPayload).length)
+                          const isFailed = String(doc.extraction_status || '').toLowerCase() === 'failed'
+                          const StatusIcon = statusBadge.icon
                           return (
                             <div key={doc.id} className="rounded-xl border border-stone-200 bg-white p-3">
                               <div className="flex items-start gap-3">
@@ -975,13 +1360,20 @@ export default function UploadDocuments() {
                                     <span className="rounded-full bg-orange-100 px-2 py-1 text-caption font-medium text-orange-800">
                                       {meta?.name || doc.doc_type}
                                     </span>
-                                    <span className={`rounded-full border px-2 py-1 text-caption font-medium ${statusBadge.cls}`}>
+                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-caption font-medium ${statusBadge.cls}`}>
+                                      <StatusIcon className={`h-3.5 w-3.5 ${statusBadge.iconClass || ''}`} />
                                       {statusBadge.label}
                                     </span>
                                   </div>
 
                                   <p className="mt-2 truncate text-body-sm font-medium text-stone-900">{doc.file_name}</p>
                                   <p className="text-caption text-stone-500">Uploaded: {new Date(doc.uploaded_at).toLocaleString()}</p>
+
+                                  {isFailed ? (
+                                    <p className="mt-1 text-caption text-red-700">
+                                      {doc.error_message || tr('documents.serverRetryMessage', 'Upload failed due to a server error. Please retry.')}
+                                    </p>
+                                  ) : null}
 
                                   <div className="mt-2 flex flex-wrap gap-2">
                                     <button
@@ -993,13 +1385,20 @@ export default function UploadDocuments() {
                                       <Eye className="h-3.5 w-3.5" />
                                       View extracted data
                                     </button>
+                                    {isFailed ? (
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-caption text-red-700"
+                                        onClick={() => handleRetryExtraction(doc)}
+                                      >
+                                        <RefreshCcw className="h-3.5 w-3.5" />
+                                        Retry
+                                      </button>
+                                    ) : null}
                                     <button
                                       type="button"
                                       className="inline-flex items-center gap-1 rounded-md border border-stone-200 px-2 py-1 text-caption text-stone-700"
-                                      onClick={() => {
-                                        setSelectedDocType(doc.doc_type)
-                                        resetCurrentUploadState()
-                                      }}
+                                      onClick={() => focusUploadForDocType(doc.doc_type)}
                                     >
                                       <RefreshCcw className="h-3.5 w-3.5" />
                                       Re-upload

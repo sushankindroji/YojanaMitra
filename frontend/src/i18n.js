@@ -1,21 +1,28 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
-import enTranslation from './locales/en/translation.json'
-import hiTranslation from './locales/hi/translation.json'
-import mrTranslation from './locales/mr/translation.json'
-import taTranslation from './locales/ta/translation.json'
-import teTranslation from './locales/te/translation.json'
-import knTranslation from './locales/kn/translation.json'
-import bnTranslation from './locales/bn/translation.json'
+import enTranslation from './locales/en.json'
+import hiTranslation from './locales/hi.json'
+import mrTranslation from './locales/mr.json'
+import taTranslation from './locales/ta.json'
+import teTranslation from './locales/te.json'
+import knTranslation from './locales/kn.json'
+import bnTranslation from './locales/bn.json'
+import esTranslation from './locales/es.json'
 
-const LANGUAGE_STORAGE_KEY = 'yojana_mitra_lang'
+const LANGUAGE_STORAGE_KEY = 'yojanamitra_language'
+const LEGACY_LANGUAGE_KEYS = ['yojana_mitra_lang', 'preferredLanguage']
 
 if (typeof window !== 'undefined') {
-  const legacyLanguage = window.localStorage.getItem('preferredLanguage')
   const currentLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
-  if (!currentLanguage && legacyLanguage) {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, legacyLanguage)
+  if (!currentLanguage) {
+    const legacyLanguage = LEGACY_LANGUAGE_KEYS
+      .map((key) => window.localStorage.getItem(key))
+      .find((value) => Boolean(value))
+
+    if (legacyLanguage) {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, legacyLanguage)
+    }
   }
 }
 
@@ -24,7 +31,7 @@ i18n
   .use(initReactI18next)
   .init({
     fallbackLng: 'en',
-    supportedLngs: ['en', 'hi', 'te', 'ta', 'mr', 'bn', 'kn'],
+    supportedLngs: ['en', 'hi', 'te', 'ta', 'mr', 'bn', 'kn', 'es'],
     interpolation: { escapeValue: false },
     resources: {
       en: { translation: enTranslation },
@@ -34,6 +41,7 @@ i18n
       mr: { translation: mrTranslation },
       bn: { translation: bnTranslation },
       kn: { translation: knTranslation },
+      es: { translation: esTranslation },
     },
     detection: {
       order: ['localStorage', 'navigator'],

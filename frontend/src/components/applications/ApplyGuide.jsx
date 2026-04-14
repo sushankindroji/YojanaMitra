@@ -71,6 +71,10 @@ const FORM_STEPS = [
 
 export default function ApplyGuide({ schemeId, onComplete }) {
   const { t } = useTranslation()
+  const tr = (key, fallback) => {
+    const translated = t(key)
+    return translated && translated !== key ? translated : fallback
+  }
 
   // State management
   const [currentStep, setCurrentStep] = useState(1)
@@ -116,52 +120,76 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         setIsLoading(true)
         setError(null)
 
-        // Fetch scheme details
-        const schemeRes = await schemeService.getScheme?.(schemeId) ||
-          parseInt(schemeId) > 0
-          ? await schemeService.getSchemeDetail?.(schemeId)
-          : null
-
-        if (schemeRes?.data) {
-          setScheme(schemeRes.data)
+        if (!schemeId) {
+          throw new Error('Missing scheme identifier')
         }
 
-        // Fetch eligibility
-        const eligRes = await schemeService.getSchemeEligibility?.(schemeId)
-        if (eligRes?.data) {
-          setEligibility(eligRes.data)
+        const fetchSchemeDetail = async () => {
+          try {
+            return await schemeService.getSchemeDetail?.(schemeId)
+          } catch (detailError) {
+            const status = detailError?.response?.status
+            if ([401, 403].includes(status) && schemeService.getPublicSchemeDetail) {
+              return schemeService.getPublicSchemeDetail(schemeId)
+            }
+            throw detailError
+          }
         }
 
-        // Fetch user profile to pre-fill
-        const profileRes = await profileService.getProfile?.()
-        if (profileRes?.data) {
-          setUserProfile(profileRes.data)
-          // Pre-fill form with profile data
+        const [schemeResult, eligibilityResult, profileResult] = await Promise.allSettled([
+          fetchSchemeDetail(),
+          schemeService.getSchemeEligibility?.(schemeId),
+          profileService.getProfile?.(),
+        ])
+
+        if (schemeResult.status === 'fulfilled' && schemeResult.value?.data) {
+          setScheme(schemeResult.value.data)
+        } else {
+          throw new Error('Scheme details unavailable')
+        }
+
+        if (eligibilityResult.status === 'fulfilled' && eligibilityResult.value?.data) {
+          setEligibility(eligibilityResult.value.data)
+        } else if (eligibilityResult.status === 'rejected') {
+          const status = eligibilityResult.reason?.response?.status
+          if (![401, 403, 404].includes(status)) {
+            console.warn('Could not fetch eligibility for apply guide', eligibilityResult.reason)
+          }
+        }
+
+        if (profileResult.status === 'fulfilled' && profileResult.value?.data) {
+          const profileData = profileResult.value.data
+          setUserProfile(profileData)
           setFormData((prev) => ({
             ...prev,
             personal: {
-              full_name: profileRes.data.full_name || '',
-              email: profileRes.data.email || '',
-              phone: profileRes.data.phone || '',
-              date_of_birth: profileRes.data.date_of_birth || '',
+              full_name: profileData.full_name || profileData.name || '',
+              email: profileData.email || '',
+              phone: profileData.phone || profileData.phone_number || profileData.mobile || '',
+              date_of_birth: profileData.date_of_birth || profileData.dob || '',
             },
             employment: {
-              employment_status: profileRes.data.employment_status || '',
-              occupation: profileRes.data.occupation || '',
-              annual_income: profileRes.data.annual_income || '',
-              employer_name: profileRes.data.employer_name || '',
+              employment_status: profileData.employment_status || profileData.occupation_status || '',
+              occupation: profileData.occupation || '',
+              annual_income: profileData.annual_income || '',
+              employer_name: profileData.employer_name || '',
             },
             bank: {
-              account_holder_name: profileRes.data.account_holder_name || '',
-              account_number: profileRes.data.account_number || '',
-              ifsc_code: profileRes.data.ifsc_code || '',
-              bank_name: profileRes.data.bank_name || '',
+              account_holder_name: profileData.account_holder_name || profileData.bank_account_holder || '',
+              account_number: profileData.account_number || profileData.bank_account_number || '',
+              ifsc_code: profileData.ifsc_code || profileData.bank_ifsc || '',
+              bank_name: profileData.bank_name || '',
             },
           }))
+        } else if (profileResult.status === 'rejected') {
+          const status = profileResult.reason?.response?.status
+          if (![401, 403, 404].includes(status)) {
+            console.warn('Could not fetch profile for apply prefill', profileResult.reason)
+          }
         }
       } catch (err) {
         console.error('Error fetching application data:', err)
-        setError(t('applications.fetchError') || 'Failed to load application')
+        setError(tr('applications.fetchError', 'Failed to load application'))
       } finally {
         setIsLoading(false)
       }
@@ -215,10 +243,10 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         prefilled_data: formData,
       })
 
-      toast.success(t('applications.savedAsDraft') || 'Saved as draft')
+      toast.success(tr('applications.savedAsDraft', 'Saved as draft'))
     } catch (err) {
       console.error('Error saving draft:', err)
-      toast.error(t('applications.saveDraftError') || 'Failed to save draft')
+      toast.error(tr('applications.saveDraftError', 'Failed to save draft'))
     } finally {
       setIsSaving(false)
     }
@@ -237,21 +265,21 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         !formData.personal.email ||
         !formData.personal.phone
       ) {
-        toast.error(t('applications.missingRequired') || 'Please fill required fields')
+        toast.error(tr('applications.missingRequired', 'Please fill required fields'))
         setCurrentStep(1)
         setIsSaving(false)
         return
       }
 
       if (!formData.bank.account_number || !formData.bank.ifsc_code) {
-        toast.error(t('applications.missingBankDetails') || 'Please complete bank details')
+        toast.error(tr('applications.missingBankDetails', 'Please complete bank details'))
         setCurrentStep(3)
         setIsSaving(false)
         return
       }
 
       if (!formData.additional.terms_agreed) {
-        toast.error(t('applications.agreeTerms') || 'Please agree to terms')
+        toast.error(tr('applications.agreeTerms', 'Please agree to terms'))
         setCurrentStep(5)
         setIsSaving(false)
         return
@@ -279,11 +307,11 @@ export default function ApplyGuide({ schemeId, onComplete }) {
       })
 
       toast.success(
-        t('applications.submitted') || 'Application submitted successfully'
+        tr('applications.submitted', 'Application submitted successfully')
       )
     } catch (err) {
       console.error('Error submitting application:', err)
-      toast.error(t('applications.submitError') || 'Failed to submit application')
+      toast.error(tr('applications.submitError', 'Failed to submit application'))
     } finally {
       setIsSaving(false)
     }

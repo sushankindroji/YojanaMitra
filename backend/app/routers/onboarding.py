@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.agents.agent_orchestrator import clear_cached_pipeline_result, run_full_eligibility_pipeline
 from app.agents.job_store import create_job, get_latest_job, update_job
-from app.database import SessionLocal, get_db
-from app.dependencies import get_current_user
+from app.database import SessionLocal
+from app.dependencies import get_current_user, get_db
 from app.models import Document, Profile, User
 from app.schemas.onboarding import AadhaarConfirmRequest, DocumentConfirmRequest, OnboardingCompleteRequest
 from app.services.ocr_service import ocr_service

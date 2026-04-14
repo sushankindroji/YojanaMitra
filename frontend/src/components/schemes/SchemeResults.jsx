@@ -45,6 +45,8 @@ export default function SchemeResults({
   filters = {},
   sortBy = 'name',
   onSortChange = () => {},
+  isAuthenticated = false,
+  accessToken = null,
 }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -55,6 +57,35 @@ export default function SchemeResults({
   const [error, setError] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
+  const [didTriggerEligibilityRefresh, setDidTriggerEligibilityRefresh] = useState(false)
+  const [didHydrateMissingEligibility, setDidHydrateMissingEligibility] = useState(false)
+  const storedAccessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+  const effectiveAuthenticated = Boolean(isAuthenticated || accessToken || storedAccessToken)
+
+  const hasEligibilityFields = (scheme) => {
+    if (!scheme || typeof scheme !== 'object') return false
+
+    const hasScore = scheme.eligibility_score !== undefined && scheme.eligibility_score !== null
+      || scheme.eligibility_percentage !== undefined && scheme.eligibility_percentage !== null
+    const hasStatus = scheme.is_eligible !== undefined && scheme.is_eligible !== null
+      || scheme.is_partially_eligible !== undefined && scheme.is_partially_eligible !== null
+    const hasConditions = Array.isArray(scheme.condition_results)
+      ? scheme.condition_results.length > 0
+      : typeof scheme.condition_results === 'object' && scheme.condition_results !== null
+
+    return hasScore || hasStatus || hasConditions
+  }
+
+  useEffect(() => {
+    if (!effectiveAuthenticated && sortBy === 'eligibility') {
+      onSortChange('name')
+    }
+  }, [effectiveAuthenticated, onSortChange, sortBy])
+
+  useEffect(() => {
+    setDidTriggerEligibilityRefresh(false)
+    setDidHydrateMissingEligibility(false)
+  }, [effectiveAuthenticated])
 
   // Fetch schemes when filters, sort, or page change
   useEffect(() => {
@@ -70,27 +101,118 @@ export default function SchemeResults({
     }
 
     fetchSchemes()
-  }, [currentPage, filters, i18n?.language, i18n?.resolvedLanguage, sortBy])
+  }, [currentPage, filters, i18n?.language, i18n?.resolvedLanguage, isAuthenticated, sortBy])
 
   const fetchSchemes = async () => {
     try {
       setIsLoading(true)
       setError(null)
 
-      const response = await schemeService.getSchemes({
+      const authToken = accessToken || localStorage.getItem('access_token') || null
+      const requestParams = {
         search: filters.search || '',
         sector: filters.sectors?.join(',') || '',
         state: filters.states?.join(',') || '',
         skip: (currentPage - 1) * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
         lang: (i18n?.resolvedLanguage || i18n?.language || 'en').split('-')[0],
-      })
+      }
+
+      const response = await schemeService.getPublicSchemes(requestParams, effectiveAuthenticated ? authToken : null)
 
       let schemesData = response.data.schemes || []
       const total = response.data.total ?? schemesData.length
 
+      // If logged in and all cards lack eligibility values, trigger one refresh
+      // of computed eligibility and refetch once.
+      if (effectiveAuthenticated && !didTriggerEligibilityRefresh && schemesData.length > 0) {
+        const hasEligibility = schemesData.some((scheme) => hasEligibilityFields(scheme))
+
+        if (!hasEligibility) {
+          try {
+            await schemeService.checkEligibilitySafe(true, authToken)
+            const refreshedAuthToken = localStorage.getItem('access_token') || authToken
+            const refreshed = await schemeService.getPublicSchemes(requestParams, refreshedAuthToken)
+            schemesData = refreshed.data.schemes || schemesData
+            setDidTriggerEligibilityRefresh(true)
+          } catch (refreshError) {
+            console.warn('Eligibility refresh fallback failed', refreshError)
+          }
+        }
+      }
+
+      if (effectiveAuthenticated && !didHydrateMissingEligibility && schemesData.length > 0) {
+        const missingIds = schemesData
+          .filter((scheme) => !hasEligibilityFields(scheme))
+          .map((scheme) => scheme.id || scheme.scheme_id)
+          .filter(Boolean)
+
+        if (missingIds.length > 0) {
+          try {
+            const hydratedAuthToken = localStorage.getItem('access_token') || authToken
+            const eligibilityResponses = await Promise.all(
+              missingIds.map(async (schemeId) => {
+                try {
+                  const eligibilityResponse = await schemeService.getPublicSchemeEligibility(schemeId, hydratedAuthToken)
+                  return { schemeId, payload: eligibilityResponse.data || {} }
+                } catch {
+                  return { schemeId, payload: null }
+                }
+              })
+            )
+
+            const hydratedBySchemeId = new Map()
+            for (const item of eligibilityResponses) {
+              if (!item.payload) continue
+
+              const payload = item.payload
+              const userResult = payload.user_result || {}
+              const score = payload.eligible_percentage ?? payload.eligibility_percentage ?? payload.eligibility_score
+              const hasScore = score !== undefined && score !== null
+
+              const statusFromConditions = Array.isArray(payload.conditions)
+                ? payload.conditions.map((condition) => {
+                    const result = String(condition?.status || '').toLowerCase()
+                    const status = result === 'met' ? 'PASS' : result === 'not_met' ? 'FAIL' : 'UNKNOWN'
+                    return {
+                      status,
+                      label_en: `${condition?.label || 'Condition'}: ${condition?.value || ''}`.trim(),
+                      is_mandatory: true,
+                    }
+                  })
+                : []
+
+              if (userResult.available || hasScore || statusFromConditions.length > 0) {
+                hydratedBySchemeId.set(String(item.schemeId), {
+                  eligibility_score: payload.eligibility_score,
+                  eligibility_percentage: payload.eligible_percentage ?? payload.eligibility_percentage,
+                  is_eligible: payload.is_eligible,
+                  is_partially_eligible: payload.is_partially_eligible,
+                  condition_results: payload.condition_results || statusFromConditions,
+                })
+              }
+            }
+
+            if (hydratedBySchemeId.size > 0) {
+              schemesData = schemesData.map((scheme) => {
+                const schemeId = String(scheme.id || scheme.scheme_id || '')
+                if (!schemeId || !hydratedBySchemeId.has(schemeId)) return scheme
+                return {
+                  ...scheme,
+                  ...hydratedBySchemeId.get(schemeId),
+                }
+              })
+            }
+
+            setDidHydrateMissingEligibility(true)
+          } catch (hydrateError) {
+            console.warn('Eligibility hydration fallback failed', hydrateError)
+          }
+        }
+      }
+
       // Sort based on sortBy
-      if (sortBy === 'eligibility') {
+      if (sortBy === 'eligibility' && effectiveAuthenticated) {
         schemesData = schemesData.sort((a, b) => {
           const aScore = a.eligibility_percentage || 0
           const bScore = b.eligibility_percentage || 0
@@ -112,7 +234,7 @@ export default function SchemeResults({
       setTotalCount(total)
     } catch (err) {
       console.error('Error fetching schemes:', err)
-      setError(t('schemes.fetchError') || 'Failed to load schemes')
+      setError(t('schemes.fetchError', { defaultValue: 'Failed to load schemes' }))
     } finally {
       setIsLoading(false)
     }
@@ -172,7 +294,7 @@ export default function SchemeResults({
   return (
     <div>
       {/* Results Header */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:gap-4">
         <div>
           <h2 className="text-h2 font-medium text-stone-900">
             {t('schemes.availableSchemes', { defaultValue: 'Available Schemes' })}
@@ -185,18 +307,35 @@ export default function SchemeResults({
         </div>
 
         {/* Sort Dropdown */}
-        <div className="w-full max-w-[14rem]">
+        <div className="w-full sm:w-auto sm:min-w-[13rem] sm:max-w-[14rem]">
           <Select
             value={sortBy}
             onChange={(value) => onSortChange(value)}
-            options={[
-              { value: 'eligibility', label: t('schemes.sortByEligibility', { defaultValue: 'Eligibility %' }) },
-              { value: 'name', label: t('schemes.sortByName', { defaultValue: 'Name A-Z' }) },
-              { value: 'benefit', label: t('schemes.sortByBenefit', { defaultValue: 'Benefit Amount' }) },
-            ]}
+            options={effectiveAuthenticated
+              ? [
+                  { value: 'eligibility', label: t('schemes.sortByEligibility', { defaultValue: 'Eligibility %' }) },
+                  { value: 'name', label: t('schemes.sortByName', { defaultValue: 'Name A-Z' }) },
+                  { value: 'benefit', label: t('schemes.sortByBenefit', { defaultValue: 'Benefit Amount' }) },
+                ]
+              : [
+                  { value: 'name', label: t('schemes.sortByName', { defaultValue: 'Name A-Z' }) },
+                  { value: 'benefit', label: t('schemes.sortByBenefit', { defaultValue: 'Benefit Amount' }) },
+                ]}
           />
         </div>
       </div>
+
+      <Card className={`mb-4 ${effectiveAuthenticated ? 'border-emerald-200 bg-emerald-50' : 'border-stone-200 bg-stone-50'}`}>
+        <p className={`text-body-sm ${effectiveAuthenticated ? 'text-emerald-900' : 'text-stone-700'}`}>
+          {effectiveAuthenticated
+            ? t('schemes.personalizedModeNote', {
+                defaultValue: 'Personalized mode is active. Match score, eligibility details, and save options are shown using your profile data.',
+              })
+            : t('schemes.publicModeNote', {
+                defaultValue: 'Public mode is active. You can browse scheme details, benefits, and official portals without login. Personal eligibility appears after sign in.',
+              })}
+        </p>
+      </Card>
 
       {/* Schemes Grid */}
       <div className="space-y-4">
@@ -204,6 +343,18 @@ export default function SchemeResults({
           <SchemeCard
             key={scheme.id || scheme.scheme_id}
             scheme={scheme}
+            isAuthenticated={effectiveAuthenticated}
+            isEligible={
+              effectiveAuthenticated
+                ? scheme.is_eligible === true || scheme.is_eligible === 1 || scheme.is_eligible === '1'
+                  ? true
+                  : scheme.is_eligible === false || scheme.is_eligible === 0 || scheme.is_eligible === '0'
+                    ? false
+                    : scheme.is_partially_eligible === true || scheme.is_partially_eligible === 1 || scheme.is_partially_eligible === '1'
+                      ? false
+                      : undefined
+                : undefined
+            }
             onViewDetails={() => handleViewDetails(scheme.id || scheme.scheme_id)}
           />
         ))}

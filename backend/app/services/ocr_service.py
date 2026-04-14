@@ -368,6 +368,22 @@ class OCRService:
         fallback = fallback.filter(ImageFilter.MedianFilter(size=3))
         return fallback
 
+    def preprocess_document_image(self, file_bytes: bytes) -> bytes:
+        """Public preprocessing pipeline wrapper used by OCR callers."""
+        if not file_bytes:
+            return b""
+        if not self.tesseract_available:
+            return file_bytes
+
+        try:
+            image = Image.open(io.BytesIO(file_bytes))
+            processed = self._preprocess_image(image)
+            output = io.BytesIO()
+            processed.save(output, format="PNG")
+            return output.getvalue()
+        except Exception:
+            return file_bytes
+
     def _ocr_text_from_image(self, file_bytes: bytes, doc_type: str | None = None) -> str:
         if not self.tesseract_available:
             return ""
@@ -990,6 +1006,18 @@ class OCRService:
 
         return data, confidence_scores, normalized
 
+    def process_extraction_result(self, data: Dict[str, object], confidence_scores: Dict[str, float]) -> Dict[str, object]:
+        """Normalize extraction output and compute confidence summary."""
+        cleaned_data, cleaned_confidence = self._filter_output(data, confidence_scores)
+        low_confidence = [field for field, score in cleaned_confidence.items() if float(score) < 0.6]
+        overall_confidence = round(sum(cleaned_confidence.values()) / max(len(cleaned_confidence), 1), 2)
+        return {
+            "data": cleaned_data,
+            "confidence_scores": cleaned_confidence,
+            "low_confidence_fields": low_confidence,
+            "overall_confidence": overall_confidence,
+        }
+
     def extract_document(self, file_bytes: bytes, doc_type: str) -> Dict[str, object]:
         if not self.tesseract_available and not self.pdf_available:
             return {
@@ -1026,18 +1054,20 @@ class OCRService:
                     "doc_type": normalized,
                 }
 
-        required_fields = DOC_REQUIRED_FIELDS.get(normalized, [])
-        missing_required_fields = [field for field in required_fields if not data.get(field)]
+        processed = self.process_extraction_result(data, confidence_scores)
 
-        low_confidence = [field for field, score in confidence_scores.items() if float(score) < 0.6]
-        overall_confidence = round(sum(confidence_scores.values()) / max(len(confidence_scores), 1), 2)
+        required_fields = DOC_REQUIRED_FIELDS.get(normalized, [])
+        missing_required_fields = [field for field in required_fields if not processed["data"].get(field)]
+
+        low_confidence = processed["low_confidence_fields"]
+        overall_confidence = processed["overall_confidence"]
         review_threshold = float(getattr(settings, "OCR_CONFIDENCE_THRESHOLD", 0.6) or 0.6)
         requires_manual_review = bool(missing_required_fields) or overall_confidence < review_threshold or bool(low_confidence)
 
         return {
             "status": "completed",
-            "data": data,
-            "confidence_scores": confidence_scores,
+            "data": processed["data"],
+            "confidence_scores": processed["confidence_scores"],
             "low_confidence_fields": low_confidence,
             "missing_required_fields": missing_required_fields,
             "requires_manual_review": requires_manual_review,

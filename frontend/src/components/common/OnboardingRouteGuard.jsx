@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import onboardingService from '../../services/onboardingService'
+import profileService from '../../services/profileService'
 
 export default function OnboardingRouteGuard({ children, requireComplete = true }) {
   const [loading, setLoading] = useState(true)
@@ -14,7 +15,22 @@ export default function OnboardingRouteGuard({ children, requireComplete = true 
       try {
         const response = await onboardingService.getStatus()
         if (!mounted) return
-        const isCompleted = Boolean(response.data?.completed)
+        let isCompleted = Boolean(response.data?.completed)
+
+        // Fallback: if onboarding flag is stale but profile is fully complete,
+        // do not block protected pages like Apply.
+        if (!isCompleted) {
+          try {
+            const completenessRes = await profileService.getCompleteness()
+            const completeness = Number(completenessRes?.data?.total_percentage || 0)
+            if (completeness >= 95) {
+              isCompleted = true
+            }
+          } catch {
+            // Ignore fallback errors; primary status still applies.
+          }
+        }
+
         setCompleted(isCompleted)
         setError(null)
       } catch (err) {
@@ -37,9 +53,7 @@ export default function OnboardingRouteGuard({ children, requireComplete = true 
   }
 
   if (error) {
-    if (requireComplete) {
-      return <Navigate to="/onboarding" replace />
-    }
+    // Do not hard-block route when status check itself fails.
     return children
   }
 

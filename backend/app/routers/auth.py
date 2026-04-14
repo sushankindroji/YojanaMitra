@@ -4,8 +4,7 @@ Authentication router.
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_db, verify_token
 from app.schemas.auth import (
     UserRegister,
     UserLogin,
@@ -17,7 +16,6 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import AuthService
 from app.models import User
-from app.core.security import verify_token
 from app.core.rate_limiter import limiter, get_rate_limit
 
 router = APIRouter()

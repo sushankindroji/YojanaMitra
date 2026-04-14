@@ -5,7 +5,7 @@ import { FiChevronDown } from 'react-icons/fi'
 const LanguageSelector = () => {
   const { i18n } = useTranslation()
   const [isOpen, setIsOpen] = React.useState(false)
-  const languageStorageKey = 'yojana_mitra_lang'
+  const languageStorageKey = 'yojanamitra_language'
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇬🇧' },
@@ -15,6 +15,7 @@ const LanguageSelector = () => {
     { code: 'te', name: 'తెలుగు', flag: '🇮🇳' },
     { code: 'kn', name: 'ಕನ್ನಡ', flag: '🇮🇳' },
     { code: 'bn', name: 'বাংলা', flag: '🇮🇳' },
+    { code: 'es', name: 'Espanol', flag: '🇪🇸' },
   ]
 
   const activeLanguage = (i18n.language || 'en').split('-')[0]

@@ -4,8 +4,8 @@ Documents router - upload, OCR, extraction, download.
 import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body, BackgroundTasks, Response
 from sqlalchemy.orm import Session
-from app.database import get_db, SessionLocal
-from app.dependencies import get_current_user
+from app.database import SessionLocal
+from app.dependencies import get_current_user, get_db
 from app.models import User, Document, Profile
 from app.services.storage_service import storage_service
 from app.services.ocr_service import ocr_service

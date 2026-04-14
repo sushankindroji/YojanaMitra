@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
@@ -6,29 +6,64 @@ import { ArrowRight, FileText, Fingerprint, Search, UploadCloud } from 'lucide-r
 import eligibilityService from '../services/eligibilityService'
 import documentService from '../services/documentService'
 import applicationService from '../services/applicationService'
-import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import PageHeader from '../components/ui/PageHeader'
-import ProgressRing from '../components/ui/ProgressRing'
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0)
-  if (amount <= 0) return 'N/A'
+  if (amount <= 0) return 'Not specified'
   return `Rs ${amount.toLocaleString('en-IN')}`
 }
 
-const formatDateTime = (value) => {
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+
+const parseNaiveTimestampAsIST = (raw) => {
+  const match = String(raw).trim().match(
+    /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,3}))?$/
+  )
+
+  if (!match) return null
+
+  const [, year, month, day, hour, minute, second = '0', millisecond = '0'] = match
+  const utcMs = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+    Number(millisecond.padEnd(3, '0'))
+  ) - IST_OFFSET_MS
+
+  return new Date(utcMs)
+}
+
+const formatDateTimeIST = (value) => {
   if (!value) return 'Never checked'
-  const date = new Date(value)
+
+  const raw = String(value).trim()
+  const hasTimezone = /[zZ]|[-+]\d{2}:?\d{2}$/.test(raw)
+  const parsedFromNaive = hasTimezone ? null : parseNaiveTimestampAsIST(raw)
+  const date = parsedFromNaive || new Date(raw)
+
   if (Number.isNaN(date.getTime())) return 'Never checked'
-  return date.toLocaleString('en-IN', {
+
+  const formatted = date.toLocaleString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
   })
+
+  const normalizedMeridiem = formatted
+    .replace(/\bAM\b/g, 'am')
+    .replace(/\bPM\b/g, 'pm')
+
+  return `${normalizedMeridiem} IST`
 }
 
 const countUploadedDocumentTypes = (documents = []) => {
@@ -44,6 +79,14 @@ const countUploadedDocumentTypes = (documents = []) => {
 
   return uploadedTypes.size
 }
+
+const hasAadhaarDocument = (documents = []) =>
+  documents.some((doc) => {
+    const type = String(doc?.doc_type || '').trim().toLowerCase()
+    const status = String(doc?.extraction_status || '').trim().toLowerCase()
+    if (type !== 'aadhaar') return false
+    return status !== 'failed'
+  })
 
 const waitForJobCompletion = async (jobId, timeoutMs = 90000) => {
   const start = Date.now()
@@ -72,6 +115,7 @@ export default function Dashboard() {
 
   const [dashboard, setDashboard] = useState(null)
   const [documentsCount, setDocumentsCount] = useState(0)
+  const [hasAadhaarUploaded, setHasAadhaarUploaded] = useState(false)
   const [applicationsCount, setApplicationsCount] = useState(0)
 
   const loadDashboard = async () => {
@@ -89,6 +133,7 @@ export default function Dashboard() {
 
       const docs = Array.isArray(docsResponse.data) ? docsResponse.data : []
       setDocumentsCount(countUploadedDocumentTypes(docs))
+      setHasAadhaarUploaded(hasAadhaarDocument(docs))
 
       const appStats = appsStatsResponse.data || {}
       const appCountFromStats =
@@ -148,6 +193,7 @@ export default function Dashboard() {
   const insight = dashboard?.scheme_insight || {}
   const fullyEligibleCount = Number(quickStats?.fully_eligible || 0)
   const highlyEligibleCount = Number(quickStats?.highly_eligible || 0)
+  const partialMatchCount = Number(quickStats?.partially_eligible || 0)
   const sectorBreakdown = dashboard?.sector_breakdown || {}
   const sectorEntries = Object.entries(sectorBreakdown)
 
@@ -155,12 +201,6 @@ export default function Dashboard() {
   const featuredSchemes = Array.isArray(dashboard?.featured_schemes)
     ? dashboard.featured_schemes
     : []
-
-  const profileCardBadges = useMemo(() => {
-    if (completeness >= 85) return [{ text: 'Excellent', variant: 'success' }]
-    if (completeness >= 60) return [{ text: 'Good progress', variant: 'warning' }]
-    return [{ text: 'Needs attention', variant: 'warning' }]
-  }, [completeness])
 
   if (loading) {
     return <div className="flex min-h-[40vh] items-center justify-center">{t('common.loading')}</div>
@@ -179,38 +219,13 @@ export default function Dashboard() {
         }
       />
 
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card className="bg-gradient-to-br from-white via-orange-50 to-green-50">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-micro font-medium uppercase tracking-wider text-stone-500">Profile Completion</p>
-              <h2 className="mt-1 text-h2 font-medium text-stone-900">{completeness}% complete</h2>
-              <p className="mt-2 max-w-xl text-body-sm text-stone-600">
-                {dashboard?.profile_completeness?.message || 'Add missing profile fields to unlock more schemes.'}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {profileCardBadges.map((badge) => (
-                  <Badge key={badge.text} variant={badge.variant}>{badge.text}</Badge>
-                ))}
-                {missingFields.length > 0 ? (
-                  <Badge variant="neutral">
-                    Missing: {missingFields.slice(0, 2).join(', ')}{missingFields.length > 2 ? '...' : ''}
-                  </Badge>
-                ) : (
-                  <Badge variant="success">All key fields completed</Badge>
-                )}
-              </div>
-            </div>
-
-            <ProgressRing value={completeness} size={108} strokeWidth={10} label="Profile" />
-          </div>
-        </Card>
-
+      <section className="grid gap-4">
         <Card variant="elevated" className="!bg-blue-950 !text-white border-blue-900">
           <p className="text-micro font-medium uppercase tracking-wider text-blue-200">Matched Schemes (Full + High)</p>
           <h2 className="mt-1 text-h2 font-medium">{dashboard?.total_eligible_count || 0}</h2>
           <p className="mt-2 text-body-sm text-blue-100">{insight.headline || 'No eligibility run found yet.'}</p>
           <p className="mt-2 text-caption text-blue-200">{insight.highlight || 'Run eligibility check to see personalized scheme insight.'}</p>
+          <p className="mt-2 text-caption text-blue-300">Last checked (IST): {formatDateTimeIST(dashboard?.last_checked)}</p>
           <p className="mt-2 text-caption text-blue-300">Fully Eligible is a stricter subset of this total.</p>
           {(fullyEligibleCount > 0 || highlyEligibleCount > 0) ? (
             <p className="mt-2 text-caption text-blue-200">
@@ -223,6 +238,26 @@ export default function Dashboard() {
               Top scheme: {topScheme.name || 'N/A'} ({formatCurrency(topScheme.benefit)})
             </div>
           ) : null}
+
+          <div className="mt-3 rounded-lg border border-blue-700 bg-blue-900/50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-caption text-blue-100">Profile completion: {completeness}%</p>
+              <button
+                type="button"
+                onClick={() => navigate('/profile')}
+                className="text-caption font-medium text-cyan-200 hover:text-cyan-100"
+              >
+                Update profile
+              </button>
+            </div>
+            {missingFields.length > 0 ? (
+              <p className="mt-1 text-caption text-blue-200">
+                Missing: {missingFields.slice(0, 2).join(', ')}{missingFields.length > 2 ? '...' : ''}
+              </p>
+            ) : (
+              <p className="mt-1 text-caption text-blue-200">All key profile fields are complete.</p>
+            )}
+          </div>
 
           {sectorEntries.length > 0 ? (
             <div className="mt-3 space-y-1.5">
@@ -244,9 +279,14 @@ export default function Dashboard() {
             </div>
           ) : null}
 
-          <Button className="mt-4 w-full" variant="secondary" onClick={handleCheckNow} loading={checking} disabled={checking}>
-            {checking ? 'Refreshing...' : 'Check Now'}
-          </Button>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <Button className="w-full" variant="secondary" onClick={handleCheckNow} loading={checking} disabled={checking}>
+              {checking ? 'Refreshing...' : 'Check eligibility'}
+            </Button>
+            <Button className="w-full" variant="ghost" onClick={() => navigate('/eligibility')}>
+              View matching schemes
+            </Button>
+          </div>
         </Card>
       </section>
 
@@ -272,18 +312,21 @@ export default function Dashboard() {
           </div>
           <h3 className="text-h3 font-medium text-stone-900">Upload documents</h3>
           <p className="mt-1 flex-1 text-body-sm text-stone-600">{documentsCount} document type{documentsCount !== 1 ? 's' : ''} uploaded.</p>
-          <Button className="mt-4 w-full" onClick={() => navigate('/upload')}>Continue</Button>
+          <Button className="mt-4 w-full" onClick={() => navigate('/upload')} disabled={!hasAadhaarUploaded}>Continue</Button>
+          {!hasAadhaarUploaded ? (
+            <p className="mt-2 text-caption text-stone-500">Upload Aadhaar to continue.</p>
+          ) : null}
         </Card>
 
         <Card className="flex h-full flex-col">
           <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
             <Fingerprint className="h-5 w-5" />
           </div>
-          <h3 className="text-h3 font-medium text-stone-900">Complete profile</h3>
+          <h3 className="text-h3 font-medium text-stone-900">View matching schemes</h3>
           <p className="mt-1 flex-1 text-body-sm text-stone-600">
-            {completeness}% complete. {missingFields.length > 0 ? `Missing: ${missingFields.slice(0, 2).join(', ')}` : 'No key fields missing.'}
+            {dashboard?.total_eligible_count || 0} full/high matches and {partialMatchCount} partial matches are ready to view.
           </p>
-          <Button className="mt-4 w-full" onClick={() => navigate('/profile')}>Continue</Button>
+          <Button className="mt-4 w-full" onClick={() => navigate('/eligibility')}>Open Matches</Button>
         </Card>
 
         <Card className="flex h-full flex-col">
@@ -291,9 +334,9 @@ export default function Dashboard() {
             <Search className="h-5 w-5" />
           </div>
           <h3 className="text-h3 font-medium text-stone-900">Check eligibility</h3>
-          <p className="mt-1 flex-1 text-body-sm text-stone-600">Last checked: {formatDateTime(dashboard?.last_checked)}</p>
-          <Button className="mt-4 w-full" onClick={() => navigate('/eligibility')}>
-            Continue
+          <p className="mt-1 flex-1 text-body-sm text-stone-600">Last checked (IST): {formatDateTimeIST(dashboard?.last_checked)}</p>
+          <Button className="mt-4 w-full" onClick={handleCheckNow} loading={checking} disabled={checking}>
+            {checking ? 'Refreshing...' : 'Check eligibility'}
           </Button>
         </Card>
 
