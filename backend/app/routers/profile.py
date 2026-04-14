@@ -59,9 +59,11 @@ async def update_profile(
         clear_cached_pipeline_result(current_user.id)
         db.refresh(profile)
 
+        response_payload = ProfileResponse(**sanitize_profile(profile))
+
         log_audit(db, "profile_update", "profile", profile.id, current_user.id)
 
-        return ProfileResponse(**sanitize_profile(profile))
+        return response_payload
     except HTTPException:
         raise
     except Exception:
@@ -149,9 +151,11 @@ async def update_optional_questions(
         clear_cached_pipeline_result(current_user.id)
         db.refresh(profile)
 
+        profile_payload = ProfileResponse(**sanitize_profile(profile))
+
         log_audit(db, "profile_optional_questions", "profile", profile.id, current_user.id)
 
-        return {"message": "Optional questions updated", "profile": ProfileResponse(**sanitize_profile(profile))}
+        return {"message": "Optional questions updated", "profile": profile_payload}
     except HTTPException:
         raise
     except Exception:

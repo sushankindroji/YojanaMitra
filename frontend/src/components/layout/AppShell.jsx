@@ -123,7 +123,7 @@ export default function AppShell() {
   return (
     <div className="min-h-screen md:flex">
       <aside
-        className={`hidden border-r border-stone-200 bg-white/85 backdrop-blur md:sticky md:top-0 md:block md:h-screen md:flex-shrink-0 md:overflow-y-auto ${
+        className={`hidden border-r border-stone-200 bg-stone-50/90 shadow-sm backdrop-blur md:sticky md:top-0 md:block md:h-screen md:flex-shrink-0 md:overflow-y-auto ${
           collapsed ? 'w-16' : 'w-60'
         } transition-[width] duration-300`}
       >
@@ -131,53 +131,69 @@ export default function AppShell() {
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 rounded-lg px-2 py-1 text-left"
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left"
             aria-label="Go to dashboard"
           >
             <span className="rounded-md bg-orange-100 px-2 py-1 text-caption font-medium text-orange-700">YM</span>
-            {!collapsed ? <span className="text-body font-medium text-stone-800">YojanaMitra</span> : null}
+            {!collapsed ? (
+              <div>
+                <p className="text-body font-medium text-stone-800">YojanaMitra</p>
+                <p className="text-micro uppercase tracking-wider text-stone-500">Citizen dashboard</p>
+              </div>
+            ) : null}
           </button>
 
           <button
             type="button"
             onClick={() => setCollapsed((state) => !state)}
-            className="rounded-lg p-1.5 text-stone-500 hover:bg-stone-100"
+            className="rounded-lg border border-stone-200 bg-white p-1.5 text-stone-500 hover:bg-stone-100"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
         </div>
 
-        <div className="mx-2 mt-2 rounded-xl border border-stone-200 bg-stone-50 p-2">
+        <div className="mx-2 mt-2 rounded-xl border border-stone-200 bg-white p-2.5">
           <div className="flex items-center gap-2">
             <Avatar name={user?.full_name || user?.email || 'User'} size={collapsed ? 'sm' : 'md'} />
             {!collapsed ? (
               <div className="min-w-0">
                 <p className="truncate text-body-sm font-medium text-stone-800">{user?.full_name || 'Citizen User'}</p>
                 <p className="truncate text-caption text-stone-500">{user?.email || 'Signed in'}</p>
+                <p className="mt-0.5 text-micro uppercase tracking-wider text-stone-400">Verified account</p>
               </div>
             ) : null}
           </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2" aria-label="Primary navigation">
+          {!collapsed ? <p className="px-2 pb-1.5 text-micro uppercase tracking-wider text-stone-500">Navigation</p> : null}
           {desktopItems.map((item) => {
             const Icon = item.icon
+            const showMySchemesBadge = item.to === '/applications' && mySchemesBadge > 0
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `relative mb-1 flex items-center gap-3 rounded-xl px-3 py-2 text-body font-medium transition ${
+                  `relative mb-1.5 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-body-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-orange-50 font-medium text-orange-700 before:absolute before:left-0 before:top-2 before:h-6 before:w-1 before:rounded-r before:bg-orange-500'
-                      : 'text-stone-600 hover:bg-stone-100 hover:text-stone-800'
+                      ? 'border-orange-200 bg-orange-50 font-medium text-orange-700 before:absolute before:left-0 before:top-2 before:h-6 before:w-1 before:rounded-r before:bg-orange-500'
+                      : 'border-transparent text-stone-600 hover:border-stone-200 hover:bg-white hover:text-stone-800'
                   }`
                 }
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
                 {!collapsed ? <span>{item.label}</span> : null}
+                {showMySchemesBadge && !collapsed ? (
+                  <span className="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-orange-600 px-1.5 text-[11px] font-medium text-white">
+                    {mySchemesBadge > 99 ? '99+' : mySchemesBadge}
+                  </span>
+                ) : null}
+                {showMySchemesBadge && collapsed ? (
+                  <span className="absolute right-1 top-1 inline-flex h-2 w-2 rounded-full bg-orange-600" />
+                ) : null}
               </NavLink>
             )
           })}
@@ -188,7 +204,7 @@ export default function AppShell() {
             type="button"
             onClick={handleLogout}
             title={collapsed ? 'Logout' : undefined}
-            className="relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-body font-medium text-red-700 transition hover:bg-red-50"
+            className="relative flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-body-sm font-medium text-red-700 transition-colors hover:border-red-100 hover:bg-red-50"
             aria-label="Logout"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
