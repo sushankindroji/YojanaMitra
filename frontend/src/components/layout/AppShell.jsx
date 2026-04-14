@@ -121,13 +121,13 @@ export default function AppShell() {
   )
 
   return (
-    <div className="min-h-screen md:flex">
+    <div className="min-h-screen overflow-x-hidden md:flex">
       <aside
-        className={`hidden border-r border-stone-200 bg-stone-50/90 shadow-sm backdrop-blur md:sticky md:top-0 md:block md:h-screen md:flex-shrink-0 md:overflow-y-auto ${
-          collapsed ? 'w-16' : 'w-60'
+        className={`hidden overflow-hidden bg-stone-50/90 shadow-sm backdrop-blur md:sticky md:top-0 md:block md:h-screen md:flex-shrink-0 md:overflow-y-auto ${
+          collapsed ? 'w-0 border-r-0' : 'w-60 border-r border-stone-200'
         } transition-[width] duration-300`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-stone-100 px-3">
+        <div className="relative flex h-16 items-center justify-start border-b border-stone-100 px-3">
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
@@ -135,22 +135,22 @@ export default function AppShell() {
             aria-label="Go to dashboard"
           >
             <span className="rounded-md bg-orange-100 px-2 py-1 text-caption font-medium text-orange-700">YM</span>
-            {!collapsed ? (
-              <div>
-                <p className="text-body font-medium text-stone-800">YojanaMitra</p>
-                <p className="text-micro uppercase tracking-wider text-stone-500">Citizen dashboard</p>
-              </div>
-            ) : null}
+            <div>
+              <p className="text-body font-medium text-stone-800">YojanaMitra</p>
+              <p className="text-micro uppercase tracking-wider text-stone-500">Citizen dashboard</p>
+            </div>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setCollapsed((state) => !state)}
-            className="rounded-lg border border-stone-200 bg-white p-1.5 text-stone-500 hover:bg-stone-100"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
+          {!collapsed ? (
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-lg border border-stone-200 bg-white p-1.5 text-stone-500 shadow-sm hover:bg-stone-100"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          ) : null}
         </div>
 
         <div className="mx-2 mt-2 rounded-xl border border-stone-200 bg-white p-2.5">
@@ -166,7 +166,7 @@ export default function AppShell() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-2" aria-label="Primary navigation">
+        <nav className="flex-1 overflow-x-hidden overflow-y-auto p-2" aria-label="Primary navigation">
           {!collapsed ? <p className="px-2 pb-1.5 text-micro uppercase tracking-wider text-stone-500">Navigation</p> : null}
           {desktopItems.map((item) => {
             const Icon = item.icon
@@ -213,25 +213,38 @@ export default function AppShell() {
         </div>
       </aside>
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden">
         <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/85 backdrop-blur">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
-            <div>
-              <nav className="text-body-sm text-stone-500" aria-label="Breadcrumb">
-                {breadcrumb.map((item, index) => (
-                  <span key={`${item.to}-${index}`}>
-                    <button
-                      type="button"
-                      className="hover:text-stone-700"
-                      onClick={() => navigate(item.to)}
-                    >
-                      {item.label}
-                    </button>
-                    {index < breadcrumb.length - 1 ? <span className="px-1">/</span> : null}
-                  </span>
-                ))}
-              </nav>
-              <p className="mt-1 text-h3 font-medium text-stone-800">{breadcrumb[breadcrumb.length - 1]?.label || 'Home'}</p>
+            <div className="flex items-center gap-2">
+              {collapsed ? (
+                <button
+                  type="button"
+                  onClick={() => setCollapsed(false)}
+                  className="hidden rounded-lg border border-stone-200 bg-white p-1.5 text-stone-500 shadow-sm hover:bg-stone-100 md:inline-flex"
+                  aria-label="Expand sidebar"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              ) : null}
+
+              <div>
+                <nav className="text-body-sm text-stone-500" aria-label="Breadcrumb">
+                  {breadcrumb.map((item, index) => (
+                    <span key={`${item.to}-${index}`}>
+                      <button
+                        type="button"
+                        className="hover:text-stone-700"
+                        onClick={() => navigate(item.to)}
+                      >
+                        {item.label}
+                      </button>
+                      {index < breadcrumb.length - 1 ? <span className="px-1">/</span> : null}
+                    </span>
+                  ))}
+                </nav>
+                <p className="mt-1 text-h3 font-medium text-stone-800">{breadcrumb[breadcrumb.length - 1]?.label || 'Home'}</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">

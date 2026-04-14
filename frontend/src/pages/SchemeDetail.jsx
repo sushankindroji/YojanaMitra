@@ -7,9 +7,12 @@ import {
   ArrowLeft,
   Building2,
   CheckCircle2,
+  Clock3,
   Circle,
   ExternalLink,
   HelpCircle,
+  Lightbulb,
+  ListChecks,
   Loader,
   MapPin,
   PhoneCall,
@@ -86,6 +89,14 @@ function derivePaymentMethod(benefitType) {
 function safeText(value, fallback) {
   const text = String(value || '').trim()
   return text || fallback
+}
+
+function isVagueTopSubtitle(value) {
+  const raw = String(value || '').trim().toLowerCase()
+  if (!raw) return true
+  if (raw.startsWith('variant ')) return true
+  if (raw === 'not available' || raw === 'n/a') return true
+  return false
 }
 
 function formatDateDMY(value) {
@@ -199,6 +210,20 @@ export default function SchemeDetail() {
     safeText(scheme?.description, '') ||
     safeText(scheme?.description_en, 'Information not available. Please call the helpline or visit your nearest service centre.')
 
+  const rawTopSubtitle = safeText(
+    scheme?.description || scheme?.description_en || scheme?.short_description,
+    '',
+  )
+
+  const schemeLevelText =
+    String(scheme?.state || '').trim().toLowerCase() === 'central'
+      ? 'Central scheme'
+      : `${safeText(scheme?.state, 'State')} scheme`
+
+  const topSubtitle = !isVagueTopSubtitle(rawTopSubtitle)
+    ? rawTopSubtitle
+    : `${schemeLevelText} • ${safeText(scheme?.sector, 'General sector')} • Managed by ${safeText(scheme?.ministry, 'relevant department')}`
+
   const officialPortalUrl =
     applyInfo?.portal_url ||
     scheme?.official_portal_url ||
@@ -217,6 +242,40 @@ export default function SchemeDetail() {
     const docs = Array.isArray(applyInfo?.documents_user_has) ? applyInfo.documents_user_has : []
     return new Set(docs.map((doc) => normalizeText(doc)))
   }, [applyInfo?.documents_user_has])
+
+  const hasUploadedDocument = (docName) => {
+    const normalizedDoc = normalizeText(docName)
+    if (!normalizedDoc) return false
+    return Array.from(documentsUserHasSet).some(
+      (uploadedDoc) => uploadedDoc.includes(normalizedDoc) || normalizedDoc.includes(uploadedDoc),
+    )
+  }
+
+  const missingRequiredDocuments = useMemo(() => {
+    if (!isLoggedIn) return []
+    return requiredDocuments.filter((doc) => !hasUploadedDocument(doc)).slice(0, 5)
+  }, [isLoggedIn, requiredDocuments, documentsUserHasSet])
+
+  const overviewSuggestions = useMemo(() => {
+    const tips = []
+
+    const rawDeadline = String(scheme?.last_date || scheme?.application_deadline || '').trim()
+    if (rawDeadline) {
+      tips.push(`Check deadline first: ${rawDeadline}.`)
+    }
+
+    if (requiredDocuments.length > 0) {
+      const preview = requiredDocuments.slice(0, 3).join(', ')
+      tips.push(`Keep these ready before starting: ${preview}${requiredDocuments.length > 3 ? ', and other required proofs.' : '.'}`)
+    } else {
+      tips.push('Confirm the latest document list on the official portal or at your nearest CSC.')
+    }
+
+    tips.push('Ensure your Aadhaar, bank details, and profile name/date of birth match exactly across records.')
+    tips.push('Submit during working hours and keep acknowledgement receipts for tracking.')
+
+    return tips.slice(0, 4)
+  }, [requiredDocuments, scheme?.last_date, scheme?.application_deadline])
 
   const eligibilityCriteria =
     eligibilityData?.criteria ||
@@ -245,6 +304,42 @@ export default function SchemeDetail() {
     : eligibilityConditions.length
   const unmetCriteria = Array.isArray(userResult?.unmet_criteria) ? userResult.unmet_criteria : []
   const actionHints = Array.isArray(userResult?.action_hints) ? userResult.action_hints : []
+  const eligibilityPct = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : 0
+
+  const eligibilitySuggestions = useMemo(() => {
+    if (actionHints.length > 0) return actionHints.slice(0, 5)
+
+    const tips = []
+    if (unmetCriteria.length > 0) {
+      tips.push(`Update profile information for: ${unmetCriteria.slice(0, 3).join(', ')}${unmetCriteria.length > 3 ? ', and others' : ''}.`)
+    }
+    if (missingRequiredDocuments.length > 0) {
+      tips.push(`Upload pending documents: ${missingRequiredDocuments.join(', ')}.`)
+    }
+    tips.push('Re-check eligibility after updating profile details and document uploads.')
+    return tips.slice(0, 4)
+  }, [actionHints, unmetCriteria, missingRequiredDocuments])
+
+  const applicationChecklist = useMemo(() => {
+    const list = [
+      'Verify your profile details are accurate and up to date.',
+      'Keep a working mobile number available for OTP and status alerts.',
+      'Save acknowledgement number/screenshot immediately after submission.',
+    ]
+
+    if (requiredDocuments.length > 0) {
+      list.unshift(`Collect required documents: ${requiredDocuments.slice(0, 3).join(', ')}${requiredDocuments.length > 3 ? ', and others.' : '.'}`)
+    }
+
+    return list.slice(0, 4)
+  }, [requiredDocuments])
+
+  const commonMistakes = [
+    'Submitting mismatched name/date of birth across documents.',
+    'Uploading blurred or incomplete document scans.',
+    'Missing deadline due to last-day submission rush.',
+    'Forgetting to save the acknowledgement receipt.',
+  ]
 
   const whatYouGet = {
     amount: formatCurrencyINR(scheme?.benefit_amount),
@@ -337,15 +432,15 @@ export default function SchemeDetail() {
       <button
         type="button"
         onClick={() => navigate('/schemes')}
-        className="inline-flex items-center gap-1 text-body-sm font-medium text-stone-700 hover:text-stone-900"
+        className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-body-sm font-medium text-stone-700 hover:bg-stone-50 hover:text-stone-900"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to schemes
+        All schemes
       </button>
 
       <PageHeader
         title={schemeName}
-        description={safeText(scheme?.description || scheme?.description_en, 'Government scheme details in simple language.')}
+        description={topSubtitle}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={handleSaveScheme}>
@@ -400,8 +495,10 @@ export default function SchemeDetail() {
                 role="tab"
                 aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-lg px-4 py-2 text-body-sm font-medium transition ${
-                  activeTab === tab.id ? 'bg-orange-600 text-white' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                className={`rounded-xl border px-4 py-2 text-body-sm font-medium transition ${
+                  activeTab === tab.id
+                    ? 'border-orange-600 bg-orange-600 text-white shadow-sm'
+                    : 'border-transparent text-stone-600 hover:border-stone-200 hover:bg-stone-100 hover:text-stone-900'
                 }`}
               >
                 {tab.label}
@@ -413,8 +510,42 @@ export default function SchemeDetail() {
         <div className="p-5">
           {activeTab === 'overview' ? (
             <div className="space-y-6">
+              <section className="rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50 via-amber-50 to-white px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex rounded-xl border border-orange-200 bg-white/80 p-2 text-orange-700">
+                    <Building2 className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-h2 font-medium text-stone-900">Scheme overview</h2>
+                    <p className="mt-1 text-body-sm text-stone-700">
+                      Understand benefits, target beneficiaries, and important details before applying.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <Card className="border border-amber-200 bg-amber-50">
+                <div className="flex items-start gap-3">
+                  <Lightbulb className="mt-0.5 h-5 w-5 text-amber-700" />
+                  <div>
+                    <h2 className="text-h3 font-medium text-amber-900">Before you start: smart suggestions</h2>
+                    <p className="mt-1 text-body-sm text-amber-900/90">
+                      Use this short checklist to reduce rejections and speed up approval.
+                    </p>
+                    <ul className="mt-3 space-y-2">
+                      {overviewSuggestions.map((tip) => (
+                        <li key={tip} className="flex items-start gap-2 text-body-sm text-amber-900">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4" />
+                          <span>{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </Card>
+
               <section>
-                <h2 className="text-h3 font-medium text-stone-900">About this scheme</h2>
+                <h2 className="text-h3 font-medium text-stone-900">Scheme summary</h2>
                 <p className="mt-2 whitespace-pre-line text-body-sm leading-relaxed text-stone-700">
                   {overviewDescription}
                 </p>
@@ -422,21 +553,33 @@ export default function SchemeDetail() {
 
               <section>
                 <h2 className="text-h3 font-medium text-stone-900">What you will get</h2>
-                <Card className="mt-3 border border-emerald-200 bg-emerald-50">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <p className="text-body-sm text-emerald-900"><span className="font-medium">Benefit amount:</span> {whatYouGet.amount}</p>
-                    <p className="text-body-sm text-emerald-900"><span className="font-medium">Benefit type:</span> {whatYouGet.type}</p>
-                    <p className="text-body-sm text-emerald-900"><span className="font-medium">Frequency:</span> {whatYouGet.frequency}</p>
-                    <p className="text-body-sm text-emerald-900"><span className="font-medium">Payment method:</span> {whatYouGet.paymentMethod}</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-caption uppercase tracking-wider text-emerald-800">Benefit amount</p>
+                    <p className="mt-1 text-body-sm font-medium text-emerald-900">{whatYouGet.amount}</p>
                   </div>
-                  {safeText(scheme?.benefits_description, '') ? (
-                    <p className="mt-3 text-body-sm text-emerald-900/90">{scheme.benefits_description}</p>
-                  ) : null}
-                </Card>
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-caption uppercase tracking-wider text-emerald-800">Benefit type</p>
+                    <p className="mt-1 text-body-sm font-medium text-emerald-900">{whatYouGet.type}</p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-caption uppercase tracking-wider text-emerald-800">Frequency</p>
+                    <p className="mt-1 text-body-sm font-medium text-emerald-900">{whatYouGet.frequency}</p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-caption uppercase tracking-wider text-emerald-800">Payment method</p>
+                    <p className="mt-1 text-body-sm font-medium text-emerald-900">{whatYouGet.paymentMethod}</p>
+                  </div>
+                </div>
+                {safeText(scheme?.benefits_description, '') ? (
+                  <Card className="mt-3 border border-emerald-200 bg-emerald-50">
+                    <p className="text-body-sm text-emerald-900/90">{scheme.benefits_description}</p>
+                  </Card>
+                ) : null}
               </section>
 
               <section>
-                <h2 className="text-h3 font-medium text-stone-900">Who is this for</h2>
+                <h2 className="text-h3 font-medium text-stone-900">Intended beneficiaries</h2>
                 <p className="mt-2 text-body-sm text-stone-700">
                   {safeText(scheme?.target_beneficiaries, 'This scheme is for eligible families as per government rules.')}
                 </p>
@@ -458,7 +601,19 @@ export default function SchemeDetail() {
 
           {activeTab === 'eligibility' ? (
             <div className="space-y-5">
-              <h2 className="text-h3 font-medium text-stone-900">Who can apply for this scheme?</h2>
+              <section className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-white px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex rounded-xl border border-blue-200 bg-white/80 p-2 text-blue-700">
+                    <ListChecks className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-h2 font-medium text-stone-900">Eligibility analysis</h2>
+                    <p className="mt-1 text-body-sm text-stone-700">
+                      Review required criteria, see your current status, and follow clear actions to improve eligibility.
+                    </p>
+                  </div>
+                </div>
+              </section>
 
               {criteriaUnavailable ? (
                 <Card className="border border-amber-200 bg-amber-50">
@@ -468,11 +623,22 @@ export default function SchemeDetail() {
                   <p className="mt-2 text-body-sm font-medium text-amber-900">
                     Helpline: {safeText(applyInfo?.helpline || scheme?.helpline_number, '1800-11-0001')}
                   </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button onClick={() => openPortalLink(officialPortalUrl)} disabled={!officialPortalUrl}>
+                      Open official portal
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                    <Button variant="secondary" onClick={() => openPortalLink(cscLocatorUrl)} disabled={!cscLocatorUrl}>
+                      Find nearest {localCscName}
+                      <MapPin className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </Card>
               ) : null}
 
               {!criteriaUnavailable && !isLoggedIn ? (
                 <Card className="border border-stone-200">
+                  <p className="text-body-sm font-medium text-stone-900">General eligibility requirements</p>
                   <div className="space-y-3">
                     {eligibilityCriteria.map((item) => (
                       <p key={item.key} className="text-body-sm text-stone-700">
@@ -491,6 +657,35 @@ export default function SchemeDetail() {
 
               {!criteriaUnavailable && isLoggedIn ? (
                 <>
+                  <Card className="border border-blue-200 bg-blue-50">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-caption uppercase tracking-wider text-blue-800">Eligibility snapshot</p>
+                        <p className="mt-1 text-body-sm font-medium text-blue-900">
+                          You currently meet {metCount} out of {totalCount} criteria.
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-blue-300 bg-white px-3 py-1 text-body-sm font-medium text-blue-900">
+                        {eligibilityPct}% match
+                      </span>
+                    </div>
+
+                    {unmetCriteria.length > 0 ? (
+                      <div className="mt-3">
+                        <p className="text-body-sm font-medium text-blue-900">Pending criteria</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {unmetCriteria.slice(0, 6).map((criteria) => (
+                            <span key={criteria} className="rounded-full bg-blue-100 px-3 py-1 text-caption text-blue-900">
+                              {criteria}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-body-sm text-emerald-800">Great news: no unmet criteria detected right now.</p>
+                    )}
+                  </Card>
+
                   <div className="space-y-3">
                     {eligibilityConditions.map((condition) => {
                       const tone = statusStyle[condition.status] || statusStyle.unknown
@@ -511,24 +706,28 @@ export default function SchemeDetail() {
                     })}
                   </div>
 
-                  <Card className="border border-blue-200 bg-blue-50">
-                    <p className="text-body-sm font-medium text-blue-900">You meet {metCount} out of {totalCount} criteria</p>
-
-                    {unmetCriteria.length > 0 ? (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-body-sm text-blue-900"><span className="font-medium">You are missing:</span> {unmetCriteria.join(', ')}</p>
-                        {actionHints.length > 0 ? (
-                          <div>
-                            <p className="text-body-sm font-medium text-blue-900">How to qualify:</p>
-                            <ul className="mt-1 space-y-1">
-                              {actionHints.map((hint) => (
-                                <li key={hint} className="text-body-sm text-blue-900">- {hint}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
+                  <Card className="border border-indigo-200 bg-indigo-50">
+                    <div className="flex items-start gap-3">
+                      <Lightbulb className="mt-0.5 h-5 w-5 text-indigo-700" />
+                      <div>
+                        <p className="text-body-sm font-medium text-indigo-900">Suggested next steps</p>
+                        <ul className="mt-2 space-y-2">
+                          {eligibilitySuggestions.map((hint) => (
+                            <li key={hint} className="text-body-sm text-indigo-900">- {hint}</li>
+                          ))}
+                        </ul>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button variant="secondary" onClick={() => navigate('/profile')}>
+                            Update profile
+                          </Button>
+                          {missingRequiredDocuments.length > 0 ? (
+                            <Button variant="ghost" onClick={() => navigate('/upload')}>
+                              Upload pending documents
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
-                    ) : null}
+                    </div>
                   </Card>
                 </>
               ) : null}
@@ -537,10 +736,28 @@ export default function SchemeDetail() {
 
           {activeTab === 'howToApply' ? (
             <div className="space-y-5">
+              <section className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-teal-50 to-white px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex rounded-xl border border-emerald-200 bg-white/80 p-2 text-emerald-700">
+                    <ExternalLink className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-h2 font-medium text-stone-900">Application roadmap</h2>
+                    <p className="mt-1 text-body-sm text-stone-700">
+                      Follow a step-by-step flow, prepare documents in advance, and avoid common submission mistakes.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
               <Card className="border border-blue-200 bg-blue-50">
-                <h2 className="text-h3 font-medium text-blue-900">How to apply</h2>
+                <h2 className="text-h3 font-medium text-blue-900">Apply via portal or service centre</h2>
                 <p className="mt-2 text-body-sm text-blue-900/90">
                   Visit your nearest <span className="font-medium">{localCscName}</span> if you need help.
+                </p>
+                <p className="mt-2 inline-flex items-center gap-2 text-body-sm text-blue-900/90">
+                  <Clock3 className="h-4 w-4" />
+                  Expected processing: {safeText(scheme?.processing_time || applyInfo?.processing_time, 'Usually 15-30 working days')}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button onClick={() => openPortalLink(officialPortalUrl)} disabled={!officialPortalUrl || isApplyInfoLoading}>
@@ -557,6 +774,20 @@ export default function SchemeDetail() {
                     Information not available for direct portal - please call helpline or visit your nearest {localCscName}.
                   </p>
                 ) : null}
+              </Card>
+
+              <Card className="border border-amber-200 bg-amber-50">
+                <div className="flex items-start gap-3">
+                  <ListChecks className="mt-0.5 h-5 w-5 text-amber-700" />
+                  <div>
+                    <h3 className="font-medium text-amber-900">Application readiness checklist</h3>
+                    <ul className="mt-2 space-y-2">
+                      {applicationChecklist.map((item) => (
+                        <li key={item} className="text-body-sm text-amber-900">- {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </Card>
 
               {isApplyInfoLoading ? (
@@ -589,10 +820,7 @@ export default function SchemeDetail() {
                 {requiredDocuments.length > 0 ? (
                   <div className="mt-3 space-y-2">
                     {requiredDocuments.map((doc) => {
-                      const normalizedDoc = normalizeText(doc)
-                      const hasDoc = Array.from(documentsUserHasSet).some(
-                        (uploadedDoc) => uploadedDoc.includes(normalizedDoc) || normalizedDoc.includes(uploadedDoc),
-                      )
+                      const hasDoc = hasUploadedDocument(doc)
 
                       if (!isLoggedIn) {
                         return (
@@ -630,6 +858,15 @@ export default function SchemeDetail() {
                     Information not available - please call {safeText(applyInfo?.helpline, '1800-11-0001')} or visit your nearest {localCscName}.
                   </p>
                 )}
+              </Card>
+
+              <Card className="border border-rose-200 bg-rose-50">
+                <h3 className="font-medium text-rose-900">Common mistakes to avoid</h3>
+                <ul className="mt-2 space-y-2">
+                  {commonMistakes.map((mistake) => (
+                    <li key={mistake} className="text-body-sm text-rose-900">- {mistake}</li>
+                  ))}
+                </ul>
               </Card>
 
               {faqItems.length > 0 ? (
