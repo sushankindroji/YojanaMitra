@@ -1,6 +1,7 @@
 import axios from 'axios'
 import axiosRetry from 'axios-retry'
 import { toast } from 'react-toastify'
+import i18n from '../i18n'
 import { useAuthStore } from '../store/authStore'
 import { API_BASE_URL } from './constants'
 
@@ -100,13 +101,30 @@ const handleError = (error) => {
   return Promise.reject(error)
 }
 
+const addLanguageParam = (config) => {
+  const currentLang = i18n.language || 'en'
+  config.params = config.params || {}
+  if (!config.params.lang) {
+    config.params.lang = currentLang
+  }
+  config.headers['Accept-Language'] = currentLang
+  return config
+}
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token')
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    return config
+    return addLanguageParam(config)
+  },
+  (error) => Promise.reject(error)
+)
+
+publicApi.interceptors.request.use(
+  (config) => {
+    return addLanguageParam(config)
   },
   (error) => Promise.reject(error)
 )
