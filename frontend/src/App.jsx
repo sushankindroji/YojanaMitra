@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -21,7 +21,6 @@ const Onboarding = lazy(() => import('./pages/Onboarding'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Schemes = lazy(() => import('./pages/Schemes'))
 const SchemeDetail = lazy(() => import('./pages/SchemeDetail'))
-const Apply = lazy(() => import('./pages/Apply'))
 const Eligibility = lazy(() => import('./pages/Eligibility'))
 const Applications = lazy(() => import('./pages/Applications'))
 const UploadDocuments = lazy(() => import('./pages/UploadDocuments'))
@@ -40,6 +39,12 @@ const AdminShell = () => (
     </AdminLayout>
   </ProtectedAdminRoute>
 )
+
+const LegacyApplyRedirect = () => {
+  const { schemeId } = useParams()
+  if (!schemeId) return <Navigate to="/schemes" replace />
+  return <Navigate to={`/schemes/${schemeId}`} replace />
+}
 
 const isValidToken = (value) =>
   typeof value === 'string' && value.trim().length > 0 && value !== 'undefined' && value !== 'null'
@@ -90,6 +95,7 @@ function App() {
             <Route path="/schemes" element={<Schemes />} />
             <Route path="/schemes/:schemeId" element={<SchemeDetail />} />
             <Route path="/schemes/:id" element={<SchemeDetail />} />
+            <Route path="/apply/:schemeId" element={<LegacyApplyRedirect />} />
 
             {/* Protected Routes - Onboarding (special layout, no navbar) */}
             <Route
@@ -98,18 +104,6 @@ function App() {
                 <ProtectedRoute>
                   <OnboardingRouteGuard requireComplete={false}>
                     <Onboarding />
-                  </OnboardingRouteGuard>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Protected Routes - Apply (special layout, no navbar) */}
-            <Route
-              path="/apply/:schemeId"
-              element={
-                <ProtectedRoute>
-                  <OnboardingRouteGuard requireComplete>
-                    <Apply />
                   </OnboardingRouteGuard>
                 </ProtectedRoute>
               }

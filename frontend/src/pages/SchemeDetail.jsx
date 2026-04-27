@@ -379,11 +379,13 @@ export default function SchemeDetail() {
   ]
 
   const handleApply = () => {
-    if (!isLoggedIn) {
-      navigate('/register')
+    if (officialPortalUrl) {
+      openPortalLink(officialPortalUrl)
       return
     }
-    navigate(`/apply/${scheme?.id || scheme?.scheme_id}`)
+
+    setActiveTab('howToApply')
+    toast.info('Use the roadmap and service centre details below to apply offline.')
   }
 
   const updatedDate = formatDateDMY(scheme?.updated_at || scheme?.last_updated || scheme?.created_at)
@@ -456,9 +458,9 @@ export default function SchemeDetail() {
               </Button>
             ) : null}
             <Button onClick={handleApply}>
-              {isLoggedIn
-                ? t('schemes.applyNow', { defaultValue: 'Apply Now' })
-                : t('schemes.checkEligibility', { defaultValue: 'Check your eligibility' })}
+              {officialPortalUrl
+                ? t('schemes.applyOnOfficialPortal', { defaultValue: 'Apply on Official Portal' })
+                : t('schemes.tabHowToApply', { defaultValue: 'How to Apply' })}
               <ExternalLink className="h-4 w-4" />
             </Button>
           </div>
@@ -910,7 +912,7 @@ export default function SchemeDetail() {
               </Card>
 
               <Button className="w-full" onClick={handleApply}>
-                {isLoggedIn ? 'Proceed to apply' : 'Sign in to apply'}
+                {officialPortalUrl ? 'Open official portal' : 'Review application roadmap'}
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </div>
@@ -920,7 +922,7 @@ export default function SchemeDetail() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 p-3 backdrop-blur md:hidden">
         <Button className="w-full" onClick={handleApply}>
-          {isLoggedIn ? 'Apply Now' : 'Sign in to apply'}
+          {officialPortalUrl ? 'Open official portal' : 'View application roadmap'}
           <ExternalLink className="h-4 w-4" />
         </Button>
       </div>

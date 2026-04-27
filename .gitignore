@@ -29,12 +29,18 @@ wheels/
 # Backend
 backend/yojanamitra.db
 backend/.env
+backend/.env.local
+backend/.env.*.local
 backend/uploads/
+*.db
+*.sqlite
+*.sqlite3
 
 # Frontend
 frontend/node_modules/
 frontend/.env
 frontend/.env.local
+frontend/.env.production
 frontend/dist/
 frontend/.vite/
 
