@@ -4,7 +4,14 @@ Authentication router.
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from app.dependencies import get_current_user, get_db, verify_token
+from app.dependencies import (
+    decode_token,
+    get_admin_user,
+    get_current_user,
+    get_db,
+    get_optional_user,
+    revoke_refresh_token,
+)
 from app.schemas.auth import (
     UserRegister,
     UserLogin,
@@ -16,7 +23,7 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import AuthService
 from app.models import User
-from app.core.rate_limiter import limiter, get_rate_limit
+from app.rate_limiter import limiter, get_rate_limit
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -107,9 +114,9 @@ async def refresh_token(
     db: Session = Depends(get_db),
 ):
     """Refresh access token."""
-    token_payload = verify_token(payload.refresh_token)
+    token_payload = decode_token(payload.refresh_token, expected_type="refresh")
 
-    if not token_payload or token_payload.get("type") != "refresh":
+    if not token_payload:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     user_id = token_payload.get("sub")
@@ -152,8 +159,12 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user)):
-    """Logout user (client-side token deletion)."""
+async def logout(
+    payload: RefreshTokenRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Logout user and revoke provided refresh token."""
+    revoke_refresh_token(payload.refresh_token)
     return {"message": "Logged out successfully"}
 
 

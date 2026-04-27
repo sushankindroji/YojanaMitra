@@ -1,4 +1,4 @@
-// frontend/src/pages/admin/AdminApplications.jsx
+﻿// frontend/src/pages/admin/AdminApplications.jsx
 /**
  * Admin Applications Management - Review and manage user applications
  * Features:
@@ -54,7 +54,7 @@ export default function AdminApplications() {
       })
       setApplications(res.data.applications || [])
     } catch (err) {
-      console.error('Error fetching applications:', err)
+      globalThis.logger?.error?.('Error fetching applications:', err)
       toast.error(t('admin.fetchError') || 'Failed to load applications')
     } finally {
       setIsLoading(false)
@@ -94,7 +94,7 @@ export default function AdminApplications() {
       fetchApplications()
       setSelectedApp(null)
     } catch (err) {
-      console.error('Error approving application:', err)
+      globalThis.logger?.error?.('Error approving application:', err)
       toast.error('Failed to approve application')
     } finally {
       setActionInProgress(false)
@@ -114,7 +114,7 @@ export default function AdminApplications() {
       fetchApplications()
       setSelectedApp(null)
     } catch (err) {
-      console.error('Error rejecting application:', err)
+      globalThis.logger?.error?.('Error rejecting application:', err)
       toast.error('Failed to reject application')
     } finally {
       setActionInProgress(false)
@@ -329,7 +329,7 @@ export default function AdminApplications() {
                   onClick={() => setSelectedApp(null)}
                 className="text-h3 text-stone-500 hover:text-stone-700"
                 >
-                  ✕
+                  X
                 </button>
               </div>
 
@@ -427,3 +427,4 @@ export default function AdminApplications() {
     </div>
   )
 }
+

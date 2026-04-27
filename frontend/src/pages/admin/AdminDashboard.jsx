@@ -1,4 +1,4 @@
-// frontend/src/pages/admin/AdminDashboard.jsx
+﻿// frontend/src/pages/admin/AdminDashboard.jsx
 /**
  * Admin Dashboard - Overview of system metrics and statistics
  * Features:
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
       const res = await api.get('/admin/dashboard/stats')
       setStats(res.data)
     } catch (err) {
-      console.error('Error fetching admin stats:', err)
+      globalThis.logger?.error?.('Error fetching admin stats:', err)
       // When API fails, show default stats instead of error
       setStats({
         total_users: 0,
@@ -270,3 +270,4 @@ export default function AdminDashboard() {
     </div>
   )
 }
+

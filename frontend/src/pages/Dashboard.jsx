@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
@@ -13,7 +13,7 @@ import PageHeader from '../components/ui/PageHeader'
 const formatCurrency = (value) => {
   const amount = Number(value || 0)
   if (amount <= 0) return 'Not specified'
-  return `₹${amount.toLocaleString('en-IN')}`
+  return `INR ${amount.toLocaleString('en-IN')}`
 }
 
 const formatCount = (value) => Number(value || 0).toLocaleString('en-IN')
@@ -178,7 +178,7 @@ export default function Dashboard() {
         appCountFromStats || Number(dashboardPayload?.quick_stats?.applied || 0)
       )
     } catch (error) {
-      console.error('Failed to load dashboard:', error)
+      globalThis.logger?.error?.('Failed to load dashboard:', error)
       toast.error('Failed to load personalized dashboard data')
       setDashboard(null)
     } finally {
@@ -203,7 +203,7 @@ export default function Dashboard() {
       await loadDashboard()
       toast.success('Eligibility results refreshed')
     } catch (error) {
-      console.error('Eligibility refresh failed:', error)
+      globalThis.logger?.error?.('Eligibility refresh failed:', error)
       toast.error(error.message || 'Could not refresh eligibility now')
     } finally {
       setChecking(false)
@@ -448,3 +448,4 @@ export default function Dashboard() {
     </div>
   )
 }
+

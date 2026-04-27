@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
-from app.dependencies import get_admin_user, get_db
+from app.dependencies import get_admin_user, get_current_user, get_db, get_optional_user
 from app.models import User, Scheme, SavedApplication, Profile, AuditLog, SchemeSyncLog
-from app.core.audit import log_audit
+from app.audit import log_audit
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -49,6 +49,7 @@ def _bool_int(value) -> bool:
     return bool(int(value or 0))
 
 
+@router.get("/dashboard")
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(
     admin_user: User = Depends(get_admin_user),
@@ -405,6 +406,8 @@ async def update_user_role(
             raise HTTPException(status_code=404, detail="User not found")
 
         user.role = role
+        user.is_admin = 1 if role == "admin" else 0
+        user.updated_at = datetime.utcnow().isoformat()
         db.commit()
 
         log_audit(db, "admin_user_role_update", "user", user_id, admin_user.id, metadata={"role": role})

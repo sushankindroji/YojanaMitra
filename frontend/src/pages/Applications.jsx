@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import applicationService from '../services/applicationService'
@@ -74,7 +74,7 @@ export default function Applications() {
       setApplications(response.data.applications)
     } catch (error) {
       toast.error('Failed to load applications')
-      console.error(error)
+      globalThis.logger?.error?.(error)
     } finally {
       setLoading(false)
     }
@@ -85,7 +85,7 @@ export default function Applications() {
       const response = await applicationService.getApplicationStats()
       setStats(response.data)
     } catch (error) {
-      console.error('Failed to load stats:', error)
+      globalThis.logger?.error?.('Failed to load stats:', error)
     }
   }
 
@@ -106,7 +106,7 @@ export default function Applications() {
   const formatRupees = (value) => {
     const amount = Number(value || 0)
     if (!Number.isFinite(amount) || amount <= 0) return 'Not specified'
-    return `₹${Math.round(amount).toLocaleString('en-IN')}`
+    return `INR ${Math.round(amount).toLocaleString('en-IN')}`
   }
 
   const handleStatusChange = async (applicationId, newStatus) => {
@@ -304,3 +304,4 @@ export default function Applications() {
     </div>
   )
 }
+

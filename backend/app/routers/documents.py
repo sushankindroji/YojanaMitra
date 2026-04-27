@@ -5,17 +5,18 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body, BackgroundTasks, Response, Request
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.dependencies import get_current_user, get_db
-from app.core.rate_limiter import limiter, get_rate_limit
-from app.core.upload_security import validate_upload
+from app.dependencies import get_admin_user, get_current_user, get_db, get_optional_user
+from app.rate_limiter import limiter, get_rate_limit
+from app.upload_security import validate_upload
 from app.models import User, Document, Profile
 from app.services.storage_service import storage_service
 from app.services.ocr_service import ocr_service
 from app.schemas.document import DocumentResponse, ExtractionResult
-from app.core.audit import log_audit
+from app.audit import log_audit
 from app.agents.agent_orchestrator import clear_cached_pipeline_result
 from app.config import settings
 from app.services.profile_completeness import sync_profile_aliases, update_profile_completeness
+from app.utils.ocr_processor import process_document as ocr_process_document
 from datetime import datetime
 import json
 import uuid
@@ -700,3 +701,142 @@ async def reprocess_document(
     background_tasks.add_task(process_ocr, doc.id, file_bytes)
 
     return {"message": "Document reprocessing started", "retry_count": doc.retry_count}
+
+
+@router.post("/extract")
+@limiter.limit(get_rate_limit("upload"))
+async def extract_document_fields(
+    request: Request,
+    file: UploadFile = File(...),
+    save_to_db: bool = Form(True),
+    current_user: User = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Extract structured fields from document image using OCR.
+    
+    This endpoint runs the complete OCR pipeline and optionally saves
+    the document to the database.
+    
+    Args:
+        file: Image file upload (JPEG/PNG).
+        save_to_db: Whether to save document to documents table (default: True).
+        current_user: Optional authenticated user.
+        db: Database session.
+        
+    Returns:
+        {
+            "document_type": str,
+            "extracted_fields": dict,
+            "confidence_score": float,
+            "raw_text": str,
+            "auto_fill": dict,
+            "doc_id": str (if saved to DB)
+        }
+    """
+    # Validate upload
+    file_bytes, safe_filename = await validate_upload(file, max_size_mb=settings.MAX_UPLOAD_SIZE_MB)
+    
+    # Run OCR pipeline
+    result = ocr_process_document(file_bytes)
+    
+    # Check for errors
+    if "error" in result and result.get("confidence_score", 0) == 0:
+        raise HTTPException(
+            status_code=422,
+            detail=f"OCR processing failed: {result['error']}"
+        )
+    
+    # Optionally save to database
+    doc_id = None
+    if save_to_db and current_user:
+        try:
+            # Save file (encrypted)
+            storage_path = await storage_service.save_file(
+                file_bytes,
+                safe_filename,
+                current_user.id
+            )
+            
+            # Create document record
+            doc = Document(
+                id=str(uuid.uuid4()),
+                user_id=current_user.id,
+                doc_type=result["document_type"],
+                file_name=safe_filename,
+                storage_path=storage_path,
+                extraction_status="completed",
+                extracted_data=json.dumps(result["extracted_fields"]),
+                confidence_score=result["confidence_score"],
+                processed_at=datetime.utcnow().isoformat(),
+            )
+            db.add(doc)
+            db.commit()
+            db.refresh(doc)
+            doc_id = doc.id
+            
+            # Auto-fill profile if auto_fill data is present
+            if result.get("auto_fill"):
+                profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+                if profile:
+                    auto_fill = result["auto_fill"]
+                    patch = {}
+                    
+                    if auto_fill.get("name") and not profile.full_name:
+                        patch["full_name"] = auto_fill["name"]
+                    
+                    if auto_fill.get("age") and not profile.age:
+                        patch["age"] = auto_fill["age"]
+                    
+                    if auto_fill.get("gender") and not profile.gender:
+                        patch["gender"] = auto_fill["gender"]
+                    
+                    if auto_fill.get("annual_income") and not profile.annual_income:
+                        patch["annual_income"] = auto_fill["annual_income"]
+                    
+                    if auto_fill.get("caste") and not profile.social_category:
+                        patch["social_category"] = auto_fill["caste"]
+                    
+                    if auto_fill.get("bpl") and not profile.is_bpl:
+                        patch["is_bpl"] = 1
+                        patch["bpl_status"] = 1
+                    
+                    if auto_fill.get("aadhaar_number"):
+                        aadhaar = auto_fill["aadhaar_number"].replace(" ", "")
+                        if len(aadhaar) == 12 and not profile.aadhaar_last4:
+                            patch["aadhaar_last4"] = aadhaar[-4:]
+                    
+                    if patch:
+                        for key, value in patch.items():
+                            setattr(profile, key, value)
+                        
+                        sync_profile_aliases(profile)
+                        profile.updated_at = datetime.utcnow().isoformat()
+                        update_profile_completeness(profile)
+                        db.commit()
+                        clear_cached_pipeline_result(current_user.id)
+            
+            # Log audit
+            log_audit(db, "document_extract", "document", doc.id, current_user.id)
+            
+        except Exception as e:
+            db.rollback()
+            logger.exception("Failed to save extracted document for user_id=%s", current_user.id)
+            # Continue and return extraction result even if save failed
+    
+    response = {
+        "document_type": result["document_type"],
+        "extracted_fields": result["extracted_fields"],
+        "confidence_score": result["confidence_score"],
+        "raw_text": result["raw_text"],
+        "auto_fill": result["auto_fill"],
+    }
+    
+    if doc_id:
+        response["doc_id"] = doc_id
+        response["saved"] = True
+    else:
+        response["saved"] = False
+    
+    return response
+

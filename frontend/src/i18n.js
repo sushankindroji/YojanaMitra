@@ -13,6 +13,24 @@ import esTranslation from './locales/es.json'
 const LANGUAGE_STORAGE_KEY = 'yojanamitra_language'
 const LEGACY_LANGUAGE_KEYS = ['yojana_mitra_lang', 'preferredLanguage']
 
+const applyLanguageRuntimeSettings = (langCode) => {
+  if (typeof document === 'undefined') return
+
+  const code = String(langCode || 'en').split('-')[0]
+  const indicFonts = {
+    hi: 'Noto Sans Devanagari',
+    mr: 'Noto Sans Devanagari',
+    ta: 'Noto Sans Tamil',
+    te: 'Noto Sans Telugu',
+    bn: 'Noto Sans Bengali',
+    kn: 'Noto Sans Kannada',
+  }
+
+  document.documentElement.lang = code
+  const selectedFont = indicFonts[code] ? `'${indicFonts[code]}', sans-serif` : "'Inter', sans-serif"
+  document.documentElement.style.setProperty('--font-primary', selectedFont)
+}
+
 if (typeof window !== 'undefined') {
   const currentLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
   if (!currentLanguage) {
@@ -49,5 +67,14 @@ i18n
       caches: ['localStorage'],
     },
   })
+
+i18n.on('languageChanged', (language) => {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+  }
+  applyLanguageRuntimeSettings(language)
+})
+
+applyLanguageRuntimeSettings(i18n.language)
 
 export default i18n

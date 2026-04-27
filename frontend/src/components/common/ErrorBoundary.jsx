@@ -1,4 +1,4 @@
-// frontend/src/components/common/ErrorBoundary.jsx
+﻿// frontend/src/components/common/ErrorBoundary.jsx
 /**
  * ErrorBoundary - Error handling component
  * Catches React errors and displays fallback UI
@@ -30,7 +30,7 @@ class ErrorBoundary extends Component {
 
     // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error caught by boundary:', error, errorInfo)
+      globalThis.logger?.error?.('Error caught by boundary:', error, errorInfo)
     }
 
     // Could send error to logging service here
@@ -103,3 +103,4 @@ class ErrorBoundary extends Component {
 }
 
 export default ErrorBoundary
+

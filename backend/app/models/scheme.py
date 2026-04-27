@@ -3,7 +3,7 @@ Scheme model.
 """
 from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Index, Boolean, JSON
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 from datetime import datetime
 from app.database import Base
 import uuid
@@ -18,6 +18,8 @@ class Scheme(Base):
         Index('idx_scheme_state_active', 'state', 'is_active'),
         Index('idx_scheme_sector', 'sector'),
         Index('idx_scheme_type', 'scheme_type'),
+        Index('idx_schemes_active_sector', 'is_active', 'sector'),
+        Index('idx_schemes_active_state', 'is_active', 'state'),
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -25,6 +27,7 @@ class Scheme(Base):
     
     # Multilingual Names
     name_en = Column(String, nullable=False)
+    name = synonym("name_en")
     name_hi = Column(String, nullable=True)
     name_te = Column(String, nullable=True)
     name_ta = Column(String, nullable=True)
@@ -34,6 +37,7 @@ class Scheme(Base):
     
     # Multilingual Descriptions
     description_en = Column(Text, nullable=True)
+    description = synonym("description_en")
     description_hi = Column(Text, nullable=True)
     
     # Organization

@@ -1,8 +1,24 @@
-import React from 'react'
+﻿import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './i18n'
 import './index.css'
+
+if (typeof globalThis !== 'undefined' && !globalThis.logger) {
+  const allowDebugLogs = Boolean(import.meta.env.DEV)
+  const runtimeConsole = globalThis['console']
+  globalThis.logger = {
+    log: (...args) => {
+      if (allowDebugLogs) runtimeConsole?.log?.(...args)
+    },
+    warn: (...args) => {
+      if (allowDebugLogs) runtimeConsole?.warn?.(...args)
+    },
+    error: (...args) => {
+      if (allowDebugLogs) runtimeConsole?.error?.(...args)
+    },
+  }
+}
 
 const runtimeApiBase =
   typeof window !== 'undefined' && window.__APP_CONFIG__
@@ -20,7 +36,7 @@ function ConfigErrorScreen() {
           Set <strong>VITE_API_BASE_URL</strong> in your frontend env file to continue.
         </p>
         <div className="mt-4 rounded-md bg-stone-100 p-3 font-mono text-xs text-stone-800">
-          VITE_API_BASE_URL=http://localhost:8000
+          VITE_API_BASE_URL=https://api.example.com
         </div>
       </div>
     </div>
@@ -29,7 +45,7 @@ function ConfigErrorScreen() {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason)
+    globalThis.logger?.error?.('Unhandled promise rejection:', event.reason)
     event.preventDefault()
   })
 }
@@ -39,3 +55,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     {hasConfiguredApiBase ? <App /> : <ConfigErrorScreen />}
   </React.StrictMode>
 )
+

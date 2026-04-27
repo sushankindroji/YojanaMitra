@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -12,6 +12,7 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import applicationService from '../../services/applicationService'
+import { formatINR, formatPct } from '../../services/formatters'
 import { useApplicationStore } from '../../store/applicationStore'
 import { toast } from 'react-toastify'
 import Badge from '../ui/Badge'
@@ -145,7 +146,7 @@ export default function SchemeCard({ scheme, isEligible = null, onViewDetails, i
 
   const handleSaveApplication = async () => {
     if (!isLoggedIn) {
-      navigate(`/login?next=/schemes/${schemeId}`)
+      navigate('/register')
       return
     }
 
@@ -155,7 +156,7 @@ export default function SchemeCard({ scheme, isEligible = null, onViewDetails, i
       addApplication(response.data)
       toast.success(t('schemes.savedToApplications', { defaultValue: 'Scheme saved! View in My Applications' }))
     } catch (error) {
-      console.error('Save error:', error)
+      globalThis.logger?.error?.('Save error:', error)
       const message = error.response?.data?.detail || t('schemes.saveFailed', { defaultValue: 'Failed to save application' })
       toast.error(message)
     } finally {
@@ -185,7 +186,7 @@ export default function SchemeCard({ scheme, isEligible = null, onViewDetails, i
       return t('schemes.amountNotSpecified', { defaultValue: 'Not specified' })
     }
 
-    return `₹${Math.round(amount).toLocaleString('en-IN')}`
+    return formatINR(amount)
   }
 
   return (
@@ -209,10 +210,10 @@ export default function SchemeCard({ scheme, isEligible = null, onViewDetails, i
           {!isLoggedIn ? (
             <button
               type="button"
-              onClick={() => navigate(`/login?next=/schemes/${schemeId}`)}
+              onClick={() => navigate('/register')}
               className="mt-2 text-body-sm font-medium text-orange-700 hover:text-orange-800"
             >
-              Check eligibility →
+              Check eligibility {'->'}
             </button>
           ) : null}
         </div>
@@ -257,7 +258,7 @@ export default function SchemeCard({ scheme, isEligible = null, onViewDetails, i
             <p className="text-micro font-medium uppercase tracking-wider text-stone-500">{t('schemes.matchScore', { defaultValue: 'Match Score' })}</p>
             <p className="mt-1 text-body-sm font-medium text-green-700">
               {hasEligibilityScore
-                ? `${eligibilityPercentage}%`
+                ? formatPct(eligibilityPercentage)
                 : t('schemes.matchScorePending', { defaultValue: 'Computing...' })}
             </p>
           </div>
@@ -353,3 +354,4 @@ export default function SchemeCard({ scheme, isEligible = null, onViewDetails, i
     </Card>
   )
 }
+

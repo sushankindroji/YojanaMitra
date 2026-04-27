@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import platform
 import sys
 from typing import List, Optional
@@ -68,6 +69,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = ""
     BHASHINI_USER_ID: Optional[str] = ""
     BHASHINI_API_KEY: Optional[str] = ""
+    BHASHINI_PIPELINE_ID: str = "64392f96daac500b55c543cd"
 
     # Encryption
     ENCRYPTION_KEY: Optional[str] = ""
@@ -153,6 +155,31 @@ class Settings(BaseSettings):
     @property
     def cors_allowed_origins(self) -> List[str]:
         return self.allowed_origins_list
+
+    @property
+    def tesseract_cmd(self) -> str:
+        configured = (self.TESSERACT_PATH or "").strip()
+        if configured and os.path.exists(configured):
+            return configured
+
+        if platform.system() == "Windows":
+            candidates = [
+                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                r"C:\Users\{}\AppData\Local\Programs\Tesseract-OCR\tesseract.exe".format(
+                    os.getenv("USERNAME", "")
+                ),
+            ]
+            for candidate in candidates:
+                if os.path.exists(candidate):
+                    return candidate
+
+        return configured or _DEFAULT_TESSERACT
+
+    @property
+    def upload_dir_abs(self) -> str:
+        path = os.path.abspath(self.UPLOAD_DIR)
+        os.makedirs(path, exist_ok=True)
+        return path
 
     @property
     def is_production(self) -> bool:

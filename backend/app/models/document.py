@@ -1,7 +1,7 @@
 """
 Document model.
 """
-from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -10,6 +10,9 @@ import uuid
 
 class Document(Base):
     __tablename__ = "documents"
+    __table_args__ = (
+        Index('idx_documents_user_type', 'user_id', 'doc_type'),
+    )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)

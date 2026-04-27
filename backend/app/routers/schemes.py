@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
-from app.dependencies import get_current_user, get_current_user_optional, get_db
+from app.dependencies import get_admin_user, get_current_user, get_db, get_optional_user
 from app.models import User, Scheme, EligibilityResult, Profile, Document
 from app.schemas.scheme import SchemeResponse
 from app.services.scheme_instructions_service import get_application_instructions
@@ -340,7 +340,7 @@ async def list_schemes(
     state: str = None,
     search: str = None,
     lang: str | None = Query(None, description="Preferred language code"),
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """List all schemes with pagination and filters."""
@@ -626,7 +626,7 @@ async def get_scheme_detail(
 @router.get("/{scheme_id}/apply-info")
 async def get_apply_info(
     scheme_id: str,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """Get application portal and step-by-step guidance.
@@ -676,7 +676,7 @@ async def get_apply_info(
 @router.get("/{scheme_id}/eligibility")
 async def get_scheme_eligibility(
     scheme_id: str,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """Get scheme criteria for everyone and user-specific status when logged in."""
@@ -757,7 +757,7 @@ async def get_scheme_eligibility(
 @router.get("/{scheme_id}/apply-guide")
 async def get_apply_guide(
     scheme_id: str,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """Get step-by-step application guide for a scheme."""

@@ -22,6 +22,22 @@ const LanguageSelector = () => {
   const activeLanguage = (i18n.language || 'en').split('-')[0]
   const currentLang = languages.find(l => l.code === activeLanguage) || languages[0]
 
+  const applyLanguageFont = (code) => {
+    const indicFonts = {
+      hi: 'Noto Sans Devanagari',
+      mr: 'Noto Sans Devanagari',
+      ta: 'Noto Sans Tamil',
+      te: 'Noto Sans Telugu',
+      bn: 'Noto Sans Bengali',
+      kn: 'Noto Sans Kannada',
+    }
+
+    if (typeof document === 'undefined') return
+
+    const selectedFont = indicFonts[code] ? `'${indicFonts[code]}', sans-serif` : "'Inter', sans-serif"
+    document.documentElement.style.setProperty('--font-primary', selectedFont)
+  }
+
   React.useEffect(() => {
     const onPointerDown = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -35,10 +51,14 @@ const LanguageSelector = () => {
 
   const handleLanguageChange = (langCode) => {
     i18n.changeLanguage(langCode)
-    setIsOpen(false)
     localStorage.setItem(languageStorageKey, langCode)
     localStorage.setItem('preferredLanguage', langCode)
     localStorage.setItem('i18nextLng', langCode)
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = langCode
+    }
+    applyLanguageFont(langCode)
+    setIsOpen(false)
   }
 
   return (

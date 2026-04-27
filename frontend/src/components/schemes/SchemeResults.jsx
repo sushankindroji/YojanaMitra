@@ -1,4 +1,4 @@
-// frontend/src/components/schemes/SchemeResults.jsx
+﻿// frontend/src/components/schemes/SchemeResults.jsx
 /**
  * SchemeResults - Main schemes list with filtering & pagination
  * Features:
@@ -162,7 +162,7 @@ export default function SchemeResults({
             schemesData = refreshed.data.schemes || schemesData
             setDidTriggerEligibilityRefresh(true)
           } catch (refreshError) {
-            console.warn('Eligibility refresh fallback failed', refreshError)
+            globalThis.logger?.warn?.('Eligibility refresh fallback failed', refreshError)
           }
         }
       }
@@ -232,7 +232,7 @@ export default function SchemeResults({
 
             setDidHydrateMissingEligibility(true)
           } catch (hydrateError) {
-            console.warn('Eligibility hydration fallback failed', hydrateError)
+            globalThis.logger?.warn?.('Eligibility hydration fallback failed', hydrateError)
           }
         }
       }
@@ -259,7 +259,7 @@ export default function SchemeResults({
       setSchemes(schemesData)
       setTotalCount(total)
     } catch (err) {
-      console.error('Error fetching schemes:', err)
+      globalThis.logger?.error?.('Error fetching schemes:', err)
       setError(t('schemes.fetchError', { defaultValue: 'Failed to load schemes' }))
     } finally {
       setIsLoading(false)
@@ -499,3 +499,4 @@ export default function SchemeResults({
     </div>
   )
 }
+

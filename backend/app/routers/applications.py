@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 import json
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_admin_user, get_current_user, get_db, get_optional_user
 from app.models.user import User
 from app.models.application import SavedApplication
 from app.models.scheme import Scheme

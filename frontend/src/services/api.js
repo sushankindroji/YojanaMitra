@@ -9,7 +9,7 @@ const API_BASE = API_BASE_URL
 
 if (!API_BASE) {
   // Fail loudly in development while allowing main.jsx env screen to guide setup.
-  console.error('VITE_API_BASE_URL is not set. Copy frontend/.env.example to frontend/.env')
+  globalThis.logger?.error?.('VITE_API_BASE_URL is not set. Copy frontend/.env.example to frontend/.env')
 }
 
 const baseApiConfig = {
@@ -228,7 +228,7 @@ axiosRetry(api, {
     axiosRetry.isNetworkError(error)
     || (error.response?.status >= 500 && error.response?.status < 600),
   onRetry: (retryCount, error) => {
-    console.warn(`Retry ${retryCount} for ${error.config?.url}`)
+    globalThis.logger?.warn?.(`Retry ${retryCount} for ${error.config?.url}`)
   },
 })
 

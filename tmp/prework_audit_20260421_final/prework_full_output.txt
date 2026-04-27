@@ -1,0 +1,302 @@
+========================================
+SECTION: Backend Structure
+COMMAND: Get-ChildItem -Path backend -Recurse -Filter *.py | Where-Object { $_.FullName -notmatch '__pycache__' } | Select-Object -ExpandProperty FullName | Sort-Object
+----------------------------------------
+E:\sushank-projects\YojanaMitra\backend\app\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\agent_orchestrator.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\eligibility_matching_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\explanation_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\job_store.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\personalization_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\profile_validation_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\ranking_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\env.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\versions\0001_initial_schema.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\versions\0002_onboarding_agents_rebuild.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\versions\0003_scheme_detail_enrichment.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\versions\0004_profile_document_indexes.py
+E:\sushank-projects\YojanaMitra\backend\app\config.py
+E:\sushank-projects\YojanaMitra\backend\app\core\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\core\audit.py
+E:\sushank-projects\YojanaMitra\backend\app\core\encryption.py
+E:\sushank-projects\YojanaMitra\backend\app\core\logging.py
+E:\sushank-projects\YojanaMitra\backend\app\core\rate_limiter.py
+E:\sushank-projects\YojanaMitra\backend\app\core\sanitizers.py
+E:\sushank-projects\YojanaMitra\backend\app\core\security.py
+E:\sushank-projects\YojanaMitra\backend\app\core\upload_security.py
+E:\sushank-projects\YojanaMitra\backend\app\data\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\data\scheme_portals.py
+E:\sushank-projects\YojanaMitra\backend\app\database.py
+E:\sushank-projects\YojanaMitra\backend\app\dependencies.py
+E:\sushank-projects\YojanaMitra\backend\app\main.py
+E:\sushank-projects\YojanaMitra\backend\app\models\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\models\application.py
+E:\sushank-projects\YojanaMitra\backend\app\models\audit_log.py
+E:\sushank-projects\YojanaMitra\backend\app\models\document.py
+E:\sushank-projects\YojanaMitra\backend\app\models\eligibility.py
+E:\sushank-projects\YojanaMitra\backend\app\models\profile.py
+E:\sushank-projects\YojanaMitra\backend\app\models\scheme.py
+E:\sushank-projects\YojanaMitra\backend\app\models\sync_log.py
+E:\sushank-projects\YojanaMitra\backend\app\models\user.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\admin.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\applications.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\auth.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\documents.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\eligibility.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\health.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\onboarding.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\profile.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\schemes.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\application.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\auth.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\document.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\onboarding.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\profile.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\scheme.py
+E:\sushank-projects\YojanaMitra\backend\app\services\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\services\auth_service.py
+E:\sushank-projects\YojanaMitra\backend\app\services\cache_service.py
+E:\sushank-projects\YojanaMitra\backend\app\services\ocr_service.py
+E:\sushank-projects\YojanaMitra\backend\app\services\profile_completeness.py
+E:\sushank-projects\YojanaMitra\backend\app\services\scheme_instructions_service.py
+E:\sushank-projects\YojanaMitra\backend\app\services\storage_service.py
+E:\sushank-projects\YojanaMitra\backend\run.py
+
+
+
+========================================
+SECTION: Frontend Structure
+COMMAND: Get-ChildItem -Path frontend/src -Recurse | Select-Object -ExpandProperty FullName | Sort-Object
+----------------------------------------
+E:\sushank-projects\YojanaMitra\frontend\src\App.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components
+E:\sushank-projects\YojanaMitra\frontend\src\components\admin
+E:\sushank-projects\YojanaMitra\frontend\src\components\admin\AdminLayout.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\applications
+E:\sushank-projects\YojanaMitra\frontend\src\components\applications\ApplyGuide.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\auth
+E:\sushank-projects\YojanaMitra\frontend\src\components\auth\LoginForm.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\auth\RegisterForm.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\ErrorBoundary.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\FormCheckbox.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\FormInput.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\FormSelect.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\LanguageSelector.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\LoadingSpinner.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\OnboardingRouteGuard.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\ProtectedAdminRoute.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\ProtectedRoute.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\layout
+E:\sushank-projects\YojanaMitra\frontend\src\components\layout\AppShell.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes\EligibilityBadges.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes\SchemeCard.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes\SchemeFilter.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes\SchemeResults.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Avatar.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Badge.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Button.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Card.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Input.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\PageHeader.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\ProgressRing.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Select.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Skeleton.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\i18n.js
+E:\sushank-projects\YojanaMitra\frontend\src\index.css
+E:\sushank-projects\YojanaMitra\frontend\src\locales
+E:\sushank-projects\YojanaMitra\frontend\src\locales\bn.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\en.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\es.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\hi.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\kn.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\mr.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\ta.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\te.json
+E:\sushank-projects\YojanaMitra\frontend\src\main.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin\AdminApplications.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin\AdminDashboard.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin\AdminSchemes.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin\AdminUsers.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Applications.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Apply.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Dashboard.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Eligibility.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Landing.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Login.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Onboarding.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Profile.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Register.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\SchemeDetail.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Schemes.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\UploadDocuments.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\services
+E:\sushank-projects\YojanaMitra\frontend\src\services\api.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\applicationService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\authService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\constants.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\documentService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\eligibilityService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\onboardingService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\profileService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\schemeService.js
+E:\sushank-projects\YojanaMitra\frontend\src\store
+E:\sushank-projects\YojanaMitra\frontend\src\store\applicationStore.js
+E:\sushank-projects\YojanaMitra\frontend\src\store\authStore.js
+E:\sushank-projects\YojanaMitra\frontend\src\styles
+E:\sushank-projects\YojanaMitra\frontend\src\styles\design-system.css
+E:\sushank-projects\YojanaMitra\frontend\src\styles\typography.css
+
+
+
+========================================
+SECTION: Backend Syntax Checks
+COMMAND: Get-ChildItem -Path backend/app -Recurse -Filter *.py | ForEach-Object { python -m py_compile $_.FullName }
+----------------------------------------
+
+
+
+========================================
+SECTION: Backend Import Check
+COMMAND: 
+----------------------------------------
+
+
+========================================
+SECTION: Wrong Import Paths Check
+COMMAND: rg -n 'from app.core|from app.auth import|from app.utils import get_current|from app.security' backend/app
+----------------------------------------
+
+
+========================================
+SECTION: Hardcoded Localhost URL
+COMMAND: rg -n 'localhost:8000' frontend/src
+----------------------------------------
+
+
+========================================
+SECTION: Hardcoded SECRET_KEY
+COMMAND: rg -n 'SECRET_KEY\s*=' backend/app | Where-Object { $_.Line -notmatch 'settings|os\.getenv|config' }
+----------------------------------------
+
+
+========================================
+SECTION: i18n Keys Check
+COMMAND: python -c 'import json
+import os
+
+langs = ['hi', 'ta', 'te', 'bn', 'kn', 'mr', 'es']
+base_path = 'frontend/src/locales'
+try:
+    with open(os.path.join(base_path, 'en.json'), 'r', encoding='utf-8') as f:
+        en_keys = set(json.load(f).keys())
+    
+    for lang in langs:
+        path = os.path.join(base_path, f'{lang}.json')
+        if not os.path.exists(path):
+            print(f'Missing locale file: {lang}.json')
+            continue
+        with open(path, 'r', encoding='utf-8') as f:
+            lang_keys = set(json.load(f).keys())
+        missing = en_keys - lang_keys
+        if missing:
+            print(f'Lang {lang} missing keys: {missing}')
+        else:
+            print(f'Lang {lang} complete')
+except Exception as e:
+    print(f'i18n check error: {e}')'
+----------------------------------------
+Lang hi complete
+Lang ta complete
+Lang te complete
+Lang bn complete
+Lang kn complete
+Lang mr complete
+Lang es complete
+
+
+
+========================================
+SECTION: Autoflake Check
+COMMAND: pip install autoflake --quiet; autoflake --check -r backend/app | Select-Object -First 30
+----------------------------------------
+backend/app\config.py: No issues detected!
+
+backend/app\schemas\auth.py: No issues detected!
+
+backend/app\schemas\onboarding.py: No issues detected!
+
+backend/app\schemas\__init__.py: No issues detected!
+
+backend/app\services\cache_service.py: No issues detected!
+
+backend/app\services\__init__.py: No issues detected!
+
+backend/app\agents\agent_orchestrator.py: No issues detected!
+
+backend/app\core\logging.py: Unused imports/variables detected
+
+backend/app\data\__init__.py: No issues detected!
+
+backend/app\models\document.py: No issues detected!
+
+backend/app\models\sync_log.py: No issues detected!
+
+backend/app\models\__init__.py: No issues detected!
+
+backend/app\routers\applications.py: No issues detected!
+
+backend/app\routers\eligibility.py: No issues detected!
+
+backend/app\services\auth_service.py: No issues detected!
+
+
+
+
+========================================
+SECTION: Env Checks
+COMMAND: python -c 'import os
+def get_keys(path):
+    if not os.path.exists(path): return set()
+    with open(path) as f:
+        return {line.split('=')[0].strip() for line in f if '=' in line and not line.startswith('#')}
+
+back_env = get_keys('backend/.env')
+back_ex = get_keys('backend/.env.example')
+front_env = get_keys('frontend/.env')
+
+print(f"Backend .env present: {os.path.exists('backend/.env')}")
+print(f"Frontend .env present: {os.path.exists('frontend/.env')}")
+print(f"Backend .env.example present: {os.path.exists('backend/.env.example')}")
+if back_ex:
+    diff = back_ex - back_env
+    if diff: print(f"Missing keys in backend .env: {diff}")
+    else: print("Backend .env matches example keys")'
+----------------------------------------
+python :   File "<string>", line 11
+At line:1 char:10
++ $out15 = python -c "$env_script" 2>&1 | Out-String
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  File "<string>", line 11:String 
+   ) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    print(fBackend
+         ^
+SyntaxError: '(' was never closed
+
+
+
+========================================
+SECTION: Tesseract Checks
+COMMAND: tesseract --version; tesseract --list-langs
+----------------------------------------
+
+

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
@@ -148,7 +148,7 @@ export default function Profile() {
         setDirty(false)
         setFieldErrors({})
       } catch (error) {
-        console.error('Failed to load profile:', error)
+        globalThis.logger?.error?.('Failed to load profile:', error)
         toast.error(t('profile.loadFailed'))
       } finally {
         setLoading(false)
@@ -259,7 +259,7 @@ export default function Profile() {
     try {
       await persistProfile({ silent: false })
     } catch (error) {
-      console.error('Failed to update profile:', error)
+      globalThis.logger?.error?.('Failed to update profile:', error)
       toast.error(error.response?.data?.detail || t('profile.updateFailed'), { autoClose: 5000 })
     } finally {
       setSaving(false)
@@ -553,3 +553,4 @@ export default function Profile() {
     </div>
   )
 }
+

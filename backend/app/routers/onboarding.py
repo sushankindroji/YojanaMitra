@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 from app.agents.agent_orchestrator import clear_cached_pipeline_result, run_full_eligibility_pipeline
 from app.agents.job_store import create_job, get_latest_job, update_job
 from app.config import settings
-from app.core.rate_limiter import limiter, get_rate_limit
-from app.core.upload_security import validate_upload
+from app.rate_limiter import limiter, get_rate_limit
+from app.upload_security import validate_upload
 from app.database import SessionLocal
-from app.dependencies import get_current_user, get_db
+from app.dependencies import get_admin_user, get_current_user, get_db, get_optional_user
 from app.models import Document, Profile, User
 from app.schemas.onboarding import AadhaarConfirmRequest, DocumentConfirmRequest, OnboardingCompleteRequest
 from app.services.ocr_service import ocr_service
@@ -412,6 +412,7 @@ async def onboarding_status(
 
     return {
         "step": step,
+        "onboarding_complete": completed,
         "completed": completed,
         "aadhaar_done": aadhaar_done,
         "income_done": income_done,

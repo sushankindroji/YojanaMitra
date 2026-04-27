@@ -101,12 +101,12 @@ export default function Schemes() {
             <button
               type="button"
               className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-stone-300 px-3 py-2 text-body-sm font-medium text-stone-700 hover:bg-stone-100 sm:w-auto"
-              onClick={() => navigate(effectiveAuthenticated ? '/dashboard' : '/login')}
+              onClick={() => navigate(effectiveAuthenticated ? '/dashboard' : '/register')}
             >
               <Compass className="h-4 w-4" />
               {effectiveAuthenticated
                 ? t('nav.dashboard', { defaultValue: 'Dashboard' })
-                : t('auth.login', { defaultValue: 'Login' })}
+                : t('auth.register', { defaultValue: 'Register' })}
             </button>
           </div>
         }

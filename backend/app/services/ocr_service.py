@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import re
 from datetime import datetime
 from typing import Dict, List, Tuple
@@ -30,6 +31,9 @@ except Exception:
     OPENCV_AVAILABLE = False
 
 from app.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 INDIAN_STATES = [
@@ -151,6 +155,29 @@ class OCRService:
         self.tesseract_available = TESSERACT_AVAILABLE
         self.pdf_available = PDFPLUMBER_AVAILABLE
         self.cv_available = OPENCV_AVAILABLE
+        self.available_langs: set[str] = set()
+
+        if self.tesseract_available:
+            try:
+                pytesseract.pytesseract.tesseract_cmd = settings.tesseract_cmd
+                self.available_langs = set(pytesseract.get_languages(config="") or [])
+            except Exception as exc:
+                logger.warning("Unable to load installed Tesseract languages: %s", exc)
+
+    def _normalize_lang_candidate(self, lang: str) -> str:
+        raw_tokens = [token.strip() for token in (lang or "").split("+") if token.strip()]
+        if not raw_tokens:
+            return ""
+
+        if not self.available_langs:
+            return "+".join(raw_tokens)
+
+        supported = [token for token in raw_tokens if token in self.available_langs]
+        if not supported:
+            return ""
+
+        # Preserve order while removing duplicates.
+        return "+".join(dict.fromkeys(supported))
 
     @staticmethod
     def normalize_doc_type(doc_type: str) -> str:
@@ -316,10 +343,20 @@ class OCRService:
         preferred = DOC_TESSERACT_LANGS.get(normalized)
         configured = str(getattr(settings, "TESSERACT_LANGS", "") or "").strip()
 
+        raw_candidates: List[str] = []
+        for lang in [preferred, configured, "eng+hin", "eng", "eng+osd"]:
+            if lang and lang not in raw_candidates:
+                raw_candidates.append(lang)
+
         candidates: List[str] = []
-        for lang in [preferred, configured, "eng+hin", "eng"]:
-            if lang and lang not in candidates:
-                candidates.append(lang)
+        for raw in raw_candidates:
+            normalized_lang = self._normalize_lang_candidate(raw)
+            if normalized_lang and normalized_lang not in candidates:
+                candidates.append(normalized_lang)
+
+        if not candidates and self.available_langs:
+            fallback = "eng" if "eng" in self.available_langs else sorted(self.available_langs)[0]
+            candidates.append(fallback)
 
         return candidates or ["eng"]
 
@@ -389,8 +426,8 @@ class OCRService:
             return ""
 
         try:
-            if settings.TESSERACT_PATH:
-                pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_PATH
+            if settings.tesseract_cmd:
+                pytesseract.pytesseract.tesseract_cmd = settings.tesseract_cmd
 
             image = Image.open(io.BytesIO(file_bytes))
             image = self._preprocess_image(image)

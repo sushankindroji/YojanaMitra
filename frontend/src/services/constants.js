@@ -22,5 +22,5 @@ export const API_BASE_URL = normalizeApiBaseUrl(
 )
 
 if (!API_BASE_URL) {
-	console.error('VITE_API_BASE_URL is not set. Copy frontend/.env.example to frontend/.env')
+	globalThis.logger?.error?.('VITE_API_BASE_URL is not set. Copy frontend/.env.example to frontend/.env')
 }

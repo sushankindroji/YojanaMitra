@@ -12,6 +12,8 @@ class SavedApplication(Base):
     __tablename__ = "saved_applications"
     __table_args__ = (
         UniqueConstraint('user_id', 'scheme_id', name='unique_user_scheme_application'),
+        Index('idx_applications_user_id', 'user_id'),
+        Index('idx_applications_status', 'user_id', 'status'),
         Index('idx_application_user', 'user_id'),
         Index('idx_application_scheme', 'scheme_id'),
         Index('idx_application_status', 'status'),

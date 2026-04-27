@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { CheckCircle2, Loader2, UploadCloud } from 'lucide-react'
@@ -199,7 +199,7 @@ export default function OnboardingPage() {
         }
       } catch (error) {
         if (!active) return
-        console.error('Job polling failed:', error)
+        globalThis.logger?.error?.('Job polling failed:', error)
       }
     }, 2000)
 
@@ -820,3 +820,4 @@ export default function OnboardingPage() {
     </div>
   )
 }
+

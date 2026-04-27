@@ -1,4 +1,4 @@
-// frontend/src/components/applications/ApplyGuide.jsx
+﻿// frontend/src/components/applications/ApplyGuide.jsx
 /**
  * ApplyGuide - Multi-step guided application wizard for schemes
  * Features:
@@ -41,31 +41,31 @@ const FORM_STEPS = [
     id: 1,
     title: 'Personal Details',
     description: 'Confirm your personal information',
-    icon: '👤',
+    icon: 'ID',
   },
   {
     id: 2,
     title: 'Employment Info',
     description: 'Provide employment details',
-    icon: '💼',
+    icon: 'WORK',
   },
   {
     id: 3,
     title: 'Bank Account',
     description: 'Bank details for benefit transfer',
-    icon: '🏦',
+    icon: 'BANK',
   },
   {
     id: 4,
     title: 'Additional Info',
     description: 'Scheme-specific requirements',
-    icon: '📋',
+    icon: 'FORM',
   },
   {
     id: 5,
     title: 'Review & Submit',
     description: 'Review and submit application',
-    icon: '✅',
+    icon: '[OK]',
   },
 ]
 
@@ -153,7 +153,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         } else if (eligibilityResult.status === 'rejected') {
           const status = eligibilityResult.reason?.response?.status
           if (![401, 403, 404].includes(status)) {
-            console.warn('Could not fetch eligibility for apply guide', eligibilityResult.reason)
+            globalThis.logger?.warn?.('Could not fetch eligibility for apply guide', eligibilityResult.reason)
           }
         }
 
@@ -184,11 +184,11 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         } else if (profileResult.status === 'rejected') {
           const status = profileResult.reason?.response?.status
           if (![401, 403, 404].includes(status)) {
-            console.warn('Could not fetch profile for apply prefill', profileResult.reason)
+            globalThis.logger?.warn?.('Could not fetch profile for apply prefill', profileResult.reason)
           }
         }
       } catch (err) {
-        console.error('Error fetching application data:', err)
+        globalThis.logger?.error?.('Error fetching application data:', err)
         setError(tr('applications.fetchError', 'Failed to load application'))
       } finally {
         setIsLoading(false)
@@ -245,7 +245,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
 
       toast.success(tr('applications.savedAsDraft', 'Saved as draft'))
     } catch (err) {
-      console.error('Error saving draft:', err)
+      globalThis.logger?.error?.('Error saving draft:', err)
       toast.error(tr('applications.saveDraftError', 'Failed to save draft'))
     } finally {
       setIsSaving(false)
@@ -310,7 +310,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         tr('applications.submitted', 'Application submitted successfully')
       )
     } catch (err) {
-      console.error('Error submitting application:', err)
+      globalThis.logger?.error?.('Error submitting application:', err)
       toast.error(tr('applications.submitError', 'Failed to submit application'))
     } finally {
       setIsSaving(false)
@@ -497,7 +497,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-body-sm text-blue-800">
-          💡 Bank details are needed for benefit transfer. Ensure accuracy.
+          NOTE: Bank details are needed for benefit transfer. Ensure accuracy.
         </p>
       </div>
 
@@ -585,16 +585,16 @@ export default function ApplyGuide({ schemeId, onComplete }) {
         <h4 className="font-medium text-amber-900 mb-3">Document Checklist</h4>
         <ul className="space-y-2 text-body-sm text-amber-800">
           <li className="flex items-center gap-2">
-            <span className="text-h4">📄</span> Aadhar/ID Proof
+            <span className="text-h4">DOC</span> Aadhar/ID Proof
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-h4">💰</span> Income Certificate (if required)
+            <span className="text-h4">MONEY</span> Income Certificate (if required)
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-h4">🏠</span> Address Proof
+            <span className="text-h4">HOME</span> Address Proof
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-h4">🏦</span> Bank Passbook/Statement
+            <span className="text-h4">BANK</span> Bank Passbook/Statement
           </li>
         </ul>
         <p className="text-caption text-amber-600 mt-3">
@@ -624,7 +624,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
             )}
             {scheme.benefit_amount && (
               <div>
-                <span className="font-medium">Benefit Amount:</span> ₹
+                <span className="font-medium">Benefit Amount:</span> INR
                 {(scheme.benefit_amount / 100000).toFixed(1)}L+
               </div>
             )}
@@ -751,9 +751,9 @@ export default function ApplyGuide({ schemeId, onComplete }) {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
               <h4 className="font-medium text-blue-900 mb-2">Next Steps</h4>
               <ul className="text-body-sm text-blue-800 space-y-1">
-                <li>✓ Your application is now under review</li>
-                <li>✓ You will receive email updates on progress</li>
-                <li>✓ Check your Applications dashboard for status updates</li>
+                <li>[OK] Your application is now under review</li>
+                <li>[OK] You will receive email updates on progress</li>
+                <li>[OK] Check your Applications dashboard for status updates</li>
               </ul>
             </div>
 
@@ -820,7 +820,7 @@ export default function ApplyGuide({ schemeId, onComplete }) {
               onClick={() => window.history.back()}
               className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
             >
-              ✕ Close
+              X Close
             </button>
           </div>
 
@@ -952,4 +952,5 @@ export default function ApplyGuide({ schemeId, onComplete }) {
     </div>
   )
 }
+
 

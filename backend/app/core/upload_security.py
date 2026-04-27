@@ -22,7 +22,19 @@ ALLOWED_MIME_TYPES = {
 MIN_FILE_SIZE_BYTES = 5 * 1024
 
 
-def _detect_mime(contents: bytes, file: UploadFile) -> str:
+def _detect_mime_from_signature(contents: bytes) -> str:
+    if contents.startswith(b"%PDF-"):
+        return "application/pdf"
+    if contents.startswith(b"\xFF\xD8\xFF"):
+        return "image/jpeg"
+    if contents.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if contents.startswith(b"RIFF") and len(contents) > 12 and contents[8:12] == b"WEBP":
+        return "image/webp"
+    return ""
+
+
+def _detect_mime(contents: bytes) -> str:
     if magic is not None:
         try:
             detected = str(magic.from_buffer(contents, mime=True) or "").strip().lower()
@@ -31,8 +43,7 @@ def _detect_mime(contents: bytes, file: UploadFile) -> str:
         except Exception as exc:
             logger.warning("python-magic detection failed: %s", exc)
 
-    fallback = str(file.content_type or "").split(";")[0].strip().lower()
-    return fallback
+    return _detect_mime_from_signature(contents)
 
 
 async def validate_upload(file: UploadFile, max_size_mb: int = 10) -> tuple[bytes, str]:
@@ -45,7 +56,7 @@ async def validate_upload(file: UploadFile, max_size_mb: int = 10) -> tuple[byte
     if len(contents) < MIN_FILE_SIZE_BYTES:
         raise HTTPException(status_code=400, detail="File too small. Upload a clear photo.")
 
-    detected_mime = _detect_mime(contents, file)
+    detected_mime = _detect_mime(contents)
     if detected_mime not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=415,

@@ -1,4 +1,4 @@
-// frontend/src/components/common/ProtectedAdminRoute.jsx
+﻿// frontend/src/components/common/ProtectedAdminRoute.jsx
 /**
  * ProtectedAdminRoute - Route protection for admin-only pages
  * Checks if user is authenticated AND has admin role
@@ -96,7 +96,7 @@ export default function ProtectedAdminRoute({ children }) {
         }
       })
       .catch((error) => {
-        console.warn('Could not resolve user role for admin route:', error)
+        globalThis.logger?.warn?.('Could not resolve user role for admin route:', error)
       })
       .finally(() => {
         if (isMounted) setIsCheckingRole(false)
@@ -127,3 +127,4 @@ export default function ProtectedAdminRoute({ children }) {
 
   return children
 }
+

@@ -89,6 +89,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/schemes" element={<Schemes />} />
             <Route path="/schemes/:schemeId" element={<SchemeDetail />} />
+            <Route path="/schemes/:id" element={<SchemeDetail />} />
 
             {/* Protected Routes - Onboarding (special layout, no navbar) */}
             <Route

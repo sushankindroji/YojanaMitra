@@ -31,13 +31,16 @@ class AuthService:
                 id=str(uuid.uuid4()),
                 email=email,
                 phone=phone,
+                name=name,
                 password_hash=password_hash,
                 preferred_lang=preferred_lang,
                 role="user",
+                is_admin=0,
                 is_verified=0,
                 is_active=1,
                 onboarding_incomplete=1,
                 created_at=datetime.utcnow().isoformat(),
+                updated_at=datetime.utcnow().isoformat(),
             )
             # Auto-create empty profile
             from app.models import Profile
@@ -101,6 +104,7 @@ class AuthService:
                 needs_commit = True
 
             user.last_login = datetime.utcnow().isoformat()
+            user.updated_at = datetime.utcnow().isoformat()
             needs_commit = True
 
             if needs_commit:

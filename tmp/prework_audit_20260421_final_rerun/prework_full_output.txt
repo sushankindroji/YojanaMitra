@@ -1,0 +1,437 @@
+================================================================================
+SECTION: 1) Project structure snapshot
+COMMAND: Backend and Frontend file listing
+EXIT CODE: 0
+--------------------------------------------------------------------------------
+BACKEND:
+E:\sushank-projects\YojanaMitra\backend\app\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\agent_orchestrator.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\eligibility_matching_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\explanation_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\job_store.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\personalization_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\profile_validation_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\agents\ranking_agent.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\env.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\versions\0001_initial_schema.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\versions\0002_onboarding_agents_rebuild.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\versions\0003_scheme_detail_enrichment.py
+E:\sushank-projects\YojanaMitra\backend\app\alembic\versions\0004_profile_document_indexes.py
+E:\sushank-projects\YojanaMitra\backend\app\config.py
+E:\sushank-projects\YojanaMitra\backend\app\core\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\core\audit.py
+E:\sushank-projects\YojanaMitra\backend\app\core\encryption.py
+E:\sushank-projects\YojanaMitra\backend\app\core\logging.py
+E:\sushank-projects\YojanaMitra\backend\app\core\rate_limiter.py
+E:\sushank-projects\YojanaMitra\backend\app\core\sanitizers.py
+E:\sushank-projects\YojanaMitra\backend\app\core\security.py
+E:\sushank-projects\YojanaMitra\backend\app\core\upload_security.py
+E:\sushank-projects\YojanaMitra\backend\app\data\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\data\scheme_portals.py
+E:\sushank-projects\YojanaMitra\backend\app\database.py
+E:\sushank-projects\YojanaMitra\backend\app\dependencies.py
+E:\sushank-projects\YojanaMitra\backend\app\main.py
+E:\sushank-projects\YojanaMitra\backend\app\models\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\models\application.py
+E:\sushank-projects\YojanaMitra\backend\app\models\audit_log.py
+E:\sushank-projects\YojanaMitra\backend\app\models\document.py
+E:\sushank-projects\YojanaMitra\backend\app\models\eligibility.py
+E:\sushank-projects\YojanaMitra\backend\app\models\profile.py
+E:\sushank-projects\YojanaMitra\backend\app\models\scheme.py
+E:\sushank-projects\YojanaMitra\backend\app\models\sync_log.py
+E:\sushank-projects\YojanaMitra\backend\app\models\user.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\admin.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\applications.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\auth.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\documents.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\eligibility.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\health.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\onboarding.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\profile.py
+E:\sushank-projects\YojanaMitra\backend\app\routers\schemes.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\application.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\auth.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\document.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\onboarding.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\profile.py
+E:\sushank-projects\YojanaMitra\backend\app\schemas\scheme.py
+E:\sushank-projects\YojanaMitra\backend\app\services\__init__.py
+E:\sushank-projects\YojanaMitra\backend\app\services\auth_service.py
+E:\sushank-projects\YojanaMitra\backend\app\services\cache_service.py
+E:\sushank-projects\YojanaMitra\backend\app\services\ocr_service.py
+E:\sushank-projects\YojanaMitra\backend\app\services\profile_completeness.py
+E:\sushank-projects\YojanaMitra\backend\app\services\scheme_instructions_service.py
+E:\sushank-projects\YojanaMitra\backend\app\services\storage_service.py
+E:\sushank-projects\YojanaMitra\backend\run.py
+
+
+FRONTEND:
+E:\sushank-projects\YojanaMitra\frontend\src\App.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\admin\AdminLayout.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\applications\ApplyGuide.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\auth\LoginForm.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\auth\RegisterForm.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\ErrorBoundary.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\FormCheckbox.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\FormInput.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\FormSelect.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\LanguageSelector.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\LoadingSpinner.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\OnboardingRouteGuard.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\ProtectedAdminRoute.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\common\ProtectedRoute.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\layout\AppShell.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes\EligibilityBadges.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes\SchemeCard.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes\SchemeFilter.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\schemes\SchemeResults.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Avatar.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Badge.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Button.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Card.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Input.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\PageHeader.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\ProgressRing.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Select.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\components\ui\Skeleton.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\i18n.js
+E:\sushank-projects\YojanaMitra\frontend\src\index.css
+E:\sushank-projects\YojanaMitra\frontend\src\locales\bn.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\en.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\es.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\hi.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\kn.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\mr.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\ta.json
+E:\sushank-projects\YojanaMitra\frontend\src\locales\te.json
+E:\sushank-projects\YojanaMitra\frontend\src\main.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin\AdminApplications.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin\AdminDashboard.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin\AdminSchemes.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\admin\AdminUsers.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Applications.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Apply.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Dashboard.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Eligibility.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Landing.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Login.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Onboarding.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Profile.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Register.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\SchemeDetail.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\Schemes.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\pages\UploadDocuments.jsx
+E:\sushank-projects\YojanaMitra\frontend\src\services\api.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\applicationService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\authService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\constants.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\documentService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\eligibilityService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\onboardingService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\profileService.js
+E:\sushank-projects\YojanaMitra\frontend\src\services\schemeService.js
+E:\sushank-projects\YojanaMitra\frontend\src\store\applicationStore.js
+E:\sushank-projects\YojanaMitra\frontend\src\store\authStore.js
+E:\sushank-projects\YojanaMitra\frontend\src\styles\design-system.css
+E:\sushank-projects\YojanaMitra\frontend\src\styles\typography.css
+
+================================================================================
+
+
+================================================================================
+SECTION: 2) Backend syntax py_compile
+COMMAND: python -m py_compile backend/app/**/*.py
+EXIT CODE: 0
+--------------------------------------------------------------------------------
+All files compiled successfully.
+================================================================================
+
+
+================================================================================
+SECTION: 3) Import app check
+COMMAND: from app.main import app
+EXIT CODE: 1
+--------------------------------------------------------------------------------
+python.exe : Configuration error: 2 validation errors for Settings
+At line:1 char:12
++ $output3 = & "e:/sushank-projects/YojanaMitra/.venv/Scripts/python.ex ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Configuration e...rs for Settings 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+Copy backend/.env.example to backend/.env and provide required values
+
+================================================================================
+
+
+================================================================================
+SECTION: 4) Wrong import path searches
+COMMAND: rg -e ...
+EXIT CODE: 0
+--------------------------------------------------------------------------------
+Pattern: from backend\.app
+
+Pattern: from \.\.backend
+
+Pattern: from backend
+
+Pattern: import backend
+
+
+================================================================================
+
+
+================================================================================
+SECTION: 5) Hardcoded secrets/URLs searches
+COMMAND: rg (password|secret|key|http://|https://)
+EXIT CODE: 1
+--------------------------------------------------------------------------------
+
+================================================================================
+
+
+================================================================================
+SECTION: 6) Frontend console log/warn/error checks
+COMMAND: rg console\.(log|warn|error)
+EXIT CODE: 1
+--------------------------------------------------------------------------------
+
+================================================================================
+
+
+================================================================================
+SECTION: 7) Backend print() checks
+COMMAND: rg 'print\('
+EXIT CODE: 1
+--------------------------------------------------------------------------------
+
+================================================================================
+
+
+================================================================================
+SECTION: 8) DB connection check script and table list
+COMMAND: python tmp/prework_audit_20260421_final_rerun/db_check.py
+EXIT CODE: 1
+--------------------------------------------------------------------------------
+python.exe : Configuration error: 2 validation errors for Settings
+At line:1 char:12
++ $output8 = & "e:/sushank-projects/YojanaMitra/.venv/Scripts/python.ex ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Configuration e...rs for Settings 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+Copy backend/.env.example to backend/.env and provide required values
+
+================================================================================
+
+
+================================================================================
+SECTION: 9) Missing DB tables script
+COMMAND: python tmp/prework_audit_20260421_final_rerun/missing_tables.py
+EXIT CODE: 1
+--------------------------------------------------------------------------------
+python.exe : Configuration error: 2 validation errors for Settings
+At line:1 char:12
++ $output9 = & "e:/sushank-projects/YojanaMitra/.venv/Scripts/python.ex ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Configuration e...rs for Settings 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+SECRET_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.5/v/missing
+Copy backend/.env.example to backend/.env and provide required values
+
+================================================================================
+
+
+================================================================================
+SECTION: 10) Alembic current and heads
+COMMAND: alembic current; alembic heads
+EXIT CODE: 0
+--------------------------------------------------------------------------------
+python.exe : INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+At line:1 char:10
++ $out10 = & "../.venv/Scripts/python.exe" -m alembic current 2>&1 | Ou ...
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO  [alembic....PostgresqlImpl. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+0004_profile_document_indexes (head)
+0004_profile_document_indexes (head)
+
+================================================================================
+
+
+================================================================================
+SECTION: 11) Frontend build
+COMMAND: npm run build
+EXIT CODE: 0
+--------------------------------------------------------------------------------
+
+> yojanamitra@1.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32mG£ô[39m 1526 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                             [39m[1m[2m  0.61 kB[22m[1m[22m[2m Göé gzip:   0.38 kB[22m
+[2mdist/[22m[35massets/index-CcbZFP5i.css              [39m[1m[2m 68.57 kB[22m[1m[22m[2m Göé gzip:  12.53 kB[22m
+[2mdist/[22m[36massets/Skeleton-BIzHSMMi.js            [39m[1m[2m  0.16 kB[22m[1m[22m[2m Göé gzip:   0.15 kB[22m
+[2mdist/[22m[36massets/arrow-right-CFjZrVSe.js         [39m[1m[2m  0.33 kB[22m[1m[22m[2m Göé gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/arrow-left-DtPnQKr8.js          [39m[1m[2m  0.33 kB[22m[1m[22m[2m Göé gzip:   0.26 kB[22m
+[2mdist/[22m[36massets/search-4RJ1nKZL.js              [39m[1m[2m  0.34 kB[22m[1m[22m[2m Göé gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/check-circle-2-BTs-rQc4.js      [39m[1m[2m  0.34 kB[22m[1m[22m[2m Göé gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/clock-3-30awCult.js             [39m[1m[2m  0.35 kB[22m[1m[22m[2m Göé gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/check-circle-CR59Phkw.js        [39m[1m[2m  0.36 kB[22m[1m[22m[2m Göé gzip:   0.28 kB[22m
+[2mdist/[22m[36massets/eye-cXmdq06e.js                 [39m[1m[2m  0.36 kB[22m[1m[22m[2m Göé gzip:   0.28 kB[22m
+[2mdist/[22m[36massets/shield-check-DUivrtXK.js        [39m[1m[2m  0.37 kB[22m[1m[22m[2m Göé gzip:   0.29 kB[22m
+[2mdist/[22m[36massets/map-pin-hc2khmdk.js             [39m[1m[2m  0.37 kB[22m[1m[22m[2m Göé gzip:   0.29 kB[22m
+[2mdist/[22m[36massets/x-circle-DwDbXPu_.js            [39m[1m[2m  0.37 kB[22m[1m[22m[2m Göé gzip:   0.28 kB[22m
+[2mdist/[22m[36massets/mail-DK4vDk0D.js                [39m[1m[2m  0.38 kB[22m[1m[22m[2m Göé gzip:   0.30 kB[22m
+[2mdist/[22m[36massets/eligibilityService-CW8NxEzR.js  [39m[1m[2m  0.40 kB[22m[1m[22m[2m Göé gzip:   0.22 kB[22m
+[2mdist/[22m[36massets/Card-CvEP9N_A.js                [39m[1m[2m  0.40 kB[22m[1m[22m[2m Göé gzip:   0.26 kB[22m
+[2mdist/[22m[36massets/alert-circle-A6kVCSq3.js        [39m[1m[2m  0.42 kB[22m[1m[22m[2m Göé gzip:   0.29 kB[22m
+[2mdist/[22m[36massets/wallet-Ys1JzUHc.js              [39m[1m[2m  0.42 kB[22m[1m[22m[2m Göé gzip:   0.30 kB[22m
+[2mdist/[22m[36massets/upload-cloud-DVAWnFst.js        [39m[1m[2m  0.42 kB[22m[1m[22m[2m Göé gzip:   0.31 kB[22m
+[2mdist/[22m[36massets/download-BBf5-REE.js            [39m[1m[2m  0.43 kB[22m[1m[22m[2m Göé gzip:   0.32 kB[22m
+[2mdist/[22m[36massets/refresh-cw-CxzyZOBR.js          [39m[1m[2m  0.49 kB[22m[1m[22m[2m Göé gzip:   0.33 kB[22m
+[2mdist/[22m[36massets/trash-2-cVfxrRW8.js             [39m[1m[2m  0.53 kB[22m[1m[22m[2m Göé gzip:   0.35 kB[22m
+[2mdist/[22m[36massets/applicationService-jd3b_efv.js  [39m[1m[2m  0.53 kB[22m[1m[22m[2m Göé gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/Badge-DGrEsbSK.js               [39m[1m[2m  0.67 kB[22m[1m[22m[2m Göé gzip:   0.37 kB[22m
+[2mdist/[22m[36massets/documentService-CE0QZEtc.js     [39m[1m[2m  0.67 kB[22m[1m[22m[2m Göé gzip:   0.36 kB[22m
+[2mdist/[22m[36massets/PageHeader-Jaislsl6.js          [39m[1m[2m  0.87 kB[22m[1m[22m[2m Göé gzip:   0.45 kB[22m
+[2mdist/[22m[36massets/lock-DADJt9ay.js                [39m[1m[2m  0.89 kB[22m[1m[22m[2m Göé gzip:   0.46 kB[22m
+[2mdist/[22m[36massets/external-link-DzfzZoQr.js       [39m[1m[2m  1.01 kB[22m[1m[22m[2m Göé gzip:   0.46 kB[22m
+[2mdist/[22m[36massets/Input-DSMPOMSE.js               [39m[1m[2m  1.18 kB[22m[1m[22m[2m Göé gzip:   0.59 kB[22m
+[2mdist/[22m[36massets/applicationStore-Chwt_YVt.js    [39m[1m[2m  1.20 kB[22m[1m[22m[2m Göé gzip:   0.47 kB[22m
+[2mdist/[22m[36massets/schemeService-CiyHhqD7.js       [39m[1m[2m  1.36 kB[22m[1m[22m[2m Göé gzip:   0.48 kB[22m
+[2mdist/[22m[36massets/Button-DerfE9Rl.js              [39m[1m[2m  1.37 kB[22m[1m[22m[2m Göé gzip:   0.76 kB[22m
+[2mdist/[22m[36massets/Landing-BQFmkAmN.js             [39m[1m[2m  6.13 kB[22m[1m[22m[2m Göé gzip:   2.47 kB[22m
+[2mdist/[22m[36massets/Login-DlxwqyG-.js               [39m[1m[2m  7.57 kB[22m[1m[22m[2m Göé gzip:   2.94 kB[22m
+[2mdist/[22m[36massets/AdminDashboard-g4DPzule.js      [39m[1m[2m  8.41 kB[22m[1m[22m[2m Göé gzip:   1.97 kB[22m
+[2mdist/[22m[36massets/Applications-3gTebHml.js        [39m[1m[2m  9.44 kB[22m[1m[22m[2m Göé gzip:   3.00 kB[22m
+[2mdist/[22m[36massets/Register-DNVQqtFV.js            [39m[1m[2m  9.97 kB[22m[1m[22m[2m Göé gzip:   3.29 kB[22m
+[2mdist/[22m[36massets/AdminApplications-DUIarGv5.js   [39m[1m[2m 10.80 kB[22m[1m[22m[2m Göé gzip:   2.98 kB[22m
+[2mdist/[22m[36massets/AdminSchemes-v4eEQUYA.js        [39m[1m[2m 11.23 kB[22m[1m[22m[2m Göé gzip:   3.34 kB[22m
+[2mdist/[22m[36massets/SchemeCard-CjzzNxCm.js          [39m[1m[2m 11.57 kB[22m[1m[22m[2m Göé gzip:   3.74 kB[22m
+[2mdist/[22m[36massets/AdminUsers-CytobLir.js          [39m[1m[2m 12.15 kB[22m[1m[22m[2m Göé gzip:   3.35 kB[22m
+[2mdist/[22m[36massets/Eligibility-sW-cmg5s.js         [39m[1m[2m 13.43 kB[22m[1m[22m[2m Göé gzip:   4.04 kB[22m
+[2mdist/[22m[36massets/Dashboard-Co-qKpyj.js           [39m[1m[2m 13.44 kB[22m[1m[22m[2m Göé gzip:   4.44 kB[22m
+[2mdist/[22m[36massets/Profile-Bb-uI692.js             [39m[1m[2m 14.95 kB[22m[1m[22m[2m Göé gzip:   4.65 kB[22m
+[2mdist/[22m[36massets/Onboarding-S4FyHFzB.js          [39m[1m[2m 20.37 kB[22m[1m[22m[2m Göé gzip:   5.26 kB[22m
+[2mdist/[22m[36massets/Schemes-BawfKvhv.js             [39m[1m[2m 22.88 kB[22m[1m[22m[2m Göé gzip:   7.23 kB[22m
+[2mdist/[22m[36massets/Apply-BgoN_HpY.js               [39m[1m[2m 25.30 kB[22m[1m[22m[2m Göé gzip:   6.17 kB[22m
+[2mdist/[22m[36massets/SchemeDetail-B-JpnMlL.js        [39m[1m[2m 30.26 kB[22m[1m[22m[2m Göé gzip:   7.77 kB[22m
+[2mdist/[22m[36massets/UploadDocuments-yuTfbMzH.js     [39m[1m[2m 36.39 kB[22m[1m[22m[2m Göé gzip:  10.21 kB[22m
+[2mdist/[22m[36massets/index-CEQO5_ip.js               [39m[1m[2m422.46 kB[22m[1m[22m[2m Göé gzip: 133.55 kB[22m
+[32mG£ô built in 12.88s[39m
+
+================================================================================
+
+
+================================================================================
+SECTION: 12) ESLint errors
+COMMAND: npm run lint
+EXIT CODE: 0
+--------------------------------------------------------------------------------
+
+> yojanamitra@1.0.0 lint
+> eslint src --ext .jsx
+
+
+================================================================================
+
+
+================================================================================
+SECTION: 13) Missing i18n keys script
+COMMAND: python tmp/prework_audit_20260421_final_rerun/i18n_check.py
+EXIT CODE: 0
+--------------------------------------------------------------------------------
+i18n files not found.
+
+================================================================================
+
+
+================================================================================
+SECTION: 14) Autoflake check
+COMMAND: pip install autoflake; autoflake --check -r backend/app
+EXIT CODE: -1
+--------------------------------------------------------------------------------
+backend/app\agents\profile_validation_agent.py: No issues detected!
+
+backend/app\alembic\versions\0003_scheme_detail_enrichment.py: No issues detected!
+
+backend/app\core\sanitizers.py: No issues detected!
+
+backend/app\data\__init__.py: No issues detected!
+
+backend/app\models\audit_log.py: No issues detected!
+
+backend/app\models\eligibility.py: No issues detected!
+
+backend/app\models\sync_log.py: No issues detected!
+
+backend/app\models\user.py: No issues detected!
+
+backend/app\routers\documents.py: No issues detected!
+
+backend/app\schemas\document.py: No issues detected!
+
+backend/app\schemas\scheme.py: No issues detected!
+
+backend/app\services\__init__.py: No issues detected!
+
+backend/app\__init__.py: No issues detected!
+
+backend/app\agents\eligibility_matching_agent.py: No issues detected!
+
+backend/app\core\audit.py: No issues detected!
+
+
+================================================================================
+
+
+================================================================================
+SECTION: 15) Env vars present
+COMMAND: Check .env vs .env.example
+EXIT CODE: 1
+--------------------------------------------------------------------------------
+Missing in .env: MAX_UPLOAD_SIZE_MB REDIS_URL
+================================================================================
+
+
+================================================================================
+SECTION: 16) Tesseract version + list langs
+COMMAND: tesseract --version; tesseract --list-langs
+EXIT CODE: -1
+--------------------------------------------------------------------------------
+
+================================================================================
+
+

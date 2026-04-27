@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -36,11 +36,18 @@ const CSC_NAME_BY_STATE = {
   maharashtra: 'Aaple Sarkar / CSC',
   'west bengal': 'Tathya Mitra Kendra',
   rajasthan: 'e-Mitra Kiosk',
+  'madhya pradesh': 'Lok Seva Kendra / CSC',
   'uttar pradesh': 'Jan Seva Kendra / CSC',
   bihar: 'VASUDHA Kendra / CSC',
+  odisha: 'e-Seva Kendra',
+  gujarat: 'Jan Seva Kendra',
+  punjab: 'Sewa Kendra',
+  haryana: 'Antyodaya Saral / CSC',
+  assam: 'Arunodoi Kendra / CSC',
+  jharkhand: 'Pragya Kendra / CSC',
 }
 
-const DEFAULT_CSC_NAME = 'CSC / Common Service Centre'
+const DEFAULT_CSC_NAME = 'CSC (Common Service Centre)'
 
 const statusStyle = {
   met: {
@@ -75,7 +82,7 @@ function formatCurrencyINR(amount) {
   if (!Number.isFinite(numeric) || numeric <= 0) {
     return 'Varies by state'
   }
-  return `₹${Math.round(numeric).toLocaleString('en-IN')}`
+  return `INR ${Math.round(numeric).toLocaleString('en-IN')}`
 }
 
 function derivePaymentMethod(benefitType) {
@@ -180,7 +187,7 @@ export default function SchemeDetail() {
         } else {
           const status = applyResult.reason?.response?.status
           if (![401, 403, 404].includes(status)) {
-            console.warn('Failed to load apply info', applyResult.reason)
+            globalThis.logger?.warn?.('Failed to load apply info', applyResult.reason)
           }
         }
 
@@ -189,11 +196,11 @@ export default function SchemeDetail() {
         } else {
           const status = eligibilityResult.reason?.response?.status
           if (![401, 403, 404].includes(status)) {
-            console.warn('Failed to load eligibility data', eligibilityResult.reason)
+            globalThis.logger?.warn?.('Failed to load eligibility data', eligibilityResult.reason)
           }
         }
       } catch (fetchError) {
-        console.error('Error loading scheme detail', fetchError)
+        globalThis.logger?.error?.('Error loading scheme detail', fetchError)
         setError(t('schemes.fetchError', { defaultValue: 'Failed to load scheme details' }))
       } finally {
         setIsLoading(false)
@@ -222,7 +229,7 @@ export default function SchemeDetail() {
 
   const topSubtitle = !isVagueTopSubtitle(rawTopSubtitle)
     ? rawTopSubtitle
-    : `${schemeLevelText} • ${safeText(scheme?.sector, 'General sector')} • Managed by ${safeText(scheme?.ministry, 'relevant department')}`
+    : `${schemeLevelText} - ${safeText(scheme?.sector, 'General sector')} - Managed by ${safeText(scheme?.ministry, 'relevant department')}`
 
   const officialPortalUrl =
     applyInfo?.portal_url ||
@@ -373,7 +380,7 @@ export default function SchemeDetail() {
 
   const handleApply = () => {
     if (!isLoggedIn) {
-      navigate(`/login?next=/schemes/${scheme?.id || scheme?.scheme_id}`)
+      navigate('/register')
       return
     }
     navigate(`/apply/${scheme?.id || scheme?.scheme_id}`)
@@ -443,13 +450,15 @@ export default function SchemeDetail() {
         description={topSubtitle}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={handleSaveScheme}>
-              {isLoggedIn
-                ? t('schemes.saveScheme', { defaultValue: 'Save Scheme' })
-                : t('schemes.loginToSave', { defaultValue: 'Login to Save' })}
-            </Button>
+            {isLoggedIn ? (
+              <Button variant="secondary" onClick={handleSaveScheme}>
+                {t('schemes.saveScheme', { defaultValue: 'Save Scheme' })}
+              </Button>
+            ) : null}
             <Button onClick={handleApply}>
-              {isLoggedIn ? t('schemes.applyNow', { defaultValue: 'Apply Now' }) : 'Sign in to apply'}
+              {isLoggedIn
+                ? t('schemes.applyNow', { defaultValue: 'Apply Now' })
+                : t('schemes.checkEligibility', { defaultValue: 'Check your eligibility' })}
               <ExternalLink className="h-4 w-4" />
             </Button>
           </div>
@@ -478,8 +487,8 @@ export default function SchemeDetail() {
             You are viewing as a guest. Sign in to see if you personally qualify and to track your documents.
           </p>
           <div className="mt-3">
-            <Button variant="secondary" onClick={() => navigate(`/login?next=/schemes/${scheme?.id || scheme?.scheme_id}`)}>
-              {t('auth.login', { defaultValue: 'Login' })}
+            <Button variant="secondary" onClick={() => navigate('/register')}>
+              {t('auth.register', { defaultValue: 'Create account to check eligibility' })}
             </Button>
           </div>
         </Card>
@@ -642,13 +651,13 @@ export default function SchemeDetail() {
                   <div className="space-y-3">
                     {eligibilityCriteria.map((item) => (
                       <p key={item.key} className="text-body-sm text-stone-700">
-                        <span className="mr-2 font-medium text-emerald-700">✓</span>
+                        <span className="mr-2 font-medium text-emerald-700">âœ“</span>
                         <span className="font-medium">{item.label}:</span> {item.value}
                       </p>
                     ))}
                   </div>
                   <div className="mt-5">
-                    <Button onClick={() => navigate(`/login?next=/schemes/${scheme?.id || scheme?.scheme_id}`)}>
+                    <Button onClick={() => navigate('/register')}>
                       Sign in to check if YOU are eligible
                     </Button>
                   </div>
@@ -753,7 +762,7 @@ export default function SchemeDetail() {
               <Card className="border border-blue-200 bg-blue-50">
                 <h2 className="text-h3 font-medium text-blue-900">Apply via portal or service centre</h2>
                 <p className="mt-2 text-body-sm text-blue-900/90">
-                  Visit your nearest <span className="font-medium">{localCscName}</span> if you need help.
+                  Visit your nearest <span className="font-medium">{localCscName}</span> (also called Common Service Centre / CSC).
                 </p>
                 <p className="mt-2 inline-flex items-center gap-2 text-body-sm text-blue-900/90">
                   <Clock3 className="h-4 w-4" />
@@ -918,3 +927,4 @@ export default function SchemeDetail() {
     </div>
   )
 }
+

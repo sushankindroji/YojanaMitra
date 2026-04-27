@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
@@ -135,7 +135,7 @@ export default function Eligibility() {
 
         partialCount = Number.isFinite(summaryPartialCount) ? summaryPartialCount : partial.length
       } catch (recommendationError) {
-        console.warn(
+        globalThis.logger?.warn?.(
           'Recommendation endpoint failed, falling back to stored results:',
           recommendationError
         )
@@ -163,7 +163,7 @@ export default function Eligibility() {
       }
 
     } catch (error) {
-      console.error('Failed to fetch schemes:', error)
+      globalThis.logger?.error?.('Failed to fetch schemes:', error)
       toast.error('Failed to load matching schemes')
     } finally {
       setLoading(false)
@@ -201,7 +201,7 @@ export default function Eligibility() {
         window.localStorage.setItem(LAST_CHECKED_KEY, nowIso)
       }
     } catch (error) {
-      console.error('Failed to run check:', error)
+      globalThis.logger?.error?.('Failed to run check:', error)
       toast.warning(error.response?.data?.detail || 'Using the latest recommendations instead')
     } finally {
       if (progressTimerRef.current) {
@@ -533,3 +533,4 @@ export default function Eligibility() {
     </div>
   )
 }
+

@@ -1,7 +1,7 @@
 """
 Profile model.
 """
-from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -10,6 +10,9 @@ import uuid
 
 class Profile(Base):
     __tablename__ = "profiles"
+    __table_args__ = (
+        Index('idx_profiles_user_id', 'user_id', unique=True),
+    )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
@@ -74,6 +77,8 @@ class Profile(Base):
     aadhaar_number = Column(String, nullable=True)  # AES-256 encrypted
     aadhaar_verified = Column(Integer, default=0)
     aadhaar_last4 = Column(String, nullable=True)  # last 4 digits, unencrypted
+    income_verified = Column(Integer, default=0)
+    income_source = Column(String, nullable=True)  # manual / certificate
 
     # Document-derived identity fields
     pan_number = Column(String, nullable=True)

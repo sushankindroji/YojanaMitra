@@ -12,6 +12,8 @@ class EligibilityResult(Base):
     __tablename__ = "eligibility_results"
     __table_args__ = (
         UniqueConstraint('user_id', 'scheme_id', name='unique_user_scheme_eligibility'),
+        Index('idx_eligibility_user_scheme', 'user_id', 'scheme_id', unique=True),
+        Index('idx_eligibility_user_id', 'user_id'),
         Index('idx_eligibility_user', 'user_id'),
         Index('idx_eligibility_scheme', 'scheme_id'),
         Index('idx_eligibility_status', 'is_eligible'),
