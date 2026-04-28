@@ -379,7 +379,7 @@ export default function Dashboard() {
             <Button className="w-full" variant="secondary" onClick={handleCheckNow} loading={checking} disabled={checking}>
               {checking ? 'Refreshing...' : 'Refresh matches'}
             </Button>
-            <Button className="w-full" variant="ghost" onClick={() => navigate('/eligibility')}>
+            <Button className="w-full" variant="primary" onClick={() => navigate('/eligibility')}>
               Open match list
             </Button>
           </div>

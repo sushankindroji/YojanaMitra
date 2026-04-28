@@ -125,7 +125,10 @@ app = FastAPI(
 
 app.state.limiter = limiter
 
-origins = settings.cors_allowed_origins
+origins = list(settings.cors_allowed_origins)
+frontend_url = (settings.FRONTEND_URL or "").strip()
+if frontend_url:
+    origins.append(frontend_url)
 if settings.is_production and "*" in origins:
     logger.critical("Wildcard CORS origin is not allowed in production")
     raise SystemExit(1)
@@ -176,11 +179,20 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+allow_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    *origins,
+]
+allow_origins = list(dict.fromkeys(origin for origin in allow_origins if origin))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"] + origins,
+    allow_origins=allow_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Request-ID"],
     max_age=3600,
 )

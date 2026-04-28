@@ -3,6 +3,14 @@ import requests
 import sys
 import os
 
+if __name__ != "__main__":
+    try:
+        import pytest
+
+        pytest.skip("Example script; not a pytest test.", allow_module_level=True)
+    except Exception:
+        pass
+
 # Configuration
 API_BASE_URL = "http://localhost:8000/api/v1"
 # Replace with your actual token after logging in

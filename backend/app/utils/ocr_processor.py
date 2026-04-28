@@ -106,10 +106,12 @@ def extract_fields(text: str, doc_type: str) -> dict:
     }
     
     # Common fields for all documents
-    # Name: after "NAME:" or "नाम:" (3-50 chars)
-    name_match = re.search(r"(?:NAME|नाम)\s*:?\s*([A-Za-z\s]{3,50})", text, re.IGNORECASE)
+    # Name: capture the rest of the line after "NAME:" or "नाम:" and trim extra labels.
+    name_match = re.search(r"(?:NAME|नाम)\s*:?\s*([^\r\n]+)", text, re.IGNORECASE)
     if name_match:
-        fields["name"] = name_match.group(1).strip()
+        raw_name = name_match.group(1).strip()
+        raw_name = re.split(r"\b(?:DOB|Date of Birth|Gender)\b", raw_name, flags=re.IGNORECASE)[0].strip()
+        fields["name"] = re.sub(r"\s+", " ", raw_name) if raw_name else None
     
     # DOB: DD/MM/YYYY format
     dob_match = re.search(r"\b(\d{2}[/-]\d{2}[/-]\d{4})\b", text)
@@ -139,13 +141,11 @@ def extract_fields(text: str, doc_type: str) -> dict:
     
     elif doc_type == "income_cert":
         # Income amount: ₹ or Rs followed by digits with commas
-        income_match = re.search(r"(?:₹|Rs\.?)\s*([\d,]+)", text)
+        income_match = re.search(r"(?:₹|Rs\.?)\s*([\d,]+)", text, re.IGNORECASE)
         if income_match:
-            income_str = income_match.group(1).replace(",", "")
-            try:
-                fields["income_amount"] = float(income_str)
-            except ValueError:
-                pass
+            income_str = re.sub(r"[^\d]", "", income_match.group(1))
+            if income_str:
+                fields["income_amount"] = income_str
         
         # Financial year: YYYY-YYYY pattern
         fy_match = re.search(r"\b(\d{4}[-/]\d{4})\b", text)
